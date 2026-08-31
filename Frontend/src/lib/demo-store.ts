@@ -71,6 +71,38 @@ export type AuditRow = {
   detail: string;
 };
 
+export type WalletTransactionRow = {
+  id: string;
+  type: "credit" | "debit";
+  amount: number;
+  balance_after: number;
+  description: string;
+  category: "topup" | "api_usage" | "refund" | "bonus";
+  reference_id: string;
+  payment_method?: string;
+  api_endpoint?: string;
+  status: "success" | "pending" | "failed";
+  created_at: string;
+};
+
+export type ApiHitLogRow = {
+  id: string;
+  request_id: string;
+  endpoint: string;
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  group: string;
+  status_code: number;
+  response_time_ms: number;
+  cost_deducted: number;
+  api_key_used: string;
+  key_label: string;
+  environment: "live" | "sandbox";
+  ip_address: string;
+  request_payload?: Record<string, unknown> | null;
+  response_payload?: Record<string, unknown> | null;
+  created_at: string;
+};
+
 export type WebhookDelivery = {
   attempt: number;
   at: string;
@@ -99,12 +131,201 @@ type DemoState = {
   session: Session | null;
   profile: Profile;
   keys: ApiKeyRow[];
+  wallet_balance: number;
+  wallet_transactions: WalletTransactionRow[];
+  api_hit_logs: ApiHitLogRow[];
   usage: UsageRow[];
   audit: AuditRow[];
   webhooks: WebhookEventRow[];
 };
 
 const STORAGE_KEY = "bharatapi.console.v1";
+
+function getDefaultWalletTransactions(): WalletTransactionRow[] {
+  const now = Date.now();
+  return [
+    {
+      id: "txn_w_106",
+      type: "debit",
+      amount: 1.00,
+      balance_after: 4993.40,
+      description: "Account Aggregator Consent API (/v1/aa/consent)",
+      category: "api_usage",
+      reference_id: "req_aa_88eb",
+      api_endpoint: "/v1/aa/consent",
+      status: "success",
+      created_at: new Date(now - 15 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "txn_w_105",
+      type: "debit",
+      amount: 0.80,
+      balance_after: 4994.40,
+      description: "GSTIN Business Verification API (/v1/verify/gstin)",
+      category: "api_usage",
+      reference_id: "req_gst_31da",
+      api_endpoint: "/v1/verify/gstin",
+      status: "success",
+      created_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "txn_w_104",
+      type: "debit",
+      amount: 1.50,
+      balance_after: 4995.20,
+      description: "Bank Account Penny Drop Verification (/v1/bank/penny-drop)",
+      category: "api_usage",
+      reference_id: "req_bnk_42fa",
+      api_endpoint: "/v1/bank/penny-drop",
+      status: "success",
+      created_at: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "txn_w_103",
+      type: "debit",
+      amount: 2.10,
+      balance_after: 4996.70,
+      description: "Aadhaar OTP Generation API (/v1/verify/aadhaar/otp)",
+      category: "api_usage",
+      reference_id: "req_adh_71cd",
+      api_endpoint: "/v1/verify/aadhaar/otp",
+      status: "success",
+      created_at: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "txn_w_102",
+      type: "debit",
+      amount: 1.20,
+      balance_after: 4998.80,
+      description: "PAN Card Verification API (/v1/verify/pan)",
+      category: "api_usage",
+      reference_id: "req_pan_9a81",
+      api_endpoint: "/v1/verify/pan",
+      status: "success",
+      created_at: new Date(now - 28 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "txn_w_101",
+      type: "credit",
+      amount: 5000.00,
+      balance_after: 5000.00,
+      description: "Wallet recharge via UPI Instant Transfer",
+      category: "topup",
+      reference_id: "pay_upi_91823a",
+      payment_method: "UPI (bharatpe@hdfc)",
+      status: "success",
+      created_at: new Date(now - 48 * 60 * 60 * 1000).toISOString(),
+    },
+  ];
+}
+
+function getDefaultApiHitLogs(): ApiHitLogRow[] {
+  const now = Date.now();
+  return [
+    {
+      id: "log_hit_101",
+      request_id: "req_aa_88eb",
+      endpoint: "/v1/aa/consent",
+      method: "POST",
+      group: "Account Aggregator",
+      status_code: 200,
+      response_time_ms: 110,
+      cost_deducted: 1.00,
+      api_key_used: "sk_live_••••3f2c",
+      key_label: "Production Server Key",
+      environment: "live",
+      ip_address: "103.21.244.12",
+      request_payload: { customer_mobile: "9876543210", fi_types: ["DEPOSIT"], purpose_code: "101", duration_days: 30 },
+      response_payload: { status: "PENDING", consent_handle: "cn_8f2a1b7c", expires_at: "2026-09-30T08:00:00Z" },
+      created_at: new Date(now - 15 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "log_hit_102",
+      request_id: "req_gst_31da",
+      endpoint: "/v1/verify/gstin",
+      method: "POST",
+      group: "KYC",
+      status_code: 200,
+      response_time_ms: 95,
+      cost_deducted: 0.80,
+      api_key_used: "sk_live_••••3f2c",
+      key_label: "Production Server Key",
+      environment: "live",
+      ip_address: "103.21.244.12",
+      request_payload: { gstin: "27AAECV1234C1ZP" },
+      response_payload: { status: "verified", legal_name: "Bharat API Cloud Technologies Pvt Ltd", gst_status: "Active" },
+      created_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "log_hit_103",
+      request_id: "req_bnk_42fa",
+      endpoint: "/v1/bank/penny-drop",
+      method: "POST",
+      group: "Banking",
+      status_code: 200,
+      response_time_ms: 1240,
+      cost_deducted: 1.50,
+      api_key_used: "sk_live_••••3f2c",
+      key_label: "Production Server Key",
+      environment: "live",
+      ip_address: "103.21.244.12",
+      request_payload: { account_number: "50100234567890", ifsc: "HDFC0000123", name: "Aarav Sharma" },
+      response_payload: { status: "verified", account_exists: true, beneficiary_name: "AARAV SHARMA", rrn: "421908123456" },
+      created_at: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "log_hit_104",
+      request_id: "req_adh_71cd",
+      endpoint: "/v1/verify/aadhaar/otp",
+      method: "POST",
+      group: "KYC",
+      status_code: 200,
+      response_time_ms: 480,
+      cost_deducted: 2.10,
+      api_key_used: "sk_live_••••3f2c",
+      key_label: "Production Server Key",
+      environment: "live",
+      ip_address: "103.21.244.12",
+      request_payload: { aadhaar_number: "999999991234", consent: true, consent_id: "cns_9f21" },
+      response_payload: { txn_id: "txn_digilocker_9a81f2", otp_sent: true, mobile_hint: "XXXXXX78XX" },
+      created_at: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "log_hit_105",
+      request_id: "req_pan_9a81",
+      endpoint: "/v1/verify/pan",
+      method: "POST",
+      group: "KYC",
+      status_code: 200,
+      response_time_ms: 240,
+      cost_deducted: 1.20,
+      api_key_used: "sk_live_••••3f2c",
+      key_label: "Production Server Key",
+      environment: "live",
+      ip_address: "103.21.244.12",
+      request_payload: { pan: "ABCDE1234F", name: "Aarav Sharma", dob: "1990-04-12" },
+      response_payload: { status: "verified", pan_valid: true, name_match: "exact", match_score: 0.98 },
+      created_at: new Date(now - 28 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "log_hit_106",
+      request_id: "req_pan_err2",
+      endpoint: "/v1/verify/pan",
+      method: "POST",
+      group: "KYC",
+      status_code: 400,
+      response_time_ms: 45,
+      cost_deducted: 0.00,
+      api_key_used: "sk_test_••••881a",
+      key_label: "Sandbox Test Key",
+      environment: "sandbox",
+      ip_address: "49.36.120.4",
+      request_payload: { pan: "INVALID_PAN" },
+      response_payload: { error: "Invalid PAN format. Must be 10 alphanumeric characters." },
+      created_at: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ];
+}
 
 function emptyState(): DemoState {
   return {
@@ -118,6 +339,9 @@ function emptyState(): DemoState {
       onboarded: false,
     },
     keys: [],
+    wallet_balance: 4993.40,
+    wallet_transactions: getDefaultWalletTransactions(),
+    api_hit_logs: getDefaultApiHitLogs(),
     usage: [],
     audit: [],
     webhooks: [],
@@ -231,6 +455,9 @@ export type DashboardData = {
   limits: PlanLimit;
   allLimits: PlanLimit[];
   monthlyUsage: number;
+  walletBalance: number;
+  walletTransactions: WalletTransactionRow[];
+  apiHitLogs: ApiHitLogRow[];
   usage: UsageRow[];
   audit: AuditRow[];
   webhooks: WebhookEventRow[];
@@ -247,10 +474,40 @@ export function getDashboard(): DashboardData {
     limits,
     allLimits: PLAN_LIMITS,
     monthlyUsage: state.usage.filter((u) => u.created_at >= since).length,
+    walletBalance: typeof state.wallet_balance === "number" ? state.wallet_balance : 4993.40,
+    walletTransactions: state.wallet_transactions?.length ? state.wallet_transactions : getDefaultWalletTransactions(),
+    apiHitLogs: state.api_hit_logs?.length ? state.api_hit_logs : getDefaultApiHitLogs(),
     usage: state.usage,
     audit: state.audit,
     webhooks: state.webhooks,
   };
+}
+
+export function topupWallet(input: { amount: number; paymentMethod: string; note?: string }) {
+  const state = read();
+  const current = typeof state.wallet_balance === "number" ? state.wallet_balance : 4993.40;
+  const newBalance = Number((current + input.amount).toFixed(2));
+  const txnId = `txn_w_${randomHex(8)}`;
+  const row: WalletTransactionRow = {
+    id: txnId,
+    type: "credit",
+    amount: input.amount,
+    balance_after: newBalance,
+    description: `Wallet recharge via ${input.paymentMethod}${input.note ? ` (${input.note})` : ""}`,
+    category: "topup",
+    reference_id: `pay_${randomHex(8)}`,
+    payment_method: input.paymentMethod,
+    status: "success",
+    created_at: new Date().toISOString(),
+  };
+
+  update((s) => {
+    s.wallet_balance = newBalance;
+    s.wallet_transactions = [row, ...(s.wallet_transactions || getDefaultWalletTransactions())];
+    logAudit(s, "wallet.recharge", `₹${input.amount.toFixed(2)}`, `Recharge via ${input.paymentMethod}. New balance: ₹${newBalance.toFixed(2)}`);
+  });
+
+  return { ok: true as const, transaction: row, newBalance };
 }
 
 export async function saveProfile(input: {

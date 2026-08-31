@@ -14,7 +14,11 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as StatusRouteImport } from './routes/status'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedDashboardApisRouteImport } from './routes/_authenticated/dashboard/apis'
+import { Route as AuthenticatedDashboardLogsRouteImport } from './routes/_authenticated/dashboard/logs'
+import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard/wallet'
+import { Route as AuthenticatedDashboardWebhooksRouteImport } from './routes/_authenticated/dashboard/webhooks'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,25 +44,58 @@ const StatusRoute = StatusRouteImport.update({
   path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
+const AuthenticatedDashboardIndexRoute =
+  AuthenticatedDashboardIndexRouteImport.update({
+    id: '/dashboard/',
+    path: '/dashboard/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardApisRoute =
+  AuthenticatedDashboardApisRouteImport.update({
+    id: '/dashboard/apis',
+    path: '/dashboard/apis',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardLogsRoute =
+  AuthenticatedDashboardLogsRouteImport.update({
+    id: '/dashboard/logs',
+    path: '/dashboard/logs',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardWalletRoute =
+  AuthenticatedDashboardWalletRouteImport.update({
+    id: '/dashboard/wallet',
+    path: '/dashboard/wallet',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardWebhooksRoute =
+  AuthenticatedDashboardWebhooksRouteImport.update({
+    id: '/dashboard/webhooks',
+    path: '/dashboard/webhooks',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRoute
   '/status': typeof StatusRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
+  '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
+  '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
+  '/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
+  '/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRoute
   '/status': typeof StatusRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
+  '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
+  '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
+  '/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
+  '/dashboard': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -67,13 +104,35 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRoute
   '/status': typeof StatusRoute
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/dashboard/apis': typeof AuthenticatedDashboardApisRoute
+  '/_authenticated/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
+  '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
+  '/_authenticated/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
+  '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/docs' | '/status' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/docs'
+    | '/status'
+    | '/dashboard/apis'
+    | '/dashboard/logs'
+    | '/dashboard/wallet'
+    | '/dashboard/webhooks'
+    | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/docs' | '/status' | '/dashboard'
+  to:
+    | '/'
+    | '/auth'
+    | '/docs'
+    | '/status'
+    | '/dashboard/apis'
+    | '/dashboard/logs'
+    | '/dashboard/wallet'
+    | '/dashboard/webhooks'
+    | '/dashboard'
   id:
     | '__root__'
     | '/'
@@ -81,7 +140,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/docs'
     | '/status'
-    | '/_authenticated/dashboard'
+    | '/_authenticated/dashboard/apis'
+    | '/_authenticated/dashboard/logs'
+    | '/_authenticated/dashboard/wallet'
+    | '/_authenticated/dashboard/webhooks'
+    | '/_authenticated/dashboard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,22 +192,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
+    '/_authenticated/dashboard/': {
+      id: '/_authenticated/dashboard/'
       path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/apis': {
+      id: '/_authenticated/dashboard/apis'
+      path: '/dashboard/apis'
+      fullPath: '/dashboard/apis'
+      preLoaderRoute: typeof AuthenticatedDashboardApisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/logs': {
+      id: '/_authenticated/dashboard/logs'
+      path: '/dashboard/logs'
+      fullPath: '/dashboard/logs'
+      preLoaderRoute: typeof AuthenticatedDashboardLogsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/wallet': {
+      id: '/_authenticated/dashboard/wallet'
+      path: '/dashboard/wallet'
+      fullPath: '/dashboard/wallet'
+      preLoaderRoute: typeof AuthenticatedDashboardWalletRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/webhooks': {
+      id: '/_authenticated/dashboard/webhooks'
+      path: '/dashboard/webhooks'
+      fullPath: '/dashboard/webhooks'
+      preLoaderRoute: typeof AuthenticatedDashboardWebhooksRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDashboardApisRoute: typeof AuthenticatedDashboardApisRoute
+  AuthenticatedDashboardLogsRoute: typeof AuthenticatedDashboardLogsRoute
+  AuthenticatedDashboardWalletRoute: typeof AuthenticatedDashboardWalletRoute
+  AuthenticatedDashboardWebhooksRoute: typeof AuthenticatedDashboardWebhooksRoute
+  AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDashboardApisRoute: AuthenticatedDashboardApisRoute,
+  AuthenticatedDashboardLogsRoute: AuthenticatedDashboardLogsRoute,
+  AuthenticatedDashboardWalletRoute: AuthenticatedDashboardWalletRoute,
+  AuthenticatedDashboardWebhooksRoute: AuthenticatedDashboardWebhooksRoute,
+  AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
