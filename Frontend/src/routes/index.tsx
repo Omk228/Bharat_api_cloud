@@ -21,13 +21,13 @@ import { useState } from "react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "VeroKYC — KYC & Banking APIs for Fintechs" },
+      { title: "Bharat API Cloud — KYC & Banking APIs for Fintechs" },
       {
         name: "description",
         content:
-          "VeroKYC provides production-ready KYC verification, identity checks, and banking APIs. Verify users, validate accounts, and go live in days.",
+          "Bharat API Cloud provides production-ready KYC verification, identity checks, and banking APIs. Verify users, validate accounts, and go live in days.",
       },
-      { property: "og:title", content: "VeroKYC — KYC & Banking APIs for Fintechs" },
+      { property: "og:title", content: "Bharat API Cloud — KYC & Banking APIs for Fintechs" },
       {
         property: "og:description",
         content:
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const codeSnippet = `curl https://api.verokyc.io/v1/verify/kyc \\
+const codeSnippet = `curl https://api.bharatapicloud.io/v1/verify/kyc \\
   -H "Authorization: Bearer sk_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -168,7 +168,7 @@ function Index() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <a href="/" className="flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold tracking-tight">VeroKYC</span>
+            <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
           </a>
           <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
             <a href="#products" className="transition-colors hover:text-foreground">Products</a>
@@ -316,9 +316,9 @@ function Index() {
           </div>
           <CodeBlock
             title="Node.js SDK"
-            code={`import { VeroKYC } from "@verokyc/sdk";
+            code={`import { BharatApiClient } from "@bharatapicloud/sdk";
 
-const client = new VeroKYC(process.env.VEROKYC_API_KEY);
+const client = new BharatApiClient(process.env.BHARAT_API_KEY);
 
 const result = await client.kyc.verifyPan({
   pan: "ABCDE1234F",
@@ -422,7 +422,7 @@ if (result.status === "verified") {
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
-              <span className="font-semibold">VeroKYC</span>
+              <span className="font-semibold">Bharat API Cloud</span>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
               KYC & banking infrastructure for modern financial products.
@@ -446,7 +446,7 @@ if (result.status === "verified") {
           ))}
         </div>
         <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-          © 2026 VeroKYC Technologies Pvt. Ltd. All rights reserved.
+          © 2026 Bharat API Cloud Technologies Pvt. Ltd. All rights reserved.
         </div>
       </footer>
     </div>

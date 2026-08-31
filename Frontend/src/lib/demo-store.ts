@@ -7,8 +7,8 @@
 import { buildApiKey, hmacSha256Hex, randomHex, timingSafeEqualHex } from "./demo-crypto";
 import { getEndpoint, type ApiEndpoint } from "./api-catalog";
 
-export const DEMO_EMAIL = "demo@verokyc.io";
-export const DEMO_PASSWORD = "verokyc123";
+export const DEMO_EMAIL = "demo@bharatapicloud.io";
+export const DEMO_PASSWORD = "bharatapi123";
 
 export type PlanId = "free" | "growth" | "scale";
 
@@ -104,7 +104,7 @@ type DemoState = {
   webhooks: WebhookEventRow[];
 };
 
-const STORAGE_KEY = "verokyc.console.v1";
+const STORAGE_KEY = "bharatapi.console.v1";
 
 function emptyState(): DemoState {
   return {
@@ -139,7 +139,7 @@ function read(): DemoState {
 function write(state: DemoState) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  window.dispatchEvent(new Event("verokyc:state"));
+  window.dispatchEvent(new Event("bharatapi:state"));
 }
 
 function update(fn: (state: DemoState) => void): DemoState {
@@ -499,7 +499,7 @@ export async function signWebhookEvent(input: {
     body,
     signature,
     header,
-    endpoint_url: input.endpointUrl?.trim() || "https://example.com/webhooks/verokyc",
+    endpoint_url: input.endpointUrl?.trim() || "https://example.com/webhooks/bharatapi",
     created_at: new Date().toISOString(),
     deliveries: [
       {

@@ -33,17 +33,17 @@ import { generateSnippet, INSTALL_COMMANDS, LANGUAGES, type LanguageId } from "@
 export const Route = createFileRoute("/docs")({
   head: () => ({
     meta: [
-      { title: "API Docs — KYC & Banking Verification Endpoints | VeroKYC" },
+      { title: "API Docs — KYC & Banking Verification Endpoints | Bharat API Cloud" },
       {
         name: "description",
         content:
-          "Full VeroKYC API reference: PAN, Aadhaar, GSTIN, penny-drop bank verification, Account Aggregator and payouts. Live Try-It console, SDK snippets and webhook signature tester.",
+          "Full Bharat API Cloud API reference: PAN, Aadhaar, GSTIN, penny-drop bank verification, Account Aggregator and payouts. Live Try-It console, SDK snippets and webhook signature tester.",
       },
-      { property: "og:title", content: "VeroKYC API Documentation" },
+      { property: "og:title", content: "Bharat API Cloud API Documentation" },
       {
         property: "og:description",
         content:
-          "22+ KYC and banking endpoints with request/response examples, SDKs in 6 languages and an interactive console.",
+          "350+ KYC and banking endpoints with request/response examples, SDKs in 6 languages and an interactive console.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -64,8 +64,8 @@ function DocsPage() {
   useEffect(() => {
     setSignedIn(Boolean(getSession()));
     const sync = () => setSignedIn(Boolean(getSession()));
-    window.addEventListener("verokyc:state", sync);
-    return () => window.removeEventListener("verokyc:state", sync);
+    window.addEventListener("bharatapi:state", sync);
+    return () => window.removeEventListener("bharatapi:state", sync);
   }, []);
 
   const { data: account } = useQuery({
@@ -104,7 +104,7 @@ function DocsPage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-6">
           <Link to="/" className="flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold tracking-tight">VeroKYC</span>
+            <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
           </Link>
           <span className="hidden text-sm text-muted-foreground sm:inline">Developer docs</span>
           <div className="ml-auto flex items-center gap-3">
@@ -207,7 +207,7 @@ function DocsPage() {
 
         <main className="min-w-0 flex-1 space-y-10 pb-20">
           <section className="rounded-2xl border border-border bg-card p-6">
-            <h1 className="text-2xl font-bold tracking-tight">VeroKYC API reference</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Bharat API Cloud reference</h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               REST over HTTPS, JSON in and out. Base URL{" "}
               <code className="rounded bg-terminal px-1.5 py-0.5 font-mono text-xs">{BASE_URL}</code>.
@@ -520,7 +520,7 @@ function WebhookTester({ keys, signedIn }: { keys: KeyOption[]; signedIn: boolea
               <>
                 <label className="block">
                   <span className="mb-1.5 block text-xs uppercase tracking-wider text-muted-foreground">
-                    Verokyc-Signature header
+                    Bharat-API-Signature header
                   </span>
                   <input
                     value={headerInput}
@@ -565,7 +565,7 @@ function WebhookTester({ keys, signedIn }: { keys: KeyOption[]; signedIn: boolea
                   title="Verify in your backend (Node.js)"
                   code={`import crypto from "node:crypto";
 
-export function verifyVeroKycSignature(rawBody, header, secret, toleranceSec = 300) {
+export function verifyBharatApiSignature(rawBody, header, secret, toleranceSec = 300) {
   const timestamp = /t=(\\d+)/.exec(header)?.[1];
   const provided = /v1=([a-f0-9]+)/.exec(header)?.[1];
   if (!timestamp || !provided) return false;

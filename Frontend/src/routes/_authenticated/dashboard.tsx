@@ -44,13 +44,13 @@ import {
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Developer Dashboard — VeroKYC API Keys, Usage & Webhooks" },
+      { title: "Developer Dashboard — Bharat API Cloud" },
       {
         name: "description",
         content:
-          "Manage VeroKYC API keys with rotation and revocation, monitor monthly usage, export CSV usage and audit logs, and replay signed webhook events.",
+          "Manage Bharat API Cloud API keys with rotation and revocation, monitor monthly usage, export CSV usage and audit logs, and replay signed webhook events.",
       },
-      { property: "og:title", content: "Developer Dashboard — VeroKYC" },
+      { property: "og:title", content: "Developer Dashboard — Bharat API Cloud" },
       {
         property: "og:description",
         content: "API key rotation, usage and audit CSV exports, and webhook replay controls.",
@@ -94,7 +94,7 @@ function DashboardPage() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link to="/" className="flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold tracking-tight">VeroKYC</span>
+            <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
             <span className="rounded-md bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
               Console
             </span>
@@ -130,7 +130,7 @@ function DashboardPage() {
               company_name:
                 data.profile.company_name ||
                 (typeof window !== "undefined"
-                  ? (window.sessionStorage.getItem("verokyc.signup.company") ?? "")
+                  ? (window.sessionStorage.getItem("bharatapi.signup.company") ?? "")
                   : ""),
               contact_email: data.profile.contact_email,
             }}
@@ -426,7 +426,7 @@ function ApiKeys({ keys }: { keys: ApiKeyRow[] }) {
                     "last_used_at",
                   ],
                 );
-                downloadCsv(`verokyc-api-keys-${Date.now()}.csv`, csv);
+                downloadCsv(`bharat-api-keys-${Date.now()}.csv`, csv);
               }}
             />
           ) : undefined
@@ -608,7 +608,7 @@ function WebhookHistory({ events }: { events: WebhookEventRow[] }) {
                     "signature_header",
                   ],
                 );
-                downloadCsv(`verokyc-webhook-events-${Date.now()}.csv`, csv);
+                downloadCsv(`bharat-webhook-events-${Date.now()}.csv`, csv);
               }}
             />
           ) : undefined
@@ -680,7 +680,7 @@ function WebhookHistory({ events }: { events: WebhookEventRow[] }) {
                     </div>
                     <div>
                       <p className="mb-1 uppercase tracking-wider text-muted-foreground">
-                        VeroKYC-Signature
+                        Bharat-API-Signature
                       </p>
                       <code className="block break-all rounded bg-terminal px-3 py-2 font-mono">
                         {e.header}
@@ -773,7 +773,7 @@ function UsageLog({ usage }: { usage: UsageRow[] }) {
                       "api_key",
                     ],
                   );
-                  downloadCsv(`verokyc-usage-${Date.now()}.csv`, csv);
+                  downloadCsv(`bharat-usage-${Date.now()}.csv`, csv);
                 }}
               />
             )}
@@ -857,7 +857,7 @@ function AuditLog({ audit }: { audit: AuditRow[] }) {
                   })),
                   ["id", "created_at", "actor", "action", "target", "detail"],
                 );
-                downloadCsv(`verokyc-audit-${Date.now()}.csv`, csv);
+                downloadCsv(`bharat-audit-${Date.now()}.csv`, csv);
               }}
             />
           ) : undefined

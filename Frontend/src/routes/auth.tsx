@@ -134,7 +134,7 @@ function AuthPage() {
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            {mode === "signup" ? "Already have an account?" : "New to VeroKYC?"}{" "}
+            {mode === "signup" ? "Already have an account?" : "New to Bharat API Cloud?"}{" "}
             <button
               onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
               className="font-medium text-primary hover:underline"

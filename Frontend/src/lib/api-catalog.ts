@@ -27,7 +27,7 @@ export type ApiGroup = "KYC" | "Banking" | "Account Aggregator" | "Payments";
 
 export const API_GROUPS: ApiGroup[] = ["KYC", "Banking", "Account Aggregator", "Payments"];
 
-export const BASE_URL = "https://api.verokyc.io/v1";
+export const BASE_URL = "https://api.bharatapicloud.io/v1";
 
 export const endpoints: ApiEndpoint[] = [
   /* ---------------- KYC ---------------- */
@@ -112,8 +112,8 @@ export const endpoints: ApiEndpoint[] = [
     sampleBody: { gstin: "27AAECV1234C1ZP" },
     sampleResponse: {
       status: "verified",
-      legal_name: "Verokyc Technologies Private Limited",
-      trade_name: "VeroKYC",
+      legal_name: "Bharat API Cloud Technologies Private Limited",
+      trade_name: "Bharat API Cloud",
       registration_date: "2019-07-01",
       gst_status: "Active",
       taxpayer_type: "Regular",
@@ -134,7 +134,7 @@ export const endpoints: ApiEndpoint[] = [
     sampleBody: { cin: "U72900PN2019PTC185432" },
     sampleResponse: {
       status: "verified",
-      company_name: "Verokyc Technologies Private Limited",
+      company_name: "Bharat API Cloud Technologies Private Limited",
       company_status: "Active",
       incorporation_date: "2019-06-24",
       paid_up_capital: 1000000,
@@ -319,7 +319,7 @@ export const endpoints: ApiEndpoint[] = [
     sampleResponse: {
       status: "pending",
       collect_id: "rpd_71ba3c",
-      payment_link: "https://pay.verokyc.io/rpd_71ba3c",
+      payment_link: "https://pay.bharatapicloud.io/rpd_71ba3c",
       expires_in: 900,
       request_id: "bank_rpd_02f9",
     },
@@ -406,7 +406,7 @@ export const endpoints: ApiEndpoint[] = [
     sampleResponse: {
       consent_handle: "cn_8f2a1b7c",
       status: "PENDING",
-      redirect_url: "https://aa.verokyc.io/consent/cn_8f2a1b7c",
+      redirect_url: "https://aa.bharatapicloud.io/consent/cn_8f2a1b7c",
       expires_at: "2026-08-30T08:00:00Z",
     },
   },

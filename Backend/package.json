@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch --env-file=.env src/server.js",
     "dev:nodemon": "nodemon src/server.js",
-    "test": "node src/test-server.js"
+    "test": "node src/test-server.js",
+    "db:view": "node src/scripts/view-db.js"
   },
   "keywords": [
     "express",

@@ -13,15 +13,15 @@ export type LanguageId = (typeof LANGUAGES)[number]["id"];
 
 export const INSTALL_COMMANDS: Record<LanguageId, string> = {
   curl: "# cURL ships with macOS and most Linux distros\ncurl --version",
-  node: "npm install @verokyc/sdk\n# or\npnpm add @verokyc/sdk",
-  python: "pip install verokyc",
-  go: "go get github.com/verokyc/verokyc-go",
+  node: "npm install @bharatapicloud/sdk\n# or\npnpm add @bharatapicloud/sdk",
+  python: "pip install bharatapicloud",
+  go: "go get github.com/bharatapicloud/bharat-api-go",
   java: `<dependency>
-  <groupId>io.verokyc</groupId>
-  <artifactId>verokyc-java</artifactId>
+  <groupId>io.bharatapicloud</groupId>
+  <artifactId>bharat-api-java</artifactId>
   <version>2.4.0</version>
 </dependency>`,
-  php: "composer require verokyc/verokyc-php",
+  php: "composer require bharatapicloud/bharat-api-php",
 };
 
 function pathValues(input: Record<string, unknown>): Record<string, string> {
@@ -78,9 +78,9 @@ export function generateSnippet(
         .join("\n");
 
     case "node":
-      return `import { VeroKYC } from "@verokyc/sdk";
+      return `import { BharatApiClient } from "@bharatapicloud/sdk";
 
-const client = new VeroKYC("${apiKey}", { environment: "sandbox" });
+const client = new BharatApiClient("${apiKey}", { environment: "sandbox" });
 
 const result = await client.${sdkMethodName(endpoint)}(${body ?? JSON.stringify(input, null, 2)});
 console.log(result);
@@ -95,9 +95,9 @@ const res = await fetch("${url}", {
 console.log(await res.json());`;
 
     case "python":
-      return `from verokyc import VeroKYC
+      return `from bharatapicloud import BharatApiClient
 
-client = VeroKYC("${apiKey}", environment="sandbox")
+client = BharatApiClient("${apiKey}", environment="sandbox")
 result = client.${snakeMethodName(endpoint)}(${
         body ? `**${body.replace(/"(\w+)":/g, '"$1":')}` : ""
       })
@@ -141,7 +141,7 @@ ${body ? `\tpayload := []byte(\`${body}\`)\n\treq, _ := http.NewRequest("${metho
       return `import java.net.URI;
 import java.net.http.*;
 
-public class VeroKycExample {
+public class BharatApiExample {
   public static void main(String[] args) throws Exception {
     HttpClient client = HttpClient.newHttpClient();
 

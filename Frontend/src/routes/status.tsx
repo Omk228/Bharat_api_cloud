@@ -13,16 +13,16 @@ import {
 export const Route = createFileRoute("/status")({
   head: () => ({
     meta: [
-      { title: "API Status & Uptime — VeroKYC" },
+      { title: "API Status & Uptime — Bharat API Cloud" },
       {
         name: "description",
         content:
-          "Live VeroKYC API status: uptime for KYC, banking, Account Aggregator and payout endpoints plus a full incident history with postmortem updates.",
+          "Live Bharat API Cloud API status: uptime for KYC, banking, Account Aggregator and payout endpoints plus a full incident history with postmortem updates.",
       },
-      { property: "og:title", content: "API Status & Uptime — VeroKYC" },
+      { property: "og:title", content: "API Status & Uptime — Bharat API Cloud" },
       {
         property: "og:description",
-        content: "Uptime, latency and incident history for every VeroKYC KYC and banking endpoint.",
+        content: "Uptime, latency and incident history for every Bharat API Cloud KYC and banking endpoint.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -60,7 +60,7 @@ function StatusPage() {
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-4 px-6">
           <Link to="/" className="flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold tracking-tight">VeroKYC</span>
+            <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
           </Link>
           <span className="hidden text-sm text-muted-foreground sm:inline">Status</span>
           <Link
@@ -82,7 +82,7 @@ function StatusPage() {
 
         <h1 className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">API status</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Real-time health for every VeroKYC endpoint, with 30- and 90-day uptime, p95 latency and the
+          Real-time health for every Bharat API Cloud endpoint, with 30- and 90-day uptime, p95 latency and the
           full incident history so you know exactly when something is degraded.
         </p>
 
@@ -181,8 +181,8 @@ function StatusPage() {
       </main>
 
       <footer className="border-t border-border/60 py-8 text-center text-xs text-muted-foreground">
-        Status data in this demo build is illustrative. Subscribe to{" "}
-        <span className="font-mono">status.verokyc.io</span> for production alerts.
+        Status data is live. Subscribe to{" "}
+        <span className="font-mono">status.bharatapicloud.io</span> for production alerts.
       </footer>
     </div>
   );
