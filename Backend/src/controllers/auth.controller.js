@@ -7,8 +7,8 @@ export const authController = {
    * Register Controller
    */
   register: asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
-    const result = await authService.register({ name, email, password });
+    const { name, company_name, email, password } = req.body;
+    const result = await authService.register({ name, company_name, email, password });
     return ApiResponse.created(res, result, 'User registered successfully');
   }),
 
@@ -27,6 +27,15 @@ export const authController = {
   getMe: asyncHandler(async (req, res) => {
     const profile = await authService.getProfile(req.user.id);
     return ApiResponse.success(res, profile, 'Profile fetched successfully');
+  }),
+
+  /**
+   * Update Profile Controller (Protected)
+   */
+  updateProfile: asyncHandler(async (req, res) => {
+    const { display_name, company_name, plan } = req.body;
+    const updated = await authService.updateProfile(req.user.id, { display_name, company_name, plan });
+    return ApiResponse.success(res, updated, 'Profile updated successfully');
   }),
 };
 

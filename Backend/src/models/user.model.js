@@ -8,7 +8,7 @@ export const userModel = {
    */
   async findByEmail(email) {
     const [rows] = await dbPool.query(
-      'SELECT id, name, email, password, role, is_active, created_at, updated_at FROM users WHERE email = ? LIMIT 1',
+      'SELECT id, name, company_name, email, password, plan, role, wallet_balance, onboarded, is_active, created_at, updated_at FROM users WHERE email = ? LIMIT 1',
       [email]
     );
     return rows[0] || null;
@@ -21,39 +21,54 @@ export const userModel = {
    */
   async findById(id) {
     const [rows] = await dbPool.query(
-      'SELECT id, name, email, role, is_active, created_at, updated_at FROM users WHERE id = ? LIMIT 1',
+      'SELECT id, name, company_name, email, plan, role, wallet_balance, onboarded, is_active, created_at, updated_at FROM users WHERE id = ? LIMIT 1',
       [id]
     );
     return rows[0] || null;
   },
 
   /**
-   * Create a new user record
+   * Create a new client / user record
    * @param {object} userData 
    * @returns {Promise<object>}
    */
-  async create({ name, email, password, role = 'user' }) {
+  async create({ name, company_name = null, email, password, plan = 'free', role = 'client' }) {
     const [result] = await dbPool.query(
-      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-      [name, email, password, role]
+      'INSERT INTO users (name, company_name, email, password, plan, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, company_name, email, password, plan, role]
     );
     return {
       id: result.insertId,
       name,
+      company_name,
       email,
+      plan,
       role,
+      wallet_balance: 0.00,
+      onboarded: false,
     };
   },
 
   /**
-   * Get all users (with pagination)
+   * Update client profile (name, company_name, plan, onboarded)
+   */
+  async updateProfile(id, { name, company_name, plan, onboarded = true }) {
+    await dbPool.query(
+      'UPDATE users SET name = COALESCE(?, name), company_name = COALESCE(?, company_name), plan = COALESCE(?, plan), onboarded = ? WHERE id = ?',
+      [name, company_name, plan, onboarded, id]
+    );
+    return this.findById(id);
+  },
+
+  /**
+   * Get all clients (with pagination)
    * @param {number} limit 
    * @param {number} offset 
    * @returns {Promise<Array>}
    */
   async findAll(limit = 10, offset = 0) {
     const [rows] = await dbPool.query(
-      'SELECT id, name, email, role, is_active, created_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?',
+      'SELECT id, name, company_name, email, plan, role, wallet_balance, onboarded, is_active, created_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?',
       [parseInt(limit, 10), parseInt(offset, 10)]
     );
     return rows;

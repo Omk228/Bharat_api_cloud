@@ -172,6 +172,26 @@ export function getSession(): Session | null {
   return read().session;
 }
 
+export function setSessionFromBackend(user: { id: number; name: string; email: string; company_name?: string | null; plan?: PlanId; onboarded?: boolean }) {
+  const session: Session = {
+    email: user.email,
+    display_name: user.name || user.email.split('@')[0]!,
+    signed_in_at: new Date().toISOString(),
+  };
+
+  update((state) => {
+    state.session = session;
+    state.profile.contact_email = user.email;
+    state.profile.display_name = user.name || user.email.split('@')[0]!;
+    state.profile.company_name = user.company_name || '';
+    state.profile.plan = (user.plan as PlanId) || 'free';
+    state.profile.onboarded = Boolean(user.onboarded);
+    logAudit(state, "auth.sign_in", user.email, "Signed in via MySQL Backend API");
+  });
+
+  return session;
+}
+
 export function signIn(email: string, password: string, displayName?: string): Session {
   const trimmed = email.trim().toLowerCase();
   if (!trimmed.includes("@")) throw new Error("Enter a valid email address.");
@@ -187,12 +207,15 @@ export function signIn(email: string, password: string, displayName?: string): S
     state.session = session;
     if (!state.profile.contact_email) state.profile.contact_email = trimmed;
     if (!state.profile.display_name) state.profile.display_name = session.display_name;
-    logAudit(state, "auth.sign_in", trimmed, "Signed in with demo credentials");
+    logAudit(state, "auth.sign_in", trimmed, "Signed in with credentials");
   });
   return session;
 }
 
 export function signOut() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("bharat_api_token");
+  }
   update((state) => {
     logAudit(state, "auth.sign_out", state.session?.email ?? "unknown", "Signed out");
     state.session = null;
@@ -230,12 +253,25 @@ export function getDashboard(): DashboardData {
   };
 }
 
-export function saveProfile(input: {
+export async function saveProfile(input: {
   display_name: string;
   company_name: string;
   contact_email: string;
   plan: PlanId;
 }) {
+  try {
+    if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
+      const { apiClient } = await import("./api-client");
+      await apiClient.updateProfile({
+        display_name: input.display_name,
+        company_name: input.company_name,
+        plan: input.plan,
+      });
+    }
+  } catch (err) {
+    console.warn("Backend profile sync notice:", err);
+  }
+
   update((state) => {
     state.profile = { ...state.profile, ...input, onboarded: true };
     logAudit(state, "profile.updated", input.company_name, `Plan set to ${input.plan}`);

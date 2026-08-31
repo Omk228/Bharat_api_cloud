@@ -1,10 +1,11 @@
 import app from './app.js';
 import { ENV } from './config/env.config.js';
 import { testDbConnection, dbPool } from './config/db.config.js';
+import { initDatabase } from './config/initDb.js';
 
 const PORT = ENV.PORT;
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log('====================================================');
   console.log(`🚀 Bharat API Cloud Backend Server`);
   console.log(`📡 Environment: ${ENV.NODE_ENV}`);
@@ -13,8 +14,11 @@ const server = app.listen(PORT, () => {
   console.log(`🩺 Health API : http://localhost:${PORT}/api/v1/health`);
   console.log('====================================================');
 
-  // Verify Database Connection (non-blocking)
-  testDbConnection();
+  // Verify Database Connection & Initialize Tables
+  const isConnected = await testDbConnection();
+  if (isConnected) {
+    await initDatabase();
+  }
 });
 
 // Graceful Shutdown Handler

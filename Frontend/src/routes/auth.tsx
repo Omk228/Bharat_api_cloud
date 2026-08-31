@@ -3,22 +3,23 @@ import { ShieldCheck, Loader2, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { DEMO_EMAIL, DEMO_PASSWORD, getSession, signIn } from "@/lib/demo-store";
+import { apiClient } from "@/lib/api-client";
+import { DEMO_EMAIL, DEMO_PASSWORD, getSession, setSessionFromBackend } from "@/lib/demo-store";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Developer Sign In — VeroKYC API Console" },
+      { title: "Developer Sign In — Bharat API Cloud Console" },
       {
         name: "description",
         content:
-          "Sign in to the VeroKYC developer console with demo credentials to generate API keys, rotate secrets, export usage logs and test KYC and banking endpoints.",
+          "Sign in to the Bharat API Cloud developer console to generate API keys, rotate secrets, export usage logs and access 350+ KYC and banking endpoints.",
       },
-      { property: "og:title", content: "Developer Sign In — VeroKYC" },
+      { property: "og:title", content: "Developer Sign In — Bharat API Cloud" },
       {
         property: "og:description",
-        content: "Sign in with demo credentials to generate API keys and test KYC & banking endpoints.",
+        content: "Sign in to generate API keys and access 350+ KYC & banking endpoints.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -30,8 +31,8 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState(DEMO_EMAIL);
-  const [password, setPassword] = useState(DEMO_PASSWORD);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [company, setCompany] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,19 +41,30 @@ function AuthPage() {
     if (getSession()) navigate({ to: "/dashboard", replace: true });
   }, [navigate]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      signIn(email, password, mode === "signup" ? name : undefined);
-      if (mode === "signup" && company.trim()) {
-        // company is captured again during onboarding; keep the value handy
-        window.sessionStorage.setItem("verokyc.signup.company", company.trim());
+      if (mode === "signup") {
+        const res = await apiClient.signup({
+          name: name.trim() || email.split("@")[0]!,
+          company_name: company.trim() || undefined,
+          email: email.trim(),
+          password: password,
+        });
+        setSessionFromBackend(res.data.user);
+        toast.success("Account created successfully!");
+      } else {
+        const res = await apiClient.login({
+          email: email.trim(),
+          password: password,
+        });
+        setSessionFromBackend(res.data.user);
+        toast.success("Welcome back! Signed in successfully.");
       }
-      toast.success("Signed in to the demo console.");
       navigate({ to: "/dashboard", replace: true });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toast.error(error instanceof Error ? error.message : "Authentication failed. Please check your credentials.");
     } finally {
       setBusy(false);
     }
@@ -69,32 +81,18 @@ function AuthPage() {
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
           <ShieldCheck className="h-6 w-6 text-primary" />
-          <span className="text-lg font-semibold tracking-tight">VeroKYC</span>
+          <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
         </Link>
 
-        <div className="rounded-2xl border border-border bg-card p-8">
+        <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight">
-            {mode === "signup" ? "Create a developer account" : "Sign in to your console"}
+            {mode === "signup" ? "Create a client account" : "Sign in to your console"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Generate API keys, rotate secrets, export logs and replay webhooks.
+            {mode === "signup"
+              ? "Access 350+ Banking & KYC APIs, sandbox testing, and developer keys."
+              : "Manage your API keys, monitor real-time requests and manage webhooks."}
           </p>
-
-          <div className="mt-5 rounded-lg border border-primary/40 bg-primary/5 p-4 text-xs">
-            <p className="font-semibold uppercase tracking-wider text-primary">Demo credentials</p>
-            <p className="mt-2 font-mono text-foreground">{DEMO_EMAIL}</p>
-            <p className="font-mono text-foreground">{DEMO_PASSWORD}</p>
-            <button
-              onClick={useDemo}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
-            >
-              <Wand2 className="h-3.5 w-3.5" /> Fill demo login
-            </button>
-            <p className="mt-3 leading-relaxed text-muted-foreground">
-              This build runs without a database — any email plus a 6+ character password works, and your
-              console data is stored locally in this browser.
-            </p>
-          </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {mode === "signup" && (
