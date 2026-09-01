@@ -8,6 +8,7 @@ import { notFoundHandler } from './middlewares/notFound.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
 import panRoutes from './routes/pan.routes.js';
+import aadhaarRoutes from './routes/aadhaar.routes.js';
 
 const app = express();
 
@@ -41,8 +42,9 @@ app.get('/', (req, res) => {
   });
 });
 
-// Direct service route matching provider URL structure (/srv2/validation/pan)
+// Direct service route matching provider URL structure (/srv2/validation/pan & /srv3/verification/aadhar)
 app.use('/', panRoutes);
+app.use('/', aadhaarRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);

@@ -3,6 +3,7 @@ import healthRoutes from './health.routes.js';
 import authRoutes from './auth.routes.js';
 import credentialRoutes from './credential.routes.js';
 import panRoutes from './pan.routes.js';
+import aadhaarRoutes from './aadhaar.routes.js';
 
 const apiRouter = Router();
 
@@ -11,5 +12,6 @@ apiRouter.use('/health', healthRoutes);
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/credentials', credentialRoutes);
 apiRouter.use('/', panRoutes);
+apiRouter.use('/', aadhaarRoutes);
 
 export default apiRouter;
