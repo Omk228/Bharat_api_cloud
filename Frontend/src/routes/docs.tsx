@@ -9,6 +9,7 @@ import {
   Loader2,
   KeyRound,
   Terminal,
+  Clock,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -285,7 +286,12 @@ function DocsPage() {
           <WebhookTester keys={account?.keys ?? []} signedIn={signedIn} />
 
           <section>
-            <h2 className="mb-3 text-lg font-semibold">Errors</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">Errors & HTTP Status Codes</h2>
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary font-medium">
+                <ShieldCheck className="h-3.5 w-3.5" /> Failed billable requests automatically refund to wallet
+              </div>
+            </div>
             <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full text-sm">
                 <thead>
@@ -293,22 +299,53 @@ function DocsPage() {
                     <th className="px-4 py-2.5 font-medium">Status</th>
                     <th className="px-4 py-2.5 font-medium">Code</th>
                     <th className="px-4 py-2.5 font-medium">Meaning</th>
+                    <th className="px-4 py-2.5 font-medium">Response / Retry Time</th>
+                    <th className="px-4 py-2.5 font-medium">Refund Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ["400", "invalid_request", "A required parameter is missing or malformed."],
-                    ["401", "invalid_api_key", "Missing, revoked or wrong-environment API key."],
-                    ["402", "insufficient_credits", "Wallet balance too low for a billable verification."],
-                    ["404", "not_found", "The requested record or reference id does not exist."],
-                    ["409", "duplicate_request", "An identical idempotency key was already processed."],
-                    ["429", "rate_limited", "Plan rate limit or monthly quota exhausted."],
-                    ["502", "provider_unavailable", "Upstream government/bank source timed out. Retry with backoff."],
-                  ].map(([status, code, meaning]) => (
-                    <tr key={code} className="border-b border-border last:border-0">
-                      <td className="px-4 py-2.5 font-mono">{status}</td>
-                      <td className="px-4 py-2.5 font-mono text-primary">{code}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{meaning}</td>
+                    ["400", "invalid_request", "A required parameter is missing, invalid format or malformed JSON.", "< 120ms (Instant)", "No charge", "text-foreground"],
+                    ["401", "invalid_api_key", "Missing, revoked or wrong-environment API key / token auth failure.", "< 80ms (Instant)", "No charge", "text-foreground"],
+                    ["402", "insufficient_credits", "Wallet balance too low for a billable verification.", "< 100ms (Instant)", "No charge", "text-foreground"],
+                    ["404", "not_found", "The requested record, PAN or reference id does not exist.", "~150ms", "No charge", "text-foreground"],
+                    ["409", "duplicate_request", "An identical idempotency key was already processed.", "~120ms", "No charge", "text-foreground"],
+                    ["412", "precondition_failed", "Precondition or entity validation verification check failed.", "~300ms", "Refund processed", "text-primary"],
+                    ["429", "rate_limited", "Plan rate limit or monthly quota exhausted. Auto-resets in 60s.", "Wait 60s", "No charge", "text-foreground"],
+                    ["500", "internal_server_error", "Server processing error occurred. Retry with exponential backoff.", "~500ms (Retry 5s)", "Refund processed", "text-primary"],
+                    ["502", "provider_unavailable", "Upstream government/bank source timed out or unreachable.", "15s Timeout", "Refund processed", "text-primary"],
+                    ["503", "service_unavailable", "Upstream ITD/NSDL/Bank portal is under maintenance window.", "Retry in 30s", "Refund processed", "text-primary"],
+                    ["504", "gateway_timeout", "Upstream verification gateway timed out after waiting.", "15s Timeout", "Refund processed", "text-primary"],
+                    ["505", "http_version_not_supported", "HTTP version not supported by the gateway.", "< 50ms", "No charge", "text-foreground"],
+                  ].map(([status, code, meaning, time, refund, refundTone]) => (
+                    <tr key={code} className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors">
+                      <td className="px-4 py-2.5 font-mono font-semibold">
+                        <span className={`inline-block rounded px-2 py-0.5 text-xs ${
+                          Number(status) >= 500
+                            ? "bg-destructive/15 text-destructive border border-destructive/20"
+                            : Number(status) >= 400
+                            ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                            : "bg-secondary text-foreground"
+                        }`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-primary text-xs font-medium">{code}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground text-xs">{meaning}</td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-muted-foreground/70" /> {time}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                          refund === "Refund processed"
+                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                            : "bg-secondary text-muted-foreground"
+                        }`}>
+                          {refund}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

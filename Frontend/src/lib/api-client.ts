@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE = (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] || 'http://localhost:5000/api/v1';
 
 export type UserPayload = {
   id: number;
@@ -9,6 +9,20 @@ export type UserPayload = {
   role: 'client' | 'admin';
   wallet_balance: number | string;
   onboarded: boolean;
+};
+
+export type ApiCredential = {
+  id: number;
+  user_id: number;
+  api_id: string;
+  api_key: string;
+  token_id: string;
+  token_id_preview: string;
+  environment: 'sandbox' | 'production';
+  label: string;
+  status: 'active' | 'inactive' | 'revoked';
+  created_at: string;
+  last_used_at: string | null;
 };
 
 export type AuthResponse = {
@@ -103,6 +117,98 @@ export const apiClient = {
     }
     return result.data;
   },
+
+  async getCredentials(): Promise<ApiCredential[]> {
+    const token = this.getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${API_BASE}/credentials`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || 'Failed to fetch credentials');
+    }
+    return result.data || [];
+  },
+
+  async generateCredentials(data: { environment?: 'sandbox' | 'production'; label?: string }): Promise<ApiCredential> {
+    const token = this.getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${API_BASE}/credentials/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || 'Failed to generate credentials');
+    }
+    return result.data;
+  },
+
+  async rotateToken(credential_id: number): Promise<{ token_id: string; token_id_preview: string }> {
+    const token = this.getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${API_BASE}/credentials/rotate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ credential_id }),
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || 'Failed to rotate token');
+    }
+    return result.data;
+  },
+
+  async revokeCredential(id: number): Promise<void> {
+    const token = this.getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${API_BASE}/credentials/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const result = await res.json();
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || 'Failed to revoke credential');
+    }
+  },
+
+  async verifyPan(data: {
+    api_id: string;
+    api_key: string;
+    token_id: string;
+    pan: string;
+    name?: string;
+    pan_display_name?: string;
+    name_match_method?: string;
+    client_ref_num?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const res = await fetch(`${host}/srv2/validation/pan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
 };
 
 export default apiClient;
+

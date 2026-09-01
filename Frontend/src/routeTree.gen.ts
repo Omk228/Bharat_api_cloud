@@ -18,6 +18,7 @@ import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardApisRouteImport } from './routes/_authenticated/dashboard/apis'
 import { Route as AuthenticatedDashboardIpWhitelistRouteImport } from './routes/_authenticated/dashboard/ip-whitelist'
 import { Route as AuthenticatedDashboardLogsRouteImport } from './routes/_authenticated/dashboard/logs'
+import { Route as AuthenticatedDashboardTestApiRouteImport } from './routes/_authenticated/dashboard/test-api'
 import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard/wallet'
 import { Route as AuthenticatedDashboardWebhooksRouteImport } from './routes/_authenticated/dashboard/webhooks'
 
@@ -69,6 +70,12 @@ const AuthenticatedDashboardLogsRoute =
     path: '/dashboard/logs',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDashboardTestApiRoute =
+  AuthenticatedDashboardTestApiRouteImport.update({
+    id: '/dashboard/test-api',
+    path: '/dashboard/test-api',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardWalletRoute =
   AuthenticatedDashboardWalletRouteImport.update({
     id: '/dashboard/wallet',
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
   '/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
+  '/dashboard/test-api': typeof AuthenticatedDashboardTestApiRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -102,6 +110,7 @@ export interface FileRoutesByTo {
   '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
   '/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
+  '/dashboard/test-api': typeof AuthenticatedDashboardTestApiRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
@@ -116,6 +125,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/apis': typeof AuthenticatedDashboardApisRoute
   '/_authenticated/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/_authenticated/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
+  '/_authenticated/dashboard/test-api': typeof AuthenticatedDashboardTestApiRoute
   '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/_authenticated/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/dashboard/apis'
     | '/dashboard/ip-whitelist'
     | '/dashboard/logs'
+    | '/dashboard/test-api'
     | '/dashboard/wallet'
     | '/dashboard/webhooks'
     | '/dashboard/'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/dashboard/apis'
     | '/dashboard/ip-whitelist'
     | '/dashboard/logs'
+    | '/dashboard/test-api'
     | '/dashboard/wallet'
     | '/dashboard/webhooks'
     | '/dashboard'
@@ -155,6 +167,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/apis'
     | '/_authenticated/dashboard/ip-whitelist'
     | '/_authenticated/dashboard/logs'
+    | '/_authenticated/dashboard/test-api'
     | '/_authenticated/dashboard/wallet'
     | '/_authenticated/dashboard/webhooks'
     | '/_authenticated/dashboard/'
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardLogsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard/test-api': {
+      id: '/_authenticated/dashboard/test-api'
+      path: '/dashboard/test-api'
+      fullPath: '/dashboard/test-api'
+      preLoaderRoute: typeof AuthenticatedDashboardTestApiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard/wallet': {
       id: '/_authenticated/dashboard/wallet'
       path: '/dashboard/wallet'
@@ -254,6 +274,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardApisRoute: typeof AuthenticatedDashboardApisRoute
   AuthenticatedDashboardIpWhitelistRoute: typeof AuthenticatedDashboardIpWhitelistRoute
   AuthenticatedDashboardLogsRoute: typeof AuthenticatedDashboardLogsRoute
+  AuthenticatedDashboardTestApiRoute: typeof AuthenticatedDashboardTestApiRoute
   AuthenticatedDashboardWalletRoute: typeof AuthenticatedDashboardWalletRoute
   AuthenticatedDashboardWebhooksRoute: typeof AuthenticatedDashboardWebhooksRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
@@ -264,6 +285,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardIpWhitelistRoute:
     AuthenticatedDashboardIpWhitelistRoute,
   AuthenticatedDashboardLogsRoute: AuthenticatedDashboardLogsRoute,
+  AuthenticatedDashboardTestApiRoute: AuthenticatedDashboardTestApiRoute,
   AuthenticatedDashboardWalletRoute: AuthenticatedDashboardWalletRoute,
   AuthenticatedDashboardWebhooksRoute: AuthenticatedDashboardWebhooksRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,

@@ -11,6 +11,7 @@ import {
   Wallet,
   Layers,
   Webhook,
+  Terminal,
 } from "lucide-react";
 import React from "react";
 
@@ -22,7 +23,7 @@ export function DashboardLayout({
   activeTab,
 }: {
   children: (data: DashboardData) => React.ReactNode;
-  activeTab: "overview" | "wallet" | "apis" | "logs" | "ip_whitelist" | "webhooks";
+  activeTab: "overview" | "wallet" | "apis" | "logs" | "ip_whitelist" | "webhooks" | "test_api";
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -137,6 +138,13 @@ export function DashboardLayout({
               icon={<Layers className="h-4 w-4" />}
               label="API Directory"
               badge={`${endpoints.length}`}
+            />
+            <NavRouteLink
+              to="/dashboard/test-api"
+              active={activeTab === "test_api" || currentPath.startsWith("/dashboard/test-api")}
+              icon={<Terminal className="h-4 w-4 text-emerald-400" />}
+              label="Test API"
+              badge="New"
             />
             <NavRouteLink
               to="/dashboard/logs"

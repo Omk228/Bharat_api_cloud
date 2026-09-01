@@ -72,7 +72,7 @@ export const endpoints: ApiEndpoint[] = [
     sampleResponse: {
       http_response_code: 200,
       result_code: 101,
-      request_id: "idspay-dec5-11ef-bf40-cf31135d6ffc",
+      request_id: "bharat-dec5-11ef-bf40-cf31135d6ffc",
       client_ref_num: "ITV1_BEFISC",
       result: {
         pan: "BWSXXXXX2",

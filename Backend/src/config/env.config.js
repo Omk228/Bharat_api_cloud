@@ -19,4 +19,11 @@ export const ENV = {
     SECRET: process.env.JWT_SECRET || 'default_jwt_secret_dev_only',
     EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   },
+
+  IDSPAY: {
+    PROD_BASE_URL: process.env.IDSPAY_PROD_BASE_URL || 'https://javabackend.idspay.in/api/v1/prod',
+    PROD_API_ID: process.env.IDSPAY_PROD_API_ID || '',
+    PROD_API_KEY: process.env.IDSPAY_PROD_API_KEY || '',
+    PROD_TOKEN_ID: process.env.IDSPAY_PROD_TOKEN_ID || '',
+  },
 };

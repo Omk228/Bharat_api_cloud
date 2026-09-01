@@ -7,6 +7,8 @@ import apiRouter from './routes/index.js';
 import { notFoundHandler } from './middlewares/notFound.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
+import panRoutes from './routes/pan.routes.js';
+
 const app = express();
 
 // Security Middlewares
@@ -16,7 +18,7 @@ app.use(
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Id', 'X-Api-Key', 'X-Token-Id', 'x-api-id', 'x-api-key', 'x-token-id'],
   })
 );
 
@@ -38,6 +40,9 @@ app.get('/', (req, res) => {
     documentation: '/api/v1/health',
   });
 });
+
+// Direct service route matching provider URL structure (/srv2/validation/pan)
+app.use('/', panRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);

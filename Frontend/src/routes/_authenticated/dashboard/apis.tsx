@@ -155,12 +155,22 @@ function ApisPage() {
                     <Clock className="h-3 w-3 text-primary" /> {ep.latency} avg latency
                   </span>
 
-                  <Link
-                    to="/docs"
-                    className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                  >
-                    View schema & curl <ExternalLink className="h-3 w-3" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    {ep.id === "verify-pan" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/30 px-2 py-0.5 font-medium text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    <Link
+                      to="/docs"
+                      className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      Schema & cURL <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}

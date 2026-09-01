@@ -50,13 +50,13 @@ function WebhookHistory({ events }: { events: WebhookEventRow[] }) {
   const [resign, setResign] = useState(true);
 
   const replay = useMutation({
-    mutationFn: async (id: string) => replayWebhookEvent(id, { resignFreshTimestamp: resign }),
+    mutationFn: async (id: string) => replayWebhookEvent({ eventId: id, resign }),
     onSuccess: (res) => {
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      toast.success(`Webhook replayed (HTTP ${res.status_code})`);
+      toast.success(`Webhook replayed (HTTP ${res.statusCode})`);
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
