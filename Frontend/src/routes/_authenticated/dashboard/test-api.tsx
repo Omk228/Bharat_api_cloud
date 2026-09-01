@@ -20,6 +20,7 @@ import {
   Percent,
   FileText,
   Sparkles,
+  Fingerprint,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -27,10 +28,15 @@ import { toast } from "sonner";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiClient } from "@/lib/api-client";
 
-export type PanVerificationResult = {
+export type VerificationResult = {
   pan?: string;
   pan_type?: string;
   pan_status?: string;
+  aadhaar?: string;
+  aadhaar_number?: string;
+  aadhaar_status?: string;
+  status?: string;
+  is_valid?: boolean;
   fullname?: string;
   first_name?: string;
   middle_name?: string;
@@ -38,10 +44,12 @@ export type PanVerificationResult = {
   name?: string;
   gender?: string;
   aadhaar_seeding_status?: string;
-  aadhaar_number?: string;
   aadhaar_linked?: boolean | string;
   dob?: string;
+  age_band?: string;
+  state?: string;
   mobile?: string;
+  mobile_digits?: string;
   email?: string;
   name_match?: boolean;
   name_match_score?: number | string;
@@ -58,7 +66,7 @@ export type PanVerificationResult = {
       };
 };
 
-export type PanApiResponse = {
+export type ApiResponseEnvelope = {
   http_response_code?: number;
   result_code?: number;
   message?: string;
@@ -68,18 +76,25 @@ export type PanApiResponse = {
     type?: string;
     message?: string;
   };
-  data?: PanVerificationResult;
-  result?: PanVerificationResult;
+  data?: VerificationResult;
+  result?: VerificationResult;
   [key: string]: unknown;
 };
 
+export type TestApiSearch = {
+  service?: "pan" | "aadhaar" | undefined;
+};
+
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
+  validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
+    service: search["service"] === "aadhaar" ? "aadhaar" : "pan",
+  }),
   head: () => ({
     meta: [
-      { title: "Test API Console — Pan Details V2 — Bharat API Cloud" },
+      { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for Pan Details V2 verification API.",
+        content: "Live sandbox test console for PAN Details V2 and Aadhaar Fetch Without OTP verification APIs.",
       },
     ],
   }),
@@ -87,6 +102,11 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 });
 
 function TestApiPage() {
+  const searchParams = Route.useSearch();
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar">(
+    searchParams.service === "aadhaar" ? "aadhaar" : "pan"
+  );
+
   const { data: creds, isLoading: credsLoading } = useQuery({
     queryKey: ["credentials"],
     queryFn: async () => {
@@ -103,17 +123,22 @@ function TestApiPage() {
   const [apiId, setApiId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [tokenId, setTokenId] = useState("");
+  
+  // PAN fields
   const [pan, setPan] = useState("");
   const [name, setName] = useState("");
   const [panDisplayName, setPanDisplayName] = useState("false");
   const [nameMatchMethod, setNameMatchMethod] = useState("fuzzy");
+
+  // Aadhaar fields
+  const [aadhaar, setAadhaar] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [copiedReq, setCopiedReq] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
   const [responseTime, setResponseTime] = useState<number | null>(null);
   const [responseStatus, setResponseStatus] = useState<number | null>(null);
-  const [responseJson, setResponseJson] = useState<PanApiResponse | null>(null);
+  const [responseJson, setResponseJson] = useState<ApiResponseEnvelope | null>(null);
   const [activeViewTab, setActiveViewTab] = useState<"visual" | "json">("visual");
 
   // Sync credentials when loaded
@@ -125,27 +150,52 @@ function TestApiPage() {
     }
   }, [activeCred]);
 
-  const requestPayload = {
-    api_id: apiId || (activeCred ? activeCred.api_id : ""),
-    api_key: apiKey || (activeCred ? activeCred.api_key : ""),
-    token_id: tokenId || (activeCred ? activeCred.token_id : ""),
-    pan: pan.trim().toUpperCase(),
-    name: name.trim(),
-    pan_display_name: panDisplayName,
-    name_match_method: nameMatchMethod,
-  };
+  // Sync selectedService from URL param
+  useEffect(() => {
+    if (searchParams.service) {
+      setSelectedService(searchParams.service);
+    }
+  }, [searchParams.service]);
+
+  // Dynamic request payload based on selected service
+  const requestPayload =
+    selectedService === "pan"
+      ? {
+          api_id: apiId || (activeCred ? activeCred.api_id : ""),
+          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
+          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          pan: pan.trim().toUpperCase(),
+          name: name.trim(),
+          pan_display_name: panDisplayName,
+          name_match_method: nameMatchMethod,
+        }
+      : {
+          api_id: apiId || (activeCred ? activeCred.api_id : ""),
+          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
+          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          aadhaar: aadhaar.trim().replace(/\s|-/g, ""),
+          ...(name.trim() ? { name: name.trim() } : {}),
+        };
 
   const handleSendRequest = async () => {
-    if (!requestPayload.pan) {
+    if (selectedService === "pan" && !pan.trim()) {
       toast.error("Please enter a PAN number");
+      return;
+    }
+    if (selectedService === "aadhaar" && !aadhaar.trim()) {
+      toast.error("Please enter an Aadhaar number");
       return;
     }
 
     setLoading(true);
     const start = performance.now();
     try {
-      const rawData = await apiClient.verifyPan(requestPayload);
-      const data = rawData as PanApiResponse;
+      const rawData =
+        selectedService === "pan"
+          ? await apiClient.verifyPan(requestPayload as Parameters<typeof apiClient.verifyPan>[0])
+          : await apiClient.verifyAadhaar(requestPayload as Parameters<typeof apiClient.verifyAadhaar>[0]);
+
+      const data = rawData as ApiResponseEnvelope;
       const latency = Math.round(performance.now() - start);
       setResponseTime(latency);
 
@@ -163,8 +213,8 @@ function TestApiPage() {
       if (resultCode === 101 || statusType === "success" || statusCode === 200) {
         toast.success(`Verified successfully (${latency}ms)`);
         setActiveViewTab("visual");
-      } else if (resultCode === 102) {
-        toast.info("Result Code 102: Invalid PAN · Refund Processed");
+      } else if (resultCode === 102 || resultCode === 103) {
+        toast.info(data.message || "Result Code: Invalid Input · Refund Processed");
       } else {
         toast.success(`Response received in ${latency}ms`);
       }
@@ -189,19 +239,23 @@ function TestApiPage() {
   };
 
   // Dynamic extraction from server response (zero hardcoding)
-  const resData: PanVerificationResult =
+  const resData: VerificationResult =
     responseJson?.data ||
     responseJson?.result ||
-    (responseJson as unknown as PanVerificationResult) ||
+    (responseJson as unknown as VerificationResult) ||
     {};
 
   const isSuccess =
     (responseStatus === 200 &&
       (responseJson?.result_code === 101 ||
         responseJson?.status?.type === "success" ||
-        Boolean(resData.pan))) &&
+        Boolean(resData.pan) ||
+        Boolean(resData.aadhaar) ||
+        Boolean(resData.aadhaar_number))) &&
     responseJson?.result_code !== 102 &&
-    resData.pan_status !== "Invalid";
+    responseJson?.result_code !== 103 &&
+    resData.pan_status !== "Invalid" &&
+    resData.aadhaar_status !== "Invalid";
 
   const extractedFullName =
     resData.fullname ||
@@ -229,6 +283,9 @@ function TestApiPage() {
     return null;
   })();
 
+  const currentEndpoint = selectedService === "pan" ? "/srv2/validation/pan" : "/srv3/verification/aadhar";
+  const currentServiceName = selectedService === "pan" ? "PAN Verification API (Pan Details V2)" : "Aadhar Fetch Without OTP";
+
   return (
     <DashboardLayout activeTab="test_api">
       {() => (
@@ -237,19 +294,20 @@ function TestApiPage() {
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight">PAN Verification API</h1>
+                <h1 className="text-2xl font-bold tracking-tight">{currentServiceName}</h1>
                 <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
                   Bharat API Production Gateway
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Direct live PAN verification gateway powered by Bharat API Cloud with automatic wallet debit & refunds.
+                Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit & refunds.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <Link
                 to="/docs"
+                search={{ endpoint: selectedService === "pan" ? "verify-pan" : "aadhaar-without-otp" }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Full API Docs
@@ -257,10 +315,44 @@ function TestApiPage() {
             </div>
           </div>
 
-          {/* Service Environment Notice */}
-          <div className="rounded-xl border border-border bg-card/60 p-4 text-xs space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
-              <span className="font-semibold text-foreground">Service: PAN Verification API (Pan Details V2)</span>
+          {/* Service Selector Tabs & Environment Notice */}
+          <div className="rounded-xl border border-border bg-card/60 p-4 text-xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+              {/* Service Toggle */}
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-foreground">Select Service:</span>
+                <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background p-1">
+                  <button
+                    onClick={() => {
+                      setSelectedService("pan");
+                      setResponseJson(null);
+                      setResponseStatus(null);
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                      selectedService === "pan"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <CreditCard className="h-3.5 w-3.5" /> Pan Details V2
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedService("aadhaar");
+                      setResponseJson(null);
+                      setResponseStatus(null);
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                      selectedService === "aadhaar"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Fingerprint className="h-3.5 w-3.5 text-emerald-400" /> Aadhar Fetch (Without OTP)
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Gateway Status:</span>
                 <span className="rounded px-2 py-0.5 font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
@@ -268,6 +360,7 @@ function TestApiPage() {
                 </span>
               </div>
             </div>
+
             <div className="grid gap-2 sm:grid-cols-2 text-muted-foreground">
               <div>
                 <span className="font-medium text-foreground">Base Gateway URL:</span>{" "}
@@ -275,7 +368,7 @@ function TestApiPage() {
               </div>
               <div>
                 <span className="font-medium text-foreground">Endpoint:</span>{" "}
-                <code className="font-mono text-primary">/srv2/validation/pan</code>
+                <code className="font-mono text-primary">{currentEndpoint}</code>
               </div>
             </div>
           </div>
@@ -304,7 +397,7 @@ function TestApiPage() {
                     <input
                       value={apiId}
                       onChange={(e) => setApiId(e.target.value)}
-                      placeholder="e.g. APIDC2251F"
+                      placeholder="e.g. APIDC9272C"
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
                     />
                   </label>
@@ -316,7 +409,7 @@ function TestApiPage() {
                     <input
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="e.g. d3deaad2-91c7-4193-8492-7a0db5ea1ddd"
+                      placeholder="e.g. fc62efa1-4aff-478d-9b1b-6589e6262cba"
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
                     />
                   </label>
@@ -328,63 +421,93 @@ function TestApiPage() {
                     <input
                       value={tokenId}
                       onChange={(e) => setTokenId(e.target.value)}
-                      placeholder="e.g. 6vmgiLpXDg2vU77YqoVQH0yScM2pjaAe"
+                      placeholder="e.g. 1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9"
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
                     />
                   </label>
                 </div>
 
-                {/* PAN Verification Fields */}
+                {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                      <span className="font-medium text-foreground">PAN Number *</span>
-                      <span className="text-[11px] text-muted-foreground">10 Alphanumeric</span>
-                    </div>
-                    <input
-                      value={pan}
-                      maxLength={10}
-                      onChange={(e) => setPan(e.target.value.toUpperCase())}
-                      placeholder="Enter PAN (e.g. EHMPG2091E)"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-primary"
-                    />
-                  </div>
+                  {selectedService === "pan" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">PAN Number *</span>
+                          <span className="text-[11px] text-muted-foreground">10 Alphanumeric</span>
+                        </div>
+                        <input
+                          value={pan}
+                          maxLength={10}
+                          onChange={(e) => setPan(e.target.value.toUpperCase())}
+                          placeholder="Enter PAN (e.g. EHMPG2091E)"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-primary"
+                        />
+                      </div>
 
-                  <label className="block">
-                    <span className="block text-xs text-muted-foreground mb-1">Full Name (Optional for Name Match)</span>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter full name (e.g. Shubham Gupta)"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
-                    />
-                  </label>
+                      <label className="block">
+                        <span className="block text-xs text-muted-foreground mb-1">Full Name (Optional for Name Match)</span>
+                        <input
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Enter full name (e.g. Shubham Gupta)"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+                        />
+                      </label>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block">
-                      <span className="block text-xs text-muted-foreground mb-1">PAN Display Name</span>
-                      <select
-                        value={panDisplayName}
-                        onChange={(e) => setPanDisplayName(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
-                      >
-                        <option value="false">false</option>
-                        <option value="true">true</option>
-                      </select>
-                    </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="block">
+                          <span className="block text-xs text-muted-foreground mb-1">PAN Display Name</span>
+                          <select
+                            value={panDisplayName}
+                            onChange={(e) => setPanDisplayName(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+                          >
+                            <option value="false">false</option>
+                            <option value="true">true</option>
+                          </select>
+                        </label>
 
-                    <label className="block">
-                      <span className="block text-xs text-muted-foreground mb-1">Name Match Method</span>
-                      <select
-                        value={nameMatchMethod}
-                        onChange={(e) => setNameMatchMethod(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
-                      >
-                        <option value="fuzzy">fuzzy (recommended)</option>
-                        <option value="exact">exact</option>
-                      </select>
-                    </label>
-                  </div>
+                        <label className="block">
+                          <span className="block text-xs text-muted-foreground mb-1">Name Match Method</span>
+                          <select
+                            value={nameMatchMethod}
+                            onChange={(e) => setNameMatchMethod(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+                          >
+                            <option value="fuzzy">fuzzy (recommended)</option>
+                            <option value="exact">exact</option>
+                          </select>
+                        </label>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Aadhaar Number *</span>
+                          <span className="text-[11px] text-muted-foreground">12 Digits (No OTP required)</span>
+                        </div>
+                        <input
+                          value={aadhaar}
+                          maxLength={14}
+                          onChange={(e) => setAadhaar(e.target.value)}
+                          placeholder="Enter Aadhaar (e.g. 975589822424)"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <label className="block">
+                        <span className="block text-xs text-muted-foreground mb-1">Full Name (Optional for Name Match)</span>
+                        <input
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Enter full name for verification"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+                        />
+                      </label>
+                    </>
+                  )}
                 </div>
 
                 {/* Send Button */}
@@ -416,7 +539,7 @@ function TestApiPage() {
                       POST
                     </span>
                     <span className="font-mono text-xs text-foreground font-semibold">
-                      /srv2/validation/pan
+                      {currentEndpoint}
                     </span>
                   </div>
 
@@ -490,7 +613,7 @@ function TestApiPage() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">Querying Bharat API Cloud Gateway...</p>
                       <p className="mt-1 text-xs text-muted-foreground font-mono">
-                        POST http://localhost:5000/srv2/validation/pan
+                        POST http://localhost:5000{currentEndpoint}
                       </p>
                     </div>
                   </div>
@@ -499,9 +622,15 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    <CreditCard className="h-8 w-8 opacity-40 text-primary" />
+                    {selectedService === "pan" ? (
+                      <CreditCard className="h-8 w-8 opacity-40 text-primary" />
+                    ) : (
+                      <Fingerprint className="h-8 w-8 opacity-40 text-primary" />
+                    )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
-                    <p className="text-xs">Enter a PAN number on the left and click &quot;Send Request&quot; to fetch live verified details.</p>
+                    <p className="text-xs">
+                      Enter {selectedService === "pan" ? "a PAN number" : "an Aadhaar number"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                    </p>
                   </div>
                 )}
 
@@ -517,18 +646,19 @@ function TestApiPage() {
                             <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                             <div>
                               <p className="text-sm font-bold text-foreground">
-                                {extractedFullName || "PAN Verified"}
+                                {extractedFullName || (resData.pan ? `PAN Verified: ${resData.pan}` : "Aadhaar Verified & Active")}
                               </p>
                               <p className="font-mono text-xs text-muted-foreground">
-                                PAN: {String(resData.pan || pan)} · {String(resData.pan_type || "Individual")}
+                                {resData.pan && `PAN: ${resData.pan} · `}
+                                {resData.aadhaar_number || resData.aadhaar ? `Aadhaar: ${resData.aadhaar_number || resData.aadhaar}` : `Type: ${resData.pan_type || "Individual"}`}
                               </p>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {resData.aadhaar_linked !== undefined && (
+                            {(resData.aadhaar_linked !== undefined || resData.is_valid !== undefined) && (
                               <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
-                                <ShieldCheck className="h-3 w-3" /> Aadhaar Linked
+                                <ShieldCheck className="h-3 w-3" /> {resData.is_valid !== undefined ? "Valid & Active" : "Aadhaar Linked"}
                               </span>
                             )}
                             {resData.aadhaar_seeding_status && (
@@ -542,48 +672,70 @@ function TestApiPage() {
                         {/* Demographic Grid */}
                         <div className="grid gap-3 sm:grid-cols-2 text-xs">
                           {/* Full Name */}
-                          <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                            <div className="flex items-center gap-1.5 text-muted-foreground">
-                              <User className="h-3.5 w-3.5 text-primary" />
-                              <span className="font-medium uppercase tracking-wider text-[10px]">Full Name</span>
-                            </div>
-                            <p className="font-semibold text-foreground text-sm">
-                              {extractedFullName || "—"}
-                            </p>
-                            {(resData.first_name || resData.last_name) && (
-                              <p className="text-[11px] text-muted-foreground font-mono">
-                                First: {String(resData.first_name || "")} · Last: {String(resData.last_name || "")}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* PAN Number */}
-                          <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                            <div className="flex items-center gap-1.5 text-muted-foreground">
-                              <CreditCard className="h-3.5 w-3.5 text-primary" />
-                              <span className="font-medium uppercase tracking-wider text-[10px]">PAN Number</span>
-                            </div>
-                            <p className="font-mono font-bold text-primary text-base">
-                              {String(resData.pan || pan)}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">
-                              Type: {String(resData.pan_type || "Individual")}
-                            </p>
-                          </div>
-
-                          {/* Aadhaar Number */}
-                          {resData.aadhaar_number && (
+                          {extractedFullName && (
                             <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                               <div className="flex items-center gap-1.5 text-muted-foreground">
-                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                                <User className="h-3.5 w-3.5 text-primary" />
+                                <span className="font-medium uppercase tracking-wider text-[10px]">Full Name</span>
+                              </div>
+                              <p className="font-semibold text-foreground text-sm">
+                                {extractedFullName}
+                              </p>
+                              {(resData.first_name || resData.last_name) && (
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  First: {String(resData.first_name || "")} · Last: {String(resData.last_name || "")}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* PAN Number (if returned) */}
+                          {resData.pan && (
+                            <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <CreditCard className="h-3.5 w-3.5 text-primary" />
+                                <span className="font-medium uppercase tracking-wider text-[10px]">PAN Number</span>
+                              </div>
+                              <p className="font-mono font-bold text-primary text-base">
+                                {String(resData.pan)}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground">
+                                Type: {String(resData.pan_type || "Individual")}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Aadhaar Number */}
+                          {(resData.aadhaar_number || resData.aadhaar) && (
+                            <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <Fingerprint className="h-3.5 w-3.5 text-emerald-400" />
                                 <span className="font-medium uppercase tracking-wider text-[10px]">Aadhaar Number</span>
                               </div>
                               <p className="font-mono font-semibold text-foreground">
-                                {String(resData.aadhaar_number)}
+                                {String(resData.aadhaar_number || resData.aadhaar)}
                               </p>
                               <p className="text-[11px] text-emerald-400">
-                                Seeding Status: {String(resData.aadhaar_seeding_status || "Active")}
+                                Status: {String(resData.status || resData.aadhaar_seeding_status || "Active / Valid")}
                               </p>
+                            </div>
+                          )}
+
+                          {/* Age Band / State */}
+                          {(resData.age_band || resData.state) && (
+                            <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <MapPin className="h-3.5 w-3.5 text-primary" />
+                                <span className="font-medium uppercase tracking-wider text-[10px]">Demographic Info</span>
+                              </div>
+                              <p className="font-semibold text-foreground">
+                                {resData.state || "India"}
+                              </p>
+                              {resData.age_band && (
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  Age Band: {String(resData.age_band)}
+                                </p>
+                              )}
                             </div>
                           )}
 
@@ -604,16 +756,16 @@ function TestApiPage() {
                           )}
 
                           {/* Contact Info */}
-                          {(resData.mobile || resData.email) && (
+                          {(resData.mobile || resData.mobile_digits || resData.email) && (
                             <div className="rounded-lg border border-border bg-card p-3 space-y-1 sm:col-span-2">
                               <div className="flex items-center gap-1.5 text-muted-foreground">
                                 <Phone className="h-3.5 w-3.5 text-primary" />
                                 <span className="font-medium uppercase tracking-wider text-[10px]">Contact Details</span>
                               </div>
                               <div className="flex flex-wrap items-center gap-4 pt-1 font-mono text-xs">
-                                {resData.mobile && (
+                                {(resData.mobile || resData.mobile_digits) && (
                                   <span className="inline-flex items-center gap-1">
-                                    <Phone className="h-3 w-3 text-muted-foreground" /> {String(resData.mobile)}
+                                    <Phone className="h-3 w-3 text-muted-foreground" /> {String(resData.mobile || resData.mobile_digits)}
                                   </span>
                                 )}
                                 {resData.email && (
@@ -660,7 +812,7 @@ function TestApiPage() {
                         </div>
                       </div>
                     ) : (
-                      /* Failure / Invalid PAN Card */
+                      /* Failure / Invalid Card */
                       <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-5 space-y-3">
                         <div className="flex items-center gap-2">
                           <XCircle className="h-5 w-5 text-red-400" />
@@ -675,8 +827,8 @@ function TestApiPage() {
                         </div>
 
                         <div className="rounded-lg bg-background p-3 text-xs font-mono text-muted-foreground">
-                          <p>PAN: {String(resData.pan || pan)}</p>
-                          <p>Status: {String(resData.pan_status || "Invalid")}</p>
+                          <p>Target: {selectedService === "pan" ? `PAN: ${pan}` : `Aadhaar: ${aadhaar}`}</p>
+                          <p>Status: {String(resData.pan_status || resData.aadhaar_status || "Invalid / Not Found")}</p>
                         </div>
                       </div>
                     )}

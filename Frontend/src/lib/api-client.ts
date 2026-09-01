@@ -208,6 +208,25 @@ export const apiClient = {
     });
     return res.json();
   },
+
+  async verifyAadhaar(data: {
+    api_id: string;
+    api_key: string;
+    token_id: string;
+    aadhaar: string;
+    name?: string;
+    client_ref_num?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const res = await fetch(`${host}/srv3/verification/aadhar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
 };
 
 export default apiClient;
