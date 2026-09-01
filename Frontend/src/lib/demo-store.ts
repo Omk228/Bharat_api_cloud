@@ -103,6 +103,16 @@ export type ApiHitLogRow = {
   created_at: string;
 };
 
+export type IpWhitelistRow = {
+  id: string;
+  ip_address: string;
+  label: string;
+  environment: "all" | "live" | "sandbox";
+  status: "active" | "disabled";
+  created_at: string;
+  last_used_at?: string | null;
+};
+
 export type WebhookDelivery = {
   attempt: number;
   at: string;
@@ -134,6 +144,8 @@ type DemoState = {
   wallet_balance: number;
   wallet_transactions: WalletTransactionRow[];
   api_hit_logs: ApiHitLogRow[];
+  ip_whitelist: IpWhitelistRow[];
+  ip_enforcement_enabled: boolean;
   usage: UsageRow[];
   audit: AuditRow[];
   webhooks: WebhookEventRow[];
@@ -327,6 +339,39 @@ function getDefaultApiHitLogs(): ApiHitLogRow[] {
   ];
 }
 
+function getDefaultIpWhitelist(): IpWhitelistRow[] {
+  const now = Date.now();
+  return [
+    {
+      id: "ip_wl_101",
+      ip_address: "49.36.120.89",
+      label: "Primary Production API Gateway",
+      environment: "live",
+      status: "active",
+      created_at: new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      last_used_at: new Date(now - 15 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "ip_wl_102",
+      ip_address: "13.233.190.52",
+      label: "AWS Mumbai Backend Cluster (ECS)",
+      environment: "live",
+      status: "active",
+      created_at: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      last_used_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "ip_wl_103",
+      ip_address: "192.168.1.0/24",
+      label: "Office VPN Staging Subnet",
+      environment: "sandbox",
+      status: "active",
+      created_at: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      last_used_at: new Date(now - 28 * 60 * 60 * 1000).toISOString(),
+    },
+  ];
+}
+
 function emptyState(): DemoState {
   return {
     version: 1,
@@ -342,6 +387,8 @@ function emptyState(): DemoState {
     wallet_balance: 4993.40,
     wallet_transactions: getDefaultWalletTransactions(),
     api_hit_logs: getDefaultApiHitLogs(),
+    ip_whitelist: getDefaultIpWhitelist(),
+    ip_enforcement_enabled: true,
     usage: [],
     audit: [],
     webhooks: [],
@@ -458,6 +505,8 @@ export type DashboardData = {
   walletBalance: number;
   walletTransactions: WalletTransactionRow[];
   apiHitLogs: ApiHitLogRow[];
+  ipWhitelist: IpWhitelistRow[];
+  ipEnforcementEnabled: boolean;
   usage: UsageRow[];
   audit: AuditRow[];
   webhooks: WebhookEventRow[];
@@ -477,10 +526,73 @@ export function getDashboard(): DashboardData {
     walletBalance: typeof state.wallet_balance === "number" ? state.wallet_balance : 4993.40,
     walletTransactions: state.wallet_transactions?.length ? state.wallet_transactions : getDefaultWalletTransactions(),
     apiHitLogs: state.api_hit_logs?.length ? state.api_hit_logs : getDefaultApiHitLogs(),
+    ipWhitelist: state.ip_whitelist?.length ? state.ip_whitelist : getDefaultIpWhitelist(),
+    ipEnforcementEnabled: state.ip_enforcement_enabled ?? true,
     usage: state.usage,
     audit: state.audit,
     webhooks: state.webhooks,
   };
+}
+
+export function addIpWhitelist(input: {
+  ip_address: string;
+  label: string;
+  environment: "all" | "live" | "sandbox";
+}) {
+  const trimmedIp = input.ip_address.trim();
+  if (!trimmedIp) return { ok: false as const, error: "Please provide a valid IPv4/IPv6 address or CIDR block." };
+
+  const id = `ip_wl_${randomHex(6)}`;
+  const row: IpWhitelistRow = {
+    id,
+    ip_address: trimmedIp,
+    label: input.label.trim() || "API Client Server",
+    environment: input.environment,
+    status: "active",
+    created_at: new Date().toISOString(),
+    last_used_at: null,
+  };
+
+  update((s) => {
+    const list = s.ip_whitelist?.length ? s.ip_whitelist : getDefaultIpWhitelist();
+    s.ip_whitelist = [row, ...list];
+    logAudit(s, "ip_whitelist.added", trimmedIp, `${input.label} (${input.environment})`);
+  });
+
+  return { ok: true as const, row };
+}
+
+export function deleteIpWhitelist(id: string) {
+  update((s) => {
+    const list = s.ip_whitelist?.length ? s.ip_whitelist : getDefaultIpWhitelist();
+    const target = list.find((x) => x.id === id);
+    s.ip_whitelist = list.filter((x) => x.id !== id);
+    if (target) {
+      logAudit(s, "ip_whitelist.deleted", target.ip_address, target.label);
+    }
+  });
+  return { ok: true as const };
+}
+
+export function toggleIpWhitelist(id: string, newStatus: "active" | "disabled") {
+  update((s) => {
+    const list = s.ip_whitelist?.length ? s.ip_whitelist : getDefaultIpWhitelist();
+    const item = list.find((x) => x.id === id);
+    if (item) {
+      item.status = newStatus;
+      logAudit(s, "ip_whitelist.status_change", item.ip_address, `Set to ${newStatus}`);
+    }
+    s.ip_whitelist = [...list];
+  });
+  return { ok: true as const };
+}
+
+export function setIpEnforcementMode(enabled: boolean) {
+  update((s) => {
+    s.ip_enforcement_enabled = enabled;
+    logAudit(s, "security.ip_enforcement", enabled ? "ENABLED" : "DISABLED", "Strict IP Whitelisting Policy");
+  });
+  return { ok: true as const };
 }
 
 export function topupWallet(input: { amount: number; paymentMethod: string; note?: string }) {

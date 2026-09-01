@@ -16,6 +16,7 @@ import { Route as DocsRouteImport } from './routes/docs'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedDashboardApisRouteImport } from './routes/_authenticated/dashboard/apis'
+import { Route as AuthenticatedDashboardIpWhitelistRouteImport } from './routes/_authenticated/dashboard/ip-whitelist'
 import { Route as AuthenticatedDashboardLogsRouteImport } from './routes/_authenticated/dashboard/logs'
 import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard/wallet'
 import { Route as AuthenticatedDashboardWebhooksRouteImport } from './routes/_authenticated/dashboard/webhooks'
@@ -56,6 +57,12 @@ const AuthenticatedDashboardApisRoute =
     path: '/dashboard/apis',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDashboardIpWhitelistRoute =
+  AuthenticatedDashboardIpWhitelistRouteImport.update({
+    id: '/dashboard/ip-whitelist',
+    path: '/dashboard/ip-whitelist',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardLogsRoute =
   AuthenticatedDashboardLogsRouteImport.update({
     id: '/dashboard/logs',
@@ -81,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/status': typeof StatusRoute
   '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
+  '/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
@@ -92,6 +100,7 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/status': typeof StatusRoute
   '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
+  '/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
@@ -105,6 +114,7 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/status': typeof StatusRoute
   '/_authenticated/dashboard/apis': typeof AuthenticatedDashboardApisRoute
+  '/_authenticated/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/_authenticated/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
   '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/_authenticated/dashboard/webhooks': typeof AuthenticatedDashboardWebhooksRoute
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/status'
     | '/dashboard/apis'
+    | '/dashboard/ip-whitelist'
     | '/dashboard/logs'
     | '/dashboard/wallet'
     | '/dashboard/webhooks'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/status'
     | '/dashboard/apis'
+    | '/dashboard/ip-whitelist'
     | '/dashboard/logs'
     | '/dashboard/wallet'
     | '/dashboard/webhooks'
@@ -141,6 +153,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/status'
     | '/_authenticated/dashboard/apis'
+    | '/_authenticated/dashboard/ip-whitelist'
     | '/_authenticated/dashboard/logs'
     | '/_authenticated/dashboard/wallet'
     | '/_authenticated/dashboard/webhooks'
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardApisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard/ip-whitelist': {
+      id: '/_authenticated/dashboard/ip-whitelist'
+      path: '/dashboard/ip-whitelist'
+      fullPath: '/dashboard/ip-whitelist'
+      preLoaderRoute: typeof AuthenticatedDashboardIpWhitelistRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard/logs': {
       id: '/_authenticated/dashboard/logs'
       path: '/dashboard/logs'
@@ -232,6 +252,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardApisRoute: typeof AuthenticatedDashboardApisRoute
+  AuthenticatedDashboardIpWhitelistRoute: typeof AuthenticatedDashboardIpWhitelistRoute
   AuthenticatedDashboardLogsRoute: typeof AuthenticatedDashboardLogsRoute
   AuthenticatedDashboardWalletRoute: typeof AuthenticatedDashboardWalletRoute
   AuthenticatedDashboardWebhooksRoute: typeof AuthenticatedDashboardWebhooksRoute
@@ -240,6 +261,8 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardApisRoute: AuthenticatedDashboardApisRoute,
+  AuthenticatedDashboardIpWhitelistRoute:
+    AuthenticatedDashboardIpWhitelistRoute,
   AuthenticatedDashboardLogsRoute: AuthenticatedDashboardLogsRoute,
   AuthenticatedDashboardWalletRoute: AuthenticatedDashboardWalletRoute,
   AuthenticatedDashboardWebhooksRoute: AuthenticatedDashboardWebhooksRoute,

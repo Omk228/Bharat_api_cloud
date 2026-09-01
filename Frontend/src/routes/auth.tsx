@@ -37,10 +37,6 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (getSession()) navigate({ to: "/dashboard", replace: true });
-  }, [navigate]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -48,7 +44,7 @@ function AuthPage() {
       if (mode === "signup") {
         const res = await apiClient.signup({
           name: name.trim() || email.split("@")[0]!,
-          company_name: company.trim() || undefined,
+          ...(company.trim() ? { company_name: company.trim() } : {}),
           email: email.trim(),
           password: password,
         });

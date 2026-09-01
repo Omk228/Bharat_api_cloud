@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ShieldCheck,
   Landmark,
@@ -16,7 +16,8 @@ import {
   ScanFace,
   Building2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getSession } from "@/lib/demo-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -161,6 +162,19 @@ const pricing = [
 ];
 
 function Index() {
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    setSignedIn(Boolean(getSession()));
+    const sync = () => setSignedIn(Boolean(getSession()));
+    window.addEventListener("bharatapi:state", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("bharatapi:state", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
@@ -179,18 +193,29 @@ function Index() {
 
           </nav>
           <div className="flex items-center gap-3">
-            <a
-              href="#pricing"
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
-            >
-              Sign in
-            </a>
-            <a
-              href="#pricing"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Get API keys <ArrowRight className="h-4 w-4" />
-            </a>
+            {signedIn ? (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Dashboard <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/auth"
+                  className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Get API keys <ArrowRight className="h-4 w-4" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>

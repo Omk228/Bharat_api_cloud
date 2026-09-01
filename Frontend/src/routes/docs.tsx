@@ -16,6 +16,7 @@ import { TryItConsole } from "@/components/docs/TryItConsole";
 import {
   API_GROUPS,
   BASE_URL,
+  DEFAULT_ERROR_CODES,
   endpoints,
   sampleInput,
   WEBHOOK_EVENTS,
@@ -373,9 +374,206 @@ function EndpointDetail({ endpoint }: { endpoint: ApiEndpoint }) {
           title={endpoint.method === "GET" ? "Example parameters" : "Example request body"}
           code={JSON.stringify(sampleInput(endpoint), null, 2)}
         />
-        <CodeBlock title="Example response · 200" code={JSON.stringify(endpoint.sampleResponse, null, 2)} />
+        <ResponseTabsViewer endpoint={endpoint} />
       </div>
     </section>
+  );
+}
+
+function ResponseTabsViewer({ endpoint }: { endpoint: ApiEndpoint }) {
+  const [tab, setTab] = useState<"success" | "failed" | "errors">("success");
+  const [copied, setCopied] = useState(false);
+
+  const successJson = useMemo(
+    () => JSON.stringify(endpoint.sampleResponse, null, 2),
+    [endpoint.sampleResponse]
+  );
+
+  const failedJson = useMemo(() => {
+    if (endpoint.sampleFailedResponse) {
+      return JSON.stringify(endpoint.sampleFailedResponse, null, 2);
+    }
+    return JSON.stringify(
+      {
+        http_response_code: 200,
+        result_code: 102,
+        request_id: "0199c2bb-4b54-8af1-80e4-5506bd8a86c7",
+        client_ref_num: "testapis-jc36fwn",
+        message: "Invalid input or entity verification failed",
+        result: {
+          status: "Invalid",
+        },
+      },
+      null,
+      2
+    );
+  }, [endpoint.sampleFailedResponse]);
+
+  const errorList = endpoint.errorCodes ?? DEFAULT_ERROR_CODES;
+  const statusMsg = endpoint.statusMessage ?? "Refund processed";
+
+  const errorJson = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          http_response_code: 400,
+          result_code: 103,
+          request_id: "0199c2bb-4b54-8af1-80e4-5506bd8a86c7",
+          client_ref_num: "testapis-jc36fwn",
+          message: "Invalid Pan number or combination of inputs",
+          status_message: statusMsg,
+        },
+        null,
+        2
+      ),
+    [statusMsg]
+  );
+
+  const activeCode = tab === "success" ? successJson : tab === "failed" ? failedJson : errorJson;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      {/* Response Tabs Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          <button
+            onClick={() => setTab("success")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+              tab === "success"
+                ? "bg-success/15 text-success border border-success/30 font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+            Response (200 · 101)
+          </button>
+          <button
+            onClick={() => setTab("failed")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+              tab === "failed"
+                ? "bg-amber-500/15 text-amber-400 border border-amber-500/30 font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+            Failed Response (200 · 102)
+          </button>
+          <button
+            onClick={() => setTab("errors")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+              tab === "errors"
+                ? "bg-destructive/15 text-destructive border border-destructive/30 font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+            Possible Error Codes
+          </button>
+        </div>
+
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(activeCode);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+          className="text-muted-foreground transition-colors hover:text-foreground p-1"
+          aria-label="Copy response"
+        >
+          {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {tab === "success" && (
+        <div>
+          <div className="flex items-center justify-between border-b border-border/50 bg-secondary/30 px-3 py-1.5 text-xs text-muted-foreground font-mono">
+            <span className="text-success flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-success"></span>
+              HTTP 200 OK · result_code: 101 (Verified)
+            </span>
+          </div>
+          <pre className="max-h-[380px] overflow-x-auto overflow-y-auto bg-terminal px-4 py-3 font-mono text-xs leading-relaxed text-foreground/90">
+            {successJson}
+          </pre>
+        </div>
+      )}
+
+      {tab === "failed" && (
+        <div>
+          <div className="flex items-center justify-between border-b border-border/50 bg-secondary/30 px-3 py-1.5 text-xs text-muted-foreground font-mono">
+            <span className="text-amber-400 flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-400"></span>
+              HTTP 200 OK · result_code: 102 (Invalid Input / Failed)
+            </span>
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary font-sans font-medium">
+              Status: {statusMsg}
+            </span>
+          </div>
+          <pre className="max-h-[380px] overflow-x-auto overflow-y-auto bg-terminal px-4 py-3 font-mono text-xs leading-relaxed text-foreground/90">
+            {failedJson}
+          </pre>
+        </div>
+      )}
+
+      {tab === "errors" && (
+        <div className="p-4 space-y-4 max-h-[440px] overflow-y-auto">
+          {/* Status Message Info */}
+          <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+            <div className="mt-0.5 rounded-full bg-primary/20 p-1 text-primary">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-foreground">Status Message:</span>
+                <span className="rounded-md bg-primary/20 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+                  {statusMsg}
+                </span>
+              </div>
+              <p className="mt-1 text-muted-foreground leading-relaxed">
+                Billable requests resulting in failed verification or upstream error codes automatically initiate a wallet credit refund.
+              </p>
+            </div>
+          </div>
+
+          {/* Error Codes Table */}
+          <div>
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Possible Error Codes
+            </span>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/50 text-left text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Code</th>
+                    <th className="px-3 py-2 font-medium">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {errorList.map((err) => (
+                    <tr key={err.code} className="border-b border-border last:border-0 hover:bg-secondary/20">
+                      <td className="px-3 py-2 font-mono font-semibold text-destructive">
+                        {err.code}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{err.meaning}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Sample Error Payload */}
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Sample Error Payload
+            </span>
+            <pre className="overflow-x-auto rounded-lg border border-border bg-terminal px-3 py-2.5 font-mono text-xs leading-relaxed text-foreground/90">
+              {errorJson}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

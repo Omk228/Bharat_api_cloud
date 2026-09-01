@@ -5,6 +5,11 @@ export type ApiParam = {
   desc: string;
 };
 
+export type ApiErrorCode = {
+  code: number;
+  meaning: string;
+};
+
 export type ApiEndpoint = {
   id: string;
   group: ApiGroup;
@@ -20,6 +25,12 @@ export type ApiEndpoint = {
   sampleQuery?: Record<string, string>;
   /** Realistic sandbox response used by the Try-It console when no live provider is configured */
   sampleResponse: Record<string, unknown>;
+  /** Realistic failed verification response (e.g. invalid entity/input combination) */
+  sampleFailedResponse?: Record<string, unknown>;
+  /** Possible HTTP error codes and meanings */
+  errorCodes?: ApiErrorCode[];
+  /** Status message on failed requests, e.g. "Refund processed" */
+  statusMessage?: string;
   latency?: string;
 };
 
@@ -28,6 +39,18 @@ export type ApiGroup = "KYC" | "Banking" | "Account Aggregator" | "Payments";
 export const API_GROUPS: ApiGroup[] = ["KYC", "Banking", "Account Aggregator", "Payments"];
 
 export const BASE_URL = "https://api.bharatapicloud.io/v1";
+
+export const DEFAULT_ERROR_CODES: ApiErrorCode[] = [
+  { code: 400, meaning: "Invalid request payload or malformed parameters." },
+  { code: 401, meaning: "Unauthorized — missing, expired, or invalid API key." },
+  { code: 404, meaning: "Requested resource or record does not exist." },
+  { code: 412, meaning: "Precondition Failed — entity failed validation checks." },
+  { code: 429, meaning: "Too Many Requests — plan rate limit or quota exceeded." },
+  { code: 500, meaning: "Internal Server Error — server processing failure." },
+  { code: 503, meaning: "Service Unavailable — upstream government/bank service down." },
+  { code: 504, meaning: "Gateway Timeout — upstream source timed out." },
+  { code: 505, meaning: "HTTP Version Not Supported." },
+];
 
 export const endpoints: ApiEndpoint[] = [
   /* ---------------- KYC ---------------- */
@@ -47,14 +70,81 @@ export const endpoints: ApiEndpoint[] = [
     ],
     sampleBody: { pan: "ABCDE1234F", name: "Aarav Sharma", dob: "1990-04-12" },
     sampleResponse: {
-      status: "verified",
-      pan_valid: true,
-      pan_type: "individual",
-      name_match: "exact",
-      match_score: 0.98,
-      aadhaar_linked: true,
-      request_id: "kyc_8f3a2c1d",
+      http_response_code: 200,
+      result_code: 101,
+      request_id: "idspay-dec5-11ef-bf40-cf31135d6ffc",
+      client_ref_num: "ITV1_BEFISC",
+      result: {
+        pan: "BWSXXXXX2",
+        pan_type: "Individual",
+        fullname: "SXXXXXX",
+        first_name: "SUXXXX",
+        middle_name: "",
+        last_name: "XXXXX",
+        gender: "male",
+        aadhaar_seeding_status: "Y",
+        aadhaar_number: "XXXXXXXX1445",
+        aadhaar_linked: true,
+        dob: "07/11/1980",
+        address: {
+          building_name: "202XXXXXXXX",
+          locality: "HXXXXXXXj",
+          street_name: "JOXXXXXXD,",
+          pincode: "2XXX01",
+          city: "LUXXXXXXW",
+          state: "UtXXXXXsh",
+          country: "India",
+        },
+        mobile: "90XXXXXX34",
+        email: "ab******************ol@gmail.com",
+        name_match: true,
+        name_match_score: 100,
+      },
     },
+    sampleFailedResponse: {
+      http_response_code: 200,
+      result_code: 102,
+      request_id: "0199c2bb-4b54-8af1-80e4-5506bd8a86c7",
+      client_ref_num: "testapis-jc36fwn",
+      message: "Invalid Pan number or combination of inputs",
+      result: {
+        pan: "XXXXXXX",
+        pan_status: "Invalid",
+        pan_type: "",
+        fullname: "",
+        first_name: "",
+        middle_name: "",
+        last_name: "",
+        gender: "",
+        aadhaar_seeding_status: "",
+        aadhaar_number: "",
+        aadhaar_linked: "",
+        dob: "",
+        address: {
+          building_name: "",
+          locality: "",
+          street_name: "",
+          pincode: "",
+          city: "",
+          state: "",
+          country: "",
+        },
+        mobile: "",
+        email: "",
+      },
+    },
+    errorCodes: [
+      { code: 400, meaning: "Invalid parameter format or missing mandatory fields." },
+      { code: 401, meaning: "Unauthorized — missing, revoked, or wrong-environment API key." },
+      { code: 404, meaning: "Requested PAN or reference id does not exist in records." },
+      { code: 412, meaning: "Precondition Failed — PAN status inactive or blocked." },
+      { code: 429, meaning: "Plan rate limit or monthly quota exhausted." },
+      { code: 500, meaning: "Internal Server Error — unexpected exception occurred." },
+      { code: 503, meaning: "Service Unavailable — ITD/NSDL government portal is under maintenance." },
+      { code: 504, meaning: "Gateway Timeout — Upstream government provider timed out." },
+      { code: 505, meaning: "HTTP Version Not Supported." },
+    ],
+    statusMessage: "Refund processed",
   },
   {
     id: "aadhaar-otp",
