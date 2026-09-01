@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { TryItConsole } from "@/components/docs/TryItConsole";
 import {
   API_GROUPS,
   BASE_URL,
@@ -32,7 +31,16 @@ import {
 } from "@/lib/demo-store";
 import { generateSnippet, INSTALL_COMMANDS, LANGUAGES, type LanguageId } from "@/lib/sdk-snippets";
 
+export type DocsSearch = {
+  endpoint?: string | undefined;
+  id?: string | undefined;
+};
+
 export const Route = createFileRoute("/docs")({
+  validateSearch: (search: Record<string, unknown>): DocsSearch => ({
+    endpoint: typeof search["endpoint"] === "string" ? (search["endpoint"] as string) : undefined,
+    id: typeof search["id"] === "string" ? (search["id"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "API Docs — KYC & Banking Verification Endpoints | Bharat API Cloud" },
@@ -55,13 +63,28 @@ export const Route = createFileRoute("/docs")({
 });
 
 function DocsPage() {
+  const searchParams = Route.useSearch();
   const [signedIn, setSignedIn] = useState(false);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<ApiGroup | "All">("All");
   const [method, setMethod] = useState<"All" | "GET" | "POST" | "DELETE">("All");
-  const [activeId, setActiveId] = useState(endpoints[0]!.id);
+
+  const initialTarget = searchParams.endpoint || searchParams.id;
+  const initialId = initialTarget && endpoints.some((e) => e.id === initialTarget)
+    ? initialTarget
+    : endpoints[0]!.id;
+
+  const [activeId, setActiveId] = useState(initialId);
   const [lang, setLang] = useState<LanguageId>("curl");
   const [apiKey, setApiKey] = useState("");
+
+  // Sync activeId when URL query changes (e.g. clicking different API cards from dashboard)
+  useEffect(() => {
+    const target = searchParams.endpoint || searchParams.id;
+    if (target && endpoints.some((e) => e.id === target)) {
+      setActiveId(target);
+    }
+  }, [searchParams.endpoint, searchParams.id]);
 
   useEffect(() => {
     setSignedIn(Boolean(getSession()));
@@ -271,16 +294,26 @@ function DocsPage() {
                 title={`${LANGUAGES.find((l) => l.id === lang)!.label} request`}
                 code={generateSnippet(lang, active, sampleInput(active), apiKey.trim() || undefined)}
               />
-              <div className="mt-4">
-                <CodeBlock title="Install the SDK" code={INSTALL_COMMANDS[lang]} />
-              </div>
             </div>
-            <TryItConsole
-              endpoint={active}
-              apiKey={apiKey}
-              onApiKeyChange={setApiKey}
-              signedIn={signedIn}
-            />
+            <div className="space-y-4">
+              <CodeBlock title="Install SDK / Client" code={INSTALL_COMMANDS[lang]} />
+              {active.id === "verify-pan" && (
+                <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Terminal className="h-4 w-4 text-emerald-400" /> Interactive Test Console
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Test live PAN verification with full dynamic identity cards and raw responses in the dedicated console.
+                  </p>
+                  <Link
+                    to="/dashboard/test-api"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+                  >
+                    ⚡ Open Test API Console
+                  </Link>
+                </div>
+              )}
+            </div>
           </section>
 
           <WebhookTester keys={account?.keys ?? []} signedIn={signedIn} />

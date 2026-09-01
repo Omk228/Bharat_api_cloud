@@ -105,15 +105,6 @@ export function DashboardLayout({
               {data.profile.company_name || "Developer Account"} · {data.limits.label} plan
             </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Wallet Balance</p>
-              <p className="mt-0.5 font-mono text-lg font-bold text-primary">
-                ₹{data.walletBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Sub-Navigation Route Links */}
@@ -124,13 +115,6 @@ export function DashboardLayout({
               active={activeTab === "overview" || currentPath === "/dashboard"}
               icon={<KeyRound className="h-4 w-4" />}
               label="Overview & Keys"
-            />
-            <NavRouteLink
-              to="/dashboard/wallet"
-              active={activeTab === "wallet" || currentPath.startsWith("/dashboard/wallet")}
-              icon={<Wallet className="h-4 w-4" />}
-              label="Wallet & Billing"
-              badge={`₹${data.walletBalance.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
             />
             <NavRouteLink
               to="/dashboard/apis"

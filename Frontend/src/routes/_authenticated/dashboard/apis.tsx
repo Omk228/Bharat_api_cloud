@@ -166,6 +166,7 @@ function ApisPage() {
                     )}
                     <Link
                       to="/docs"
+                      search={{ endpoint: ep.id }}
                       className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground hover:underline"
                     >
                       Schema & cURL <ExternalLink className="h-3 w-3" />

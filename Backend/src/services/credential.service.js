@@ -7,9 +7,15 @@ export class CredentialService {
    * Generates cryptographically secure API credentials for a user
    */
   static async generateCredentials({ userId, environment = 'sandbox', label = 'Default Key' }) {
-    // 1. Generate API ID: Prefix APID + 6 Hex characters (e.g. APID2994 or APID7B29F1)
-    const randomSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
-    const apiId = `APID${randomSuffix}`;
+    // 1. Re-use user's existing common API ID if they already have one
+    const existing = await CredentialModel.findByUserId(userId);
+    let apiId = existing && existing.length > 0 ? existing[0].api_id : null;
+
+    // If no existing API ID for this user, generate a single persistent common APID
+    if (!apiId) {
+      const randomSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+      apiId = `APID${randomSuffix}`;
+    }
 
     // 2. Generate API Key: Standard UUID v4
     const apiKey = crypto.randomUUID();
