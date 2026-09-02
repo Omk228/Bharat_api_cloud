@@ -1,5 +1,6 @@
 import { dbPool } from '../config/db.config.js';
 import { ENV } from '../config/env.config.js';
+import { upstreamFetch } from '../utils/httpAgent.js';
 import crypto from 'node:crypto';
 
 export class PanVerificationService {
@@ -37,10 +38,10 @@ export class PanVerificationService {
     // 1. If IDSPay live master credentials are configured in .env, forward request to IDSPay Production
     if (masterApiId && masterApiKey && masterTokenId) {
       try {
-        console.log(`📡 [PROXY GATEWAY] Forwarding request to IDSPay Production: ${upstreamUrl}`);
+        console.log(`📡 [PROXY GATEWAY] Forwarding request to IDSPay Production (Keep-Alive Enabled): ${upstreamUrl}`);
         console.log(`🔑 Master Creds Used: API_ID=${masterApiId}, PAN=${cleanPan}, Name=${cleanName}`);
 
-        const upstreamRes = await fetch(upstreamUrl, {
+        const upstreamRes = await upstreamFetch(upstreamUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -55,6 +56,8 @@ export class PanVerificationService {
             name_match_method: name_match_method || 'fuzzy'
           })
         });
+
+        console.log(`⏱️ [IDSPAY UPSTREAM LATENCY]: ${upstreamRes.upstreamLatencyMs}ms`);
 
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY PRODUCTION RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
