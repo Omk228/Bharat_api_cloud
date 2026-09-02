@@ -397,6 +397,40 @@ export const endpoints: ApiEndpoint[] = [
 
   /* ---------------- Banking ---------------- */
   {
+    id: "bank-penny-less",
+    group: "Banking",
+    method: "POST",
+    path: "/bank/verify/penny-less",
+    title: "Bank Verification Penny Less V2",
+    desc: "Instant bank account validation and beneficiary name verification without performing a financial penny deposit. Validates bank account status, registered name, and IFSC details directly.",
+    tags: ["penny less", "bank verification", "account validation", "ifsc", "banking"],
+    latency: "~1.5s",
+    params: [
+      { name: "creditorAccountId", type: "string", required: true, desc: "Bank Account Number to verify." },
+      { name: "ifscCode", type: "string", required: true, desc: "11-character Bank IFSC Code, e.g. SBIN0001234." },
+    ],
+    sampleBody: { creditorAccountId: "123456789012", ifscCode: "HDFC0000001" },
+    sampleResponse: {
+      status: {
+        code: 200,
+        type: "success",
+        message: "Request processed successfully.",
+      },
+      message: "Request processed successfully.",
+      data: {
+        account_status: "VALID",
+        beneficiary_name: "SHUBHAM GUPTA",
+        account_number: "XXXXXXXX9012",
+        ifsc: "HDFC0000001",
+        bank_name: "HDFC Bank",
+        branch: "Main Branch",
+        city: "Mumbai",
+        state: "Maharashtra",
+        is_active: true,
+      },
+    },
+  },
+  {
     id: "bank-penny-drop",
     group: "Banking",
     method: "POST",
