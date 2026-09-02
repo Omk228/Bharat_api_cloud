@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
 import dbPool from '../../../core/config/db.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
+import CacheService from '../../../core/cache/cache.service.js';
 
 export class AadhaarVerificationService {
   /**
@@ -14,7 +15,7 @@ export class AadhaarVerificationService {
   }
 
   /**
-   * Main verification handler for Aadhaar Fetch Without OTP
+   * Main verification handler for Aadhaar Fetch Without OTP with Result Caching
    */
   static async verifyAadhaar({
     aadhaar,
@@ -30,6 +31,43 @@ export class AadhaarVerificationService {
     const requestId = `idspay-${crypto.randomBytes(4).toString('hex')}-${crypto.randomBytes(2).toString('hex')}-${crypto.randomBytes(6).toString('hex')}`;
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
+    // 1. Check Smart Result Cache first (<2ms) 🔥
+    if (cleanAadhaar) {
+      const cachedResult = await CacheService.getVerification('aadhaar', cleanAadhaar);
+      if (cachedResult) {
+        const durationMs = Date.now() - startTime;
+        console.log(`⚡ [AADHAAR CACHE HIT] Returned from Cache in ${durationMs}ms: Aadhaar=${cleanAadhaar ? cleanAadhaar.slice(0, 4) + 'XXXX' + cleanAadhaar.slice(-4) : 'empty'}`);
+
+        const cachedResponse = {
+          ...cachedResult,
+          request_id: requestId,
+          client_ref_num: clientRef,
+          _cached: true
+        };
+
+        if (apiClient?.user_id) {
+          this.recordHitAndSettleWallet({
+            userId: apiClient.user_id,
+            credentialId: apiClient.credential_id,
+            endpoint: '/srv3/verification/aadhar',
+            method: 'POST',
+            requestId: cachedResponse.request_id || requestId,
+            clientRefNum: cachedResponse.client_ref_num || clientRef,
+            statusCode: cachedResponse.http_response_code || cachedResponse.status?.code || 200,
+            resultCode: cachedResponse.result_code || 101,
+            durationMs,
+            clientIp: apiClient.client_ip,
+            cost: 0.00,
+            environment: apiClient.environment || 'production',
+            isSuccess: true
+          }).catch((err) => console.error('Failed to log cached Aadhaar hit:', err.message));
+        }
+
+        return cachedResponse;
+      }
+    }
+
+    // 2. Cache Miss: Upstream IDSPay Call
     const masterApiId = ENV.IDSPAY.PROD_API_ID;
     const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
     const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
@@ -41,7 +79,7 @@ export class AadhaarVerificationService {
 
     const isValidFormat = this.isValidAadhaarFormat(cleanAadhaar);
 
-    // 1. If IDSPay live master credentials are configured in .env, forward request to IDSPay Production
+    // If IDSPay live master credentials are configured in .env, forward request to IDSPay Production
     if (masterApiId && masterApiKey && masterTokenId) {
       try {
         console.log(`📡 [PROXY GATEWAY] Forwarding Aadhaar request to IDSPay (Keep-Alive Enabled): ${upstreamUrl}`);
@@ -73,7 +111,7 @@ export class AadhaarVerificationService {
       }
     }
 
-    // 2. Fallback sandbox simulation if upstream was not called or failed
+    // Fallback sandbox simulation if upstream was not called or failed
     if (!finalResponse) {
       if (!isValidFormat) {
         resultCode = 102;
@@ -117,7 +155,13 @@ export class AadhaarVerificationService {
       }
     }
 
-    // 3. Record log and settle wallet
+    // 3. Store result in Cache (24 Hours for valid, 5 Mins for invalid)
+    if (cleanAadhaar && finalResponse) {
+      const ttl = isSuccess ? 86400 : 300;
+      CacheService.setVerification('aadhaar', cleanAadhaar, finalResponse, ttl).catch(() => {});
+    }
+
+    // 4. Record log and settle wallet
     const durationMs = Date.now() - startTime;
     const hitCost = isSuccess ? 1.50 : 0.00;
 

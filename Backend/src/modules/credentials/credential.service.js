@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import CredentialModel from './credential.model.js';
 import ApiError from '../../core/utils/apiError.js';
+import CacheService from '../../core/cache/cache.service.js';
 
 export class CredentialService {
   /**
@@ -57,15 +58,23 @@ export class CredentialService {
   }
 
   /**
-   * Rotate a user's Token ID
+   * Rotate a user's Token ID and invalidate cache
    */
   static async rotateToken({ userId, credentialId }) {
+    const credRows = await CredentialModel.findByUserId(userId);
+    const target = credRows?.find((c) => Number(c.id) === Number(credentialId));
+
     const newToken = crypto.randomBytes(24).toString('base64url');
     const tokenPreview = `${newToken.substring(0, 4)}...${newToken.substring(newToken.length - 4)}`;
 
     const updated = await CredentialModel.rotateToken(credentialId, userId, newToken, tokenPreview);
     if (!updated) {
       throw new ApiError(404, 'Credential not found or unauthorized to rotate.');
+    }
+
+    // Invalidate Cache for this credential
+    if (target) {
+      CacheService.invalidateAuth(target.api_id, target.api_key).catch(() => {});
     }
 
     return {
@@ -77,13 +86,22 @@ export class CredentialService {
   }
 
   /**
-   * Revoke credentials
+   * Revoke credentials and invalidate cache
    */
   static async revokeCredentials({ userId, credentialId }) {
+    const credRows = await CredentialModel.findByUserId(userId);
+    const target = credRows?.find((c) => Number(c.id) === Number(credentialId));
+
     const revoked = await CredentialModel.revoke(credentialId, userId);
     if (!revoked) {
       throw new ApiError(404, 'Credential not found or already revoked.');
     }
+
+    // Invalidate Cache for this credential
+    if (target) {
+      CacheService.invalidateAuth(target.api_id, target.api_key).catch(() => {});
+    }
+
     return { success: true, message: 'API Credentials revoked successfully.' };
   }
 

@@ -1,6 +1,7 @@
 import { dbPool } from '../../../core/config/db.config.js';
 import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
+import CacheService from '../../../core/cache/cache.service.js';
 import crypto from 'node:crypto';
 
 export class PanVerificationService {
@@ -14,7 +15,7 @@ export class PanVerificationService {
   }
 
   /**
-   * Verify PAN Details with IDSPay upstream forwarding or high-fidelity sandbox simulation
+   * Verify PAN Details with Smart Result Caching & IDSPay upstream forwarding
    */
   static async verifyPan({ pan, name, pan_display_name, name_match_method, client_ref_num, apiClient }) {
     const startedAt = Date.now();
@@ -23,6 +24,44 @@ export class PanVerificationService {
     const requestId = `idspay-${crypto.randomBytes(4).toString('hex')}-${crypto.randomBytes(2).toString('hex')}-${crypto.randomBytes(6).toString('hex')}`;
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
+    // 1. Check Smart Result Cache first (<2ms) 🔥
+    if (cleanPan) {
+      const cachedResult = await CacheService.getVerification('pan', cleanPan);
+      if (cachedResult) {
+        const durationMs = Date.now() - startedAt;
+        console.log(`⚡ [PAN CACHE HIT] Returned from Cache in ${durationMs}ms: PAN=${cleanPan}`);
+
+        const cachedResponse = {
+          ...cachedResult,
+          request_id: requestId,
+          client_ref_num: clientRef,
+          _cached: true
+        };
+
+        // Asynchronously log the hit (cost: 0.00 for cached hits)
+        if (apiClient?.user_id) {
+          this.recordHitAndSettleWallet({
+            userId: apiClient.user_id,
+            credentialId: apiClient.credential_id,
+            endpoint: '/srv2/validation/pan',
+            method: 'POST',
+            requestId,
+            clientRefNum: clientRef,
+            statusCode: cachedResponse.http_response_code || 200,
+            resultCode: cachedResponse.result_code || 101,
+            durationMs,
+            clientIp: apiClient.client_ip,
+            cost: 0.00,
+            environment: apiClient.environment,
+            isSuccess: true
+          }).catch((err) => console.error('Failed to log cached hit:', err.message));
+        }
+
+        return cachedResponse;
+      }
+    }
+
+    // 2. Cache Miss: Forward to IDSPay Upstream Provider
     const masterApiId = ENV.IDSPAY.PROD_API_ID;
     const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
     const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
@@ -35,7 +74,7 @@ export class PanVerificationService {
     // Check PAN Format
     const isValidFormat = this.isValidPanFormat(cleanPan);
 
-    // 1. If IDSPay live master credentials are configured in .env, forward request to IDSPay Production
+    // If IDSPay live master credentials are configured in .env, forward request to IDSPay Production
     if (masterApiId && masterApiKey && masterTokenId) {
       try {
         console.log(`📡 [PROXY GATEWAY] Forwarding request to IDSPay Production (Keep-Alive Enabled): ${upstreamUrl}`);
@@ -64,7 +103,7 @@ export class PanVerificationService {
 
         finalResponse = upstreamData;
         resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
-        isSuccess = resultCode === 101;
+        isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
       } catch (err) {
         console.error('⚠️ IDSPay upstream provider call failed:', err.message);
       }
@@ -72,7 +111,7 @@ export class PanVerificationService {
       console.log('ℹ️ No IDSPay master keys found in .env, using gateway simulated sandbox.');
     }
 
-    // If no upstream provider configured or in simulation mode
+    // Fallback sandbox simulation if upstream was not called or failed
     if (!finalResponse) {
       if (!isValidFormat || cleanPan.startsWith('INVALID')) {
         // Verification Failure Response (200 · 102)
@@ -156,10 +195,16 @@ export class PanVerificationService {
       }
     }
 
+    // 3. Store result in Cache (24 Hours for valid, 5 Mins for invalid)
+    if (cleanPan && finalResponse) {
+      const ttl = isSuccess ? 86400 : 300;
+      CacheService.setVerification('pan', cleanPan, finalResponse, ttl).catch(() => {});
+    }
+
     const durationMs = Date.now() - startedAt;
     const hitCost = apiClient?.environment === 'production' ? 1.50 : 0.00;
 
-    // 2. Settle Wallet & Log Hit in Background
+    // 4. Settle Wallet & Log Hit in Background
     if (apiClient?.user_id) {
       this.recordHitAndSettleWallet({
         userId: apiClient.user_id,

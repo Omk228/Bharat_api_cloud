@@ -26,6 +26,14 @@ export const ENV = {
     PROD_API_KEY: process.env.IDSPAY_PROD_API_KEY || '',
     PROD_TOKEN_ID: process.env.IDSPAY_PROD_TOKEN_ID || '',
   },
+
+  REDIS: {
+    HOST: process.env.REDIS_HOST || '127.0.0.1',
+    PORT: parseInt(process.env.REDIS_PORT || '6379', 10),
+    PASSWORD: process.env.REDIS_PASSWORD || undefined,
+    URL: process.env.REDIS_URL || undefined,
+    ENABLED: process.env.REDIS_ENABLED !== 'false',
+  },
 };
 
 export default ENV;
