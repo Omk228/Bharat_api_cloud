@@ -21,7 +21,7 @@ export class PanVerificationService {
     const startedAt = Date.now();
     const cleanPan = (pan || '').trim().toUpperCase();
     const cleanName = (name || '').trim();
-    const requestId = `idspay-${crypto.randomBytes(4).toString('hex')}-${crypto.randomBytes(2).toString('hex')}-${crypto.randomBytes(6).toString('hex')}`;
+    const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     // 1. Check Smart Result Cache first (<2ms) 🔥
@@ -33,7 +33,7 @@ export class PanVerificationService {
 
         const cachedResponse = {
           ...cachedResult,
-          request_id: requestId,
+          request_id: cachedResult.request_id || requestId,
           client_ref_num: clientRef,
           _cached: true
         };
@@ -45,7 +45,7 @@ export class PanVerificationService {
             credentialId: apiClient.credential_id,
             endpoint: '/srv2/validation/pan',
             method: 'POST',
-            requestId,
+            requestId: cachedResponse.request_id,
             clientRefNum: clientRef,
             statusCode: cachedResponse.http_response_code || 200,
             resultCode: cachedResponse.result_code || 101,
@@ -77,8 +77,8 @@ export class PanVerificationService {
     // If IDSPay live master credentials are configured in .env, forward request to IDSPay Production
     if (masterApiId && masterApiKey && masterTokenId) {
       try {
-        console.log(`📡 [PROXY GATEWAY] Forwarding request to IDSPay Production (Keep-Alive Enabled): ${upstreamUrl}`);
-        console.log(`🔑 Master Creds Used: API_ID=${masterApiId}, PAN=${cleanPan}, Name=${cleanName}`);
+        console.log(`📡 [PROXY GATEWAY] Forwarding PAN request to IDSPay: ${upstreamUrl}`);
+        console.log(`🔑 Master Creds: API_ID=${masterApiId}, PAN=${cleanPan.substring(0, 5)}XXXX`);
 
         const upstreamRes = await upstreamFetch(upstreamUrl, {
           method: 'POST',
@@ -101,7 +101,11 @@ export class PanVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY PRODUCTION RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = upstreamData;
+        finalResponse = {
+          ...upstreamData,
+          request_id: upstreamData.request_id || requestId,
+          client_ref_num: upstreamData.client_ref_num || clientRef
+        };
         resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
         isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
       } catch (err) {

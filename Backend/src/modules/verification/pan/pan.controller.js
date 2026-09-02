@@ -12,7 +12,7 @@ export class PanVerificationController {
       return res.status(200).json({
         http_response_code: 200,
         result_code: 102,
-        request_id: `idspay-${Date.now()}`,
+        request_id: crypto.randomUUID(),
         client_ref_num: client_ref_num || null,
         message: 'Invalid Pan number or combination of inputs',
         status_message: 'Refund processed',

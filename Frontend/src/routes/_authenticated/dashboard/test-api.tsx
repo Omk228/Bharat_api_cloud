@@ -24,6 +24,7 @@ import {
   Landmark,
   Building,
   ChevronDown,
+  Smartphone,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -43,6 +44,10 @@ export type VerificationResult = {
   ifscCode?: string;
   ifsc?: string;
   beneficiary_name?: string;
+  creditorName?: string;
+  rrn?: string;
+  transactionReferenceNumber?: string;
+  transactionId?: string;
   bank_name?: string;
   branch?: string;
   city?: string;
@@ -60,6 +65,7 @@ export type VerificationResult = {
   aadhaar_seeding_status?: string;
   aadhaar_linked?: boolean | string;
   dob?: string;
+  age?: string | number;
   age_band?: string;
   state?: string;
   mobile?: string;
@@ -69,6 +75,11 @@ export type VerificationResult = {
   name_match_score?: number | string;
   address?:
     | string
+    | Array<{
+        first_line_of_address?: string;
+        second_line_of_address?: string;
+        third_line_of_address?: string;
+      }>
     | {
         building_name?: string;
         locality?: string;
@@ -97,7 +108,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | undefined;
+  service?: "pan" | "aadhaar" | "bank" | "prefill" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -107,6 +118,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "aadhaar"
         : search["service"] === "bank"
         ? "bank"
+        : search["service"] === "prefill"
+        ? "prefill"
         : "pan",
   }),
   head: () => ({
@@ -114,7 +127,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, and Bank Verification Penny Less V2 verification APIs.",
+        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, and Mobile to Prefill verification APIs.",
       },
     ],
   }),
@@ -123,8 +136,14 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 
 function TestApiPage() {
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank">(
-    searchParams.service === "aadhaar" ? "aadhaar" : searchParams.service === "bank" ? "bank" : "pan"
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill">(
+    searchParams.service === "aadhaar"
+      ? "aadhaar"
+      : searchParams.service === "bank"
+      ? "bank"
+      : searchParams.service === "prefill"
+      ? "prefill"
+      : "pan"
   );
 
   const { data: creds, isLoading: credsLoading } = useQuery({
@@ -156,6 +175,11 @@ function TestApiPage() {
   // Bank fields
   const [creditorAccountId, setCreditorAccountId] = useState("");
   const [ifscCode, setIfscCode] = useState("");
+
+  // Prefill fields
+  const [mobileNumber, setMobileNumber] = useState("9876543210");
+  const [firstName, setFirstName] = useState("Som");
+  const [lastName, setLastName] = useState("Kumar");
 
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
@@ -200,12 +224,21 @@ function TestApiPage() {
           aadhaar: aadhaar.trim().replace(/\s|-/g, ""),
           ...(name.trim() ? { name: name.trim() } : {}),
         }
-      : {
+      : selectedService === "bank"
+      ? {
           api_id: apiId || (activeCred ? activeCred.api_id : ""),
           api_key: apiKey || (activeCred ? activeCred.api_key : ""),
           token_id: tokenId || (activeCred ? activeCred.token_id : ""),
           creditorAccountId: creditorAccountId.trim(),
           ifscCode: ifscCode.trim().toUpperCase(),
+        }
+      : {
+          api_id: apiId || (activeCred ? activeCred.api_id : ""),
+          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
+          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          mobile_number: mobileNumber.trim().replace(/\D/g, ""),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
         };
 
   const handleSendRequest = async () => {
@@ -221,6 +254,10 @@ function TestApiPage() {
       toast.error("Please enter Account Number and IFSC Code");
       return;
     }
+    if (selectedService === "prefill" && (!mobileNumber.trim() || !firstName.trim())) {
+      toast.error("Please enter Mobile Number and First Name");
+      return;
+    }
 
     setLoading(true);
     const start = performance.now();
@@ -231,8 +268,10 @@ function TestApiPage() {
         rawData = await apiClient.verifyPan(requestPayload as Parameters<typeof apiClient.verifyPan>[0]);
       } else if (selectedService === "aadhaar") {
         rawData = await apiClient.verifyAadhaar(requestPayload as Parameters<typeof apiClient.verifyAadhaar>[0]);
-      } else {
+      } else if (selectedService === "bank") {
         rawData = await apiClient.verifyBankPennyLess(requestPayload as Parameters<typeof apiClient.verifyBankPennyLess>[0]);
+      } else {
+        rawData = await apiClient.verifyMobilePrefill(requestPayload as Parameters<typeof apiClient.verifyMobilePrefill>[0]);
       }
 
       const data = rawData as ApiResponseEnvelope;
@@ -293,6 +332,7 @@ function TestApiPage() {
     rawRes.creditorName ||
     rawRes.beneficiary_name ||
     rawRes.fullname ||
+    rawRes.name ||
     ""
   ) as string;
 
@@ -320,10 +360,18 @@ function TestApiPage() {
     ""
   ) as string;
 
+  const extractedAddresses = Array.isArray(resourceData.address)
+    ? (resourceData.address as Array<{ first_line_of_address?: string; second_line_of_address?: string; third_line_of_address?: string }>)
+    : Array.isArray(rawRes.address)
+    ? (rawRes.address as Array<{ first_line_of_address?: string; second_line_of_address?: string; third_line_of_address?: string }>)
+    : [];
+
   const resData: VerificationResult = {
     ...rawRes,
     beneficiary_name: extractedCreditorName,
     creditorName: extractedCreditorName,
+    name: (resourceData.name || rawRes.name || extractedCreditorName) as string,
+    fullname: (resourceData.fullname || rawRes.fullname || resourceData.name || rawRes.name || extractedCreditorName) as string,
     account_number: extractedAccountNum,
     creditorAccountId: extractedAccountNum,
     rrn: extractedRrn,
@@ -338,34 +386,45 @@ function TestApiPage() {
     account_status: ((beneResp?.metaData as Record<string, unknown>)?.status || rawRes.account_status || rawRes.accountStatus || rawRes.status || "ACTIVE") as string,
     is_valid: rawRes.is_valid !== undefined ? Boolean(rawRes.is_valid) : true,
     account_exists: rawRes.account_exists !== undefined ? Boolean(rawRes.account_exists) : true,
-    pan: (rawRes.pan || "") as string,
+    pan: (resourceData.pan || rawRes.pan || "") as string,
     pan_type: (rawRes.pan_type || rawRes.panType || "Individual") as string,
     pan_status: (rawRes.pan_status || "") as string,
     aadhaar: (rawRes.aadhaar || rawRes.aadhaar_number || "") as string,
     aadhaar_number: (rawRes.aadhaar_number || rawRes.aadhaar || "") as string,
     aadhaar_status: (rawRes.aadhaar_status || rawRes.status || "") as string,
+    dob: (resourceData.dob || rawRes.dob || "") as string,
+    age: (resourceData.age || rawRes.age || "") as string,
+    gender: (resourceData.gender || rawRes.gender || "") as string,
+    email: (resourceData.email || rawRes.email || "") as string,
+    address: extractedAddresses.length > 0 ? extractedAddresses : (rawRes.address as any),
   };
 
   const isSuccess =
-    (responseStatus === 200 &&
-      (responseJson?.result_code === 101 ||
-        responseJson?.status?.type === "success" ||
-        Boolean(resData.pan) ||
-        Boolean(resData.aadhaar) ||
-        Boolean(resData.aadhaar_number) ||
-        Boolean(resData.account_number) ||
-        Boolean(resData.creditorAccountId))) &&
-    responseJson?.result_code !== 102 &&
-    responseJson?.result_code !== 103 &&
-    resData.pan_status !== "Invalid" &&
-    resData.aadhaar_status !== "Invalid" &&
-    resData.account_status !== "INVALID";
+    responseStatus === 200 &&
+    (
+      responseJson?.result_code === 101 ||
+      responseJson?.status?.type === "success" ||
+      responseJson?.message === "success" ||
+      Boolean(resData.name) ||
+      Boolean(resData.fullname) ||
+      Boolean(resData.pan && resData.pan_status !== "Invalid") ||
+      Boolean(resData.aadhaar && resData.aadhaar_status !== "Invalid") ||
+      Boolean(resData.creditorAccountId && resData.account_status !== "INVALID")
+    ) &&
+    !(
+      (responseJson?.result_code === 102 || responseJson?.result_code === 103) &&
+      !resData.name &&
+      !resData.fullname &&
+      !resData.pan &&
+      !resData.aadhaar &&
+      !resData.creditorAccountId
+    );
 
   const extractedFullName =
-    resData.beneficiary_name ||
-    resData.fullname ||
-    [resData.first_name, resData.middle_name, resData.last_name].filter(Boolean).join(" ") ||
     resData.name ||
+    resData.fullname ||
+    resData.beneficiary_name ||
+    [resData.first_name, resData.middle_name, resData.last_name].filter(Boolean).join(" ") ||
     "";
 
   const extractedAddress = (() => {
@@ -393,14 +452,18 @@ function TestApiPage() {
       ? "/srv2/validation/pan"
       : selectedService === "aadhaar"
       ? "/srv3/verification/aadhar"
-      : "/idfc/beneficiary";
+      : selectedService === "bank"
+      ? "/idfc/beneficiary"
+      : "/srv4/credit-report/prefill";
 
   const currentServiceName =
     selectedService === "pan"
       ? "PAN Verification API (Pan Details V2)"
       : selectedService === "aadhaar"
       ? "Aadhar Fetch Without OTP"
-      : "Bank Verification Penny Less V2";
+      : selectedService === "bank"
+      ? "Bank Verification Penny Less V2"
+      : "Mobile to Prefill Verification";
 
   return (
     <DashboardLayout activeTab="test_api">
@@ -429,7 +492,9 @@ function TestApiPage() {
                       ? "verify-pan"
                       : selectedService === "aadhaar"
                       ? "aadhaar-without-otp"
-                      : "bank-penny-less",
+                      : selectedService === "bank"
+                      ? "bank-penny-less"
+                      : "mobile-to-prefill",
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -451,11 +516,12 @@ function TestApiPage() {
                     {selectedService === "pan" && <CreditCard className="h-4 w-4" />}
                     {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
                     {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
+                    {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   </div>
                   <select
                     value={selectedService}
                     onChange={(e) => {
-                      setSelectedService(e.target.value as "pan" | "aadhaar" | "bank");
+                      setSelectedService(e.target.value as "pan" | "aadhaar" | "bank" | "prefill");
                       setResponseJson(null);
                       setResponseStatus(null);
                     }}
@@ -469,6 +535,9 @@ function TestApiPage() {
                     </option>
                     <option value="bank" className="bg-card text-foreground py-1.5">
                       Bank Verification - Penny Less V2 (/idfc/beneficiary)
+                    </option>
+                    <option value="prefill" className="bg-card text-foreground py-1.5">
+                      Mobile to Prefill (/srv4/credit-report/prefill)
                     </option>
                   </select>
                   <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-muted-foreground">
@@ -631,7 +700,7 @@ function TestApiPage() {
                         />
                       </label>
                     </>
-                  ) : (
+                  ) : selectedService === "bank" ? (
                     /* Bank Penny Less Form */
                     <>
                       <div>
@@ -659,6 +728,45 @@ function TestApiPage() {
                           placeholder="Enter IFSC Code (e.g. HDFC0000001)"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-primary"
                         />
+                      </div>
+                    </>
+                  ) : (
+                    /* Mobile to Prefill Form */
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Mobile Number *</span>
+                          <span className="text-[11px] text-muted-foreground">10 Digits</span>
+                        </div>
+                        <input
+                          value={mobileNumber}
+                          maxLength={10}
+                          onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ""))}
+                          placeholder="Enter 10-digit mobile number"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="block">
+                          <span className="block text-xs text-muted-foreground mb-1">First Name *</span>
+                          <input
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="e.g. Som"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+                          />
+                        </label>
+
+                        <label className="block">
+                          <span className="block text-xs text-muted-foreground mb-1">Last Name</span>
+                          <input
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="e.g. Kumar"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
+                          />
+                        </label>
                       </div>
                     </>
                   )}
@@ -780,12 +888,14 @@ function TestApiPage() {
                       <CreditCard className="h-8 w-8 opacity-40 text-primary" />
                     ) : selectedService === "aadhaar" ? (
                       <Fingerprint className="h-8 w-8 opacity-40 text-primary" />
-                    ) : (
+                    ) : selectedService === "bank" ? (
                       <Landmark className="h-8 w-8 opacity-40 text-blue-400" />
+                    ) : (
+                      <Smartphone className="h-8 w-8 opacity-40 text-emerald-400" />
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "pan" ? "a PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : "Bank Account Number & IFSC"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "pan" ? "a PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -797,9 +907,107 @@ function TestApiPage() {
                     {isSuccess ? (
                       <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent p-5 space-y-4">
                         {/* ========================================================= */}
-                        {/* 🏦 BANK VERIFICATION DEDICATED CARD                      */}
+                        {/* 📱 MOBILE TO PREFILL DEDICATED CARD                      */}
                         {/* ========================================================= */}
-                        {selectedService === "bank" ? (
+                        {selectedService === "prefill" ? (
+                          <>
+                            {/* Top Banner */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-400 border border-emerald-500/30">
+                                  <Smartphone className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-foreground">
+                                    {resData.name || resData.fullname || `${firstName} ${lastName}`.trim() || "Prefilled Identity Record"}
+                                  </p>
+                                  <p className="font-mono text-xs text-muted-foreground">
+                                    Mobile: {mobileNumber} · PAN: {resData.pan || "—"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> IDENTITY PREFILLED
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                              {/* Full Name */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <User className="h-3.5 w-3.5 text-primary" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Full Name</span>
+                                </div>
+                                <p className="font-bold text-foreground text-sm">
+                                  {resData.name || resData.fullname || "—"}
+                                </p>
+                              </div>
+
+                              {/* Linked PAN */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <CreditCard className="h-3.5 w-3.5 text-primary" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Registered PAN</span>
+                                </div>
+                                <p className="font-mono font-bold text-primary text-base">
+                                  {resData.pan || "—"}
+                                </p>
+                              </div>
+
+                              {/* DOB & Age */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Calendar className="h-3.5 w-3.5 text-primary" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">DOB & Age</span>
+                                </div>
+                                <p className="font-semibold text-foreground text-sm">
+                                  {resData.dob || "—"} {resData.age ? `(Age: ${resData.age})` : ""}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">Gender: {resData.gender || "—"}</p>
+                              </div>
+
+                              {/* Email & Mobile */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Mail className="h-3.5 w-3.5 text-primary" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Contact Info</span>
+                                </div>
+                                <p className="font-semibold text-foreground text-xs truncate">
+                                  {resData.email || "—"}
+                                </p>
+                                <p className="font-mono text-[11px] text-muted-foreground">
+                                  Phone: {mobileNumber}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Registered Addresses Section */}
+                            {extractedAddresses.length > 0 && (
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-2 text-xs">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Registered Addresses ({extractedAddresses.length})</span>
+                                </div>
+                                <div className="space-y-2 divide-y divide-border/40">
+                                  {extractedAddresses.map((addr, idx) => (
+                                    <div key={idx} className="pt-2 first:pt-0 text-[11px] text-muted-foreground space-y-0.5">
+                                      {addr.first_line_of_address && <p className="text-foreground font-medium">{addr.first_line_of_address}</p>}
+                                      {addr.second_line_of_address && <p>{addr.second_line_of_address}</p>}
+                                      {addr.third_line_of_address && <p>{addr.third_line_of_address}</p>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : selectedService === "bank" ? (
+                          /* ========================================================= */
+                          /* 🏦 BANK VERIFICATION DEDICATED CARD                      */
+                          /* ========================================================= */
                           <>
                             {/* Top Banner */}
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
@@ -1055,8 +1263,17 @@ function TestApiPage() {
                         </div>
 
                         <div className="rounded-lg bg-background p-3 text-xs font-mono text-muted-foreground">
-                          <p>Target: {selectedService === "pan" ? `PAN: ${pan}` : selectedService === "aadhaar" ? `Aadhaar: ${aadhaar}` : `Account: ${creditorAccountId} · IFSC: ${ifscCode}`}</p>
-                          <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || "Invalid / Not Found")}</p>
+                          <p>
+                            Target:{" "}
+                            {selectedService === "pan"
+                              ? `PAN: ${pan}`
+                              : selectedService === "aadhaar"
+                              ? `Aadhaar: ${aadhaar}`
+                              : selectedService === "bank"
+                              ? `Account: ${creditorAccountId} · IFSC: ${ifscCode}`
+                              : `Mobile: ${mobileNumber} · Name: ${firstName} ${lastName}`}
+                          </p>
+                          <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || responseJson.message || "Invalid / Not Found")}</p>
                         </div>
                       </div>
                     )}

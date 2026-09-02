@@ -246,6 +246,26 @@ export const apiClient = {
     });
     return res.json();
   },
+
+  async verifyMobilePrefill(data: {
+    api_id: string;
+    api_key: string;
+    token_id: string;
+    mobile_number: string;
+    first_name: string;
+    last_name?: string;
+    client_ref_num?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const res = await fetch(`${host}/srv4/credit-report/prefill`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
 };
 
 export default apiClient;

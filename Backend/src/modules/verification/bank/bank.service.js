@@ -36,7 +36,7 @@ export class BankVerificationService {
     const cleanAccount = String(creditorAccountId || '').trim();
     const cleanIfsc = String(ifscCode || '').trim().toUpperCase();
     const cacheKeyIdentifier = `${cleanAccount}_${cleanIfsc}`;
-    const requestId = `idspay-${crypto.randomBytes(4).toString('hex')}-${crypto.randomBytes(2).toString('hex')}-${crypto.randomBytes(6).toString('hex')}`;
+    const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     // 1. Check Smart Result Cache first (<2ms) 🔥
@@ -48,7 +48,7 @@ export class BankVerificationService {
 
         const cachedResponse = {
           ...cachedResult,
-          request_id: requestId,
+          request_id: cachedResult.request_id || requestId,
           client_ref_num: clientRef,
           _cached: true
         };
@@ -59,7 +59,7 @@ export class BankVerificationService {
             credentialId: apiClient.credential_id,
             endpoint: '/idfc/beneficiary',
             method: 'POST',
-            requestId,
+            requestId: cachedResponse.request_id,
             clientRefNum: clientRef,
             statusCode: cachedResponse.http_response_code || 200,
             resultCode: cachedResponse.result_code || 101,
@@ -120,10 +120,12 @@ export class BankVerificationService {
         isSuccess = (upstreamData?.status?.code === 200 || upstreamData?.http_response_code === 200 || metaData?.status === 'SUCCESS' || Boolean(creditorName));
         resultCode = isSuccess ? 101 : 102;
 
+        const responseRequestId = resourceData.transactionId || upstreamData.request_id || requestId;
+
         finalResponse = {
           http_response_code: 200,
           result_code: resultCode,
-          request_id: requestId,
+          request_id: responseRequestId,
           client_ref_num: resourceData?.clientRefNum || clientRef,
           message: upstreamData.message || (isSuccess ? 'Beneficiary validated successfully.' : 'Verification failed'),
           status_message: isSuccess ? 'Verification success' : 'Verification failed',

@@ -28,7 +28,7 @@ export class AadhaarVerificationService {
     const rawAadhaar = aadhaar || aadhaar_number || '';
     const cleanAadhaar = String(rawAadhaar).trim().replace(/\s|-/g, '');
     const cleanName = (name || '').trim();
-    const requestId = `idspay-${crypto.randomBytes(4).toString('hex')}-${crypto.randomBytes(2).toString('hex')}-${crypto.randomBytes(6).toString('hex')}`;
+    const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     // 1. Check Smart Result Cache first (<2ms) 🔥
