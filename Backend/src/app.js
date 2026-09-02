@@ -9,6 +9,7 @@ import { errorHandler } from './core/middlewares/error.middleware.js';
 
 import panRoutes from './modules/verification/pan/pan.routes.js';
 import aadhaarRoutes from './modules/verification/aadhaar/aadhaar.routes.js';
+import bankRoutes from './modules/verification/bank/bank.routes.js';
 
 const app = express();
 
@@ -44,9 +45,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// Direct service route matching provider URL structure (/srv2/validation/pan & /srv3/verification/aadhar)
+// Direct service routes matching provider URL structure (/srv2/validation/pan, /srv3/verification/aadhar, /idfc/beneficiary)
 app.use('/', panRoutes);
 app.use('/', aadhaarRoutes);
+app.use('/', bankRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);
