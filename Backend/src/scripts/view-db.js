@@ -1,4 +1,4 @@
-import { dbPool } from '../config/db.config.js';
+import { dbPool } from '../core/config/db.config.js';
 
 async function viewDatabase() {
   try {

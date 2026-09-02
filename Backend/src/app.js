@@ -2,13 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { ENV } from './config/env.config.js';
+import { ENV } from './core/config/env.config.js';
 import apiRouter from './routes/index.js';
-import { notFoundHandler } from './middlewares/notFound.middleware.js';
-import { errorHandler } from './middlewares/error.middleware.js';
+import { notFoundHandler } from './core/middlewares/notFound.middleware.js';
+import { errorHandler } from './core/middlewares/error.middleware.js';
 
-import panRoutes from './routes/pan.routes.js';
-import aadhaarRoutes from './routes/aadhaar.routes.js';
+import panRoutes from './modules/verification/pan/pan.routes.js';
+import aadhaarRoutes from './modules/verification/aadhaar/aadhaar.routes.js';
 
 const app = express();
 
@@ -20,6 +20,7 @@ app.use(
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Id', 'X-Api-Key', 'X-Token-Id', 'x-api-id', 'x-api-key', 'x-token-id'],
+    maxAge: 86400, // 24 hours browser preflight caching
   })
 );
 
@@ -37,6 +38,7 @@ app.get('/', (req, res) => {
   res.json({
     name: 'Bharat API Cloud Backend Service',
     version: '1.0.0',
+    architecture: 'Modular Monolith',
     status: 'online',
     documentation: '/api/v1/health',
   });

@@ -1,13 +1,13 @@
 import app from './app.js';
-import { ENV } from './config/env.config.js';
-import { testDbConnection, dbPool } from './config/db.config.js';
-import { initDatabase } from './config/initDb.js';
+import { ENV } from './core/config/env.config.js';
+import { testDbConnection, dbPool } from './core/config/db.config.js';
+import { initDatabase } from './core/config/initDb.js';
 
 const PORT = ENV.PORT;
 
 const server = app.listen(PORT, async () => {
   console.log('====================================================');
-  console.log(`🚀 Bharat API Cloud Backend Server`);
+  console.log(`🚀 Bharat API Cloud Backend Server (Modular Monolith)`);
   console.log(`📡 Environment: ${ENV.NODE_ENV}`);
   console.log(`🌐 Server URL : http://localhost:${PORT}`);
   console.log(`🔗 API Route  : http://localhost:${PORT}/api/v1`);
