@@ -1,5 +1,5 @@
 import app from './app.js';
-import initDatabase from './config/initDb.js';
+import initDatabase from './core/config/initDb.js';
 
 const runTest = async () => {
   try {

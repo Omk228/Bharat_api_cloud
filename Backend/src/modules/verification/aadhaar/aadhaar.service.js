@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
-import dbPool from '../../../core/config/db.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import CacheService from '../../../core/cache/cache.service.js';
+import QueueService from '../../../core/queue/queue.service.js';
 
 export class AadhaarVerificationService {
   /**
@@ -15,7 +15,7 @@ export class AadhaarVerificationService {
   }
 
   /**
-   * Main verification handler for Aadhaar Fetch Without OTP with Result Caching
+   * Main verification handler for Aadhaar Fetch Without OTP with Result Caching & BullMQ Logging
    */
   static async verifyAadhaar({
     aadhaar,
@@ -46,7 +46,7 @@ export class AadhaarVerificationService {
         };
 
         if (apiClient?.user_id) {
-          this.recordHitAndSettleWallet({
+          QueueService.addAuditJob({
             userId: apiClient.user_id,
             credentialId: apiClient.credential_id,
             endpoint: '/srv3/verification/aadhar',
@@ -60,7 +60,7 @@ export class AadhaarVerificationService {
             cost: 0.00,
             environment: apiClient.environment || 'production',
             isSuccess: true
-          }).catch((err) => console.error('Failed to log cached Aadhaar hit:', err.message));
+          }).catch(() => {});
         }
 
         return cachedResponse;
@@ -161,12 +161,12 @@ export class AadhaarVerificationService {
       CacheService.setVerification('aadhaar', cleanAadhaar, finalResponse, ttl).catch(() => {});
     }
 
-    // 4. Record log and settle wallet
+    // 4. Asynchronously push to BullMQ queue without blocking Express (<0.8ms)
     const durationMs = Date.now() - startTime;
     const hitCost = isSuccess ? 1.50 : 0.00;
 
     if (apiClient?.user_id) {
-      this.recordHitAndSettleWallet({
+      QueueService.addAuditJob({
         userId: apiClient.user_id,
         credentialId: apiClient.credential_id,
         endpoint: '/srv3/verification/aadhar',
@@ -180,68 +180,10 @@ export class AadhaarVerificationService {
         cost: hitCost,
         environment: apiClient.environment || 'production',
         isSuccess
-      }).catch((err) => console.error('Failed to log Aadhaar hit:', err.message));
+      }).catch(() => {});
     }
 
     return finalResponse;
-  }
-
-  /**
-   * Record Hit Log and Manage Wallet Debit / Refund
-   */
-  static async recordHitAndSettleWallet({
-    userId,
-    credentialId,
-    endpoint,
-    method,
-    requestId,
-    clientRefNum,
-    statusCode,
-    resultCode,
-    durationMs,
-    clientIp,
-    cost,
-    environment,
-    isSuccess
-  }) {
-    try {
-      // 1. Insert Hit Log
-      const logQuery = `
-        INSERT INTO api_hit_logs (user_id, credential_id, endpoint, method, request_id, client_ref_num, status_code, result_code, latency_ms, client_ip, cost, environment)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      await dbPool.query(logQuery, [
-        userId,
-        credentialId,
-        endpoint,
-        method,
-        requestId,
-        clientRefNum,
-        statusCode,
-        resultCode,
-        durationMs,
-        clientIp,
-        cost,
-        environment
-      ]);
-
-      // 2. Production Wallet Deduction
-      if (environment === 'production' && cost > 0 && isSuccess) {
-        const [users] = await dbPool.query('SELECT wallet_balance FROM users WHERE id = ?', [userId]);
-        if (users && users.length > 0) {
-          const currentBal = parseFloat(users[0].wallet_balance || 0);
-          const newBal = Math.max(0, currentBal - cost);
-          await dbPool.query('UPDATE users SET wallet_balance = ? WHERE id = ?', [newBal, userId]);
-
-          await dbPool.query(`
-            INSERT INTO wallet_transactions (user_id, type, amount, balance_after, description, reference_id, status)
-            VALUES (?, 'debit', ?, ?, ?, ?, 'success')
-          `, [userId, cost, newBal, `Aadhaar Verification (${requestId})`, requestId]);
-        }
-      }
-    } catch (err) {
-      console.error('Error in recordHitAndSettleWallet for Aadhaar:', err);
-    }
   }
 }
 

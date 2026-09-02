@@ -2,6 +2,7 @@ import app from './app.js';
 import { ENV } from './core/config/env.config.js';
 import { testDbConnection, dbPool } from './core/config/db.config.js';
 import { initDatabase } from './core/config/initDb.js';
+import { startAuditWorker, stopAuditWorker } from './core/queue/audit.worker.js';
 
 const PORT = ENV.PORT;
 
@@ -19,11 +20,18 @@ const server = app.listen(PORT, async () => {
   if (isConnected) {
     await initDatabase();
   }
+
+  // Initialize BullMQ Background Audit Worker
+  startAuditWorker();
 });
 
 // Graceful Shutdown Handler
 const gracefulShutdown = async (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+
+  try {
+    await stopAuditWorker();
+  } catch (err) {}
   
   server.close(async () => {
     console.log(' HTTP Server closed.');

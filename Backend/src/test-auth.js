@@ -1,5 +1,5 @@
 import app from './app.js';
-import { initDatabase } from './config/initDb.js';
+import { initDatabase } from './core/config/initDb.js';
 
 const runAuthTest = async () => {
   const server = app.listen(0, async () => {
