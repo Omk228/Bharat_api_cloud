@@ -139,7 +139,7 @@ function ApisPage() {
 
                   {/* Tags */}
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {ep.tags.slice(0, 3).map((tag) => (
+                    {(ep.tags || []).slice(0, 3).map((tag) => (
                       <span
                         key={tag}
                         className="rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] text-muted-foreground"
@@ -152,7 +152,7 @@ function ApisPage() {
 
                 <div className="mt-5 flex items-center justify-between border-t border-border/60 pt-3 text-xs">
                   <span className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="h-3 w-3 text-primary" /> {ep.latency} avg latency
+                    <Clock className="h-3 w-3 text-primary" /> {ep.latency || "~200ms"} avg latency
                   </span>
 
                   <div className="flex items-center gap-2">
@@ -215,6 +215,15 @@ function ApisPage() {
                         to="/dashboard/test-api"
                         search={{ service: "reverse_geocode" }}
                         className="inline-flex items-center gap-1 rounded bg-teal-500/10 border border-teal-500/30 px-2 py-0.5 font-medium text-teal-400 hover:bg-teal-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {ep.id === "bank-validation" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "bank_validation" }}
+                        className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                       >
                         ⚡ Test In Console
                       </Link>

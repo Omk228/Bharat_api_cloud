@@ -369,6 +369,38 @@ export const apiClient = {
     return res.json();
   },
 
+  async validateBankAccount(data: {
+    bank_account_no: string;
+    bank_ifsc_code: string;
+    nf_verification?: boolean;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${API_BASE}/validate_bank_account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        bank_account_no: data.bank_account_no,
+        bank_ifsc_code: data.bank_ifsc_code,
+        nf_verification: data.nf_verification !== undefined ? data.nf_verification : true,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
   async getWalletBalance(): Promise<{
     wallet_balance: number;
     today_spend: number;

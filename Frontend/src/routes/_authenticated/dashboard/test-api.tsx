@@ -115,7 +115,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | undefined;
+  service?: "pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -125,6 +125,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "aadhaar"
         : search["service"] === "bank"
         ? "bank"
+        : search["service"] === "bank_validation" || search["service"] === "validate_bank_account"
+        ? "bank_validation"
         : search["service"] === "prefill"
         ? "prefill"
         : search["service"] === "name_finder" || search["service"] === "mobile_name"
@@ -140,7 +142,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
+        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification, Bank Account Validation, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
       },
     ],
   }),
@@ -150,11 +152,13 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode">(
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode">(
     searchParams.service === "aadhaar"
       ? "aadhaar"
       : searchParams.service === "bank"
       ? "bank"
+      : searchParams.service === "bank_validation"
+      ? "bank_validation"
       : searchParams.service === "prefill"
       ? "prefill"
       : searchParams.service === "name_finder"
@@ -183,6 +187,7 @@ function TestApiPage() {
 
   const activeCred = creds && creds.length > 0 ? creds[0] : null;
 
+  // Credential overrides (editable in form)
   const [apiId, setApiId] = useState(DEFAULT_API_ID);
   const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
   const [tokenId, setTokenId] = useState(DEFAULT_TOKEN_ID);
@@ -199,6 +204,10 @@ function TestApiPage() {
   // Bank fields
   const [creditorAccountId, setCreditorAccountId] = useState("");
   const [ifscCode, setIfscCode] = useState("");
+
+  // Bank Validation fields
+  const [bankValidateAccountNumber, setBankValidateAccountNumber] = useState("");
+  const [bankValidateIfscCode, setBankValidateIfscCode] = useState("");
 
   // Prefill fields
   const [mobileNumber, setMobileNumber] = useState("9876543210");
@@ -290,6 +299,15 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "bank_validation"
+      ? {
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+          bank_account_no: bankValidateAccountNumber.trim() || "38237401582",
+          bank_ifsc_code: bankValidateIfscCode.trim().toUpperCase() || "SBIN0002296",
+          nf_verification: true,
+        }
       : {
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
@@ -310,6 +328,10 @@ function TestApiPage() {
     }
     if (selectedService === "bank" && (!creditorAccountId.trim() || !ifscCode.trim())) {
       toast.error("Please enter Account Number and IFSC Code");
+      return;
+    }
+    if (selectedService === "bank_validation" && (!bankValidateAccountNumber.trim() || !bankValidateIfscCode.trim())) {
+      toast.error("Please enter Bank Account Number and IFSC Code");
       return;
     }
     if (selectedService === "name_finder" && !mobileNameNumber.trim()) {
@@ -345,6 +367,15 @@ function TestApiPage() {
         rawData = await apiClient.reverseGeocode({
           lat: latitude.trim() || "28.6139",
           lon: longitude.trim() || "77.2090",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "bank_validation") {
+        rawData = await apiClient.validateBankAccount({
+          bank_account_no: bankValidateAccountNumber.trim() || "38237401582",
+          bank_ifsc_code: bankValidateIfscCode.trim().toUpperCase() || "SBIN0002296",
+          nf_verification: true,
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -554,7 +585,9 @@ function TestApiPage() {
       : selectedService === "aadhaar"
       ? "/srv3/verification/aadhar"
       : selectedService === "bank"
-      ? "/idfc/beneficiary"
+      ? "/srv1/beneficiary"
+      : selectedService === "bank_validation"
+      ? "/api/v1/validate_bank_account"
       : selectedService === "name_finder"
       ? "/srv2/mobile-name-finder"
       : selectedService === "ip_lookup"
@@ -570,6 +603,8 @@ function TestApiPage() {
       ? "Aadhar Fetch Without OTP"
       : selectedService === "bank"
       ? "Bank Verification Penny Less V2"
+      : selectedService === "bank_validation"
+      ? "Bank Account Validation"
       : selectedService === "name_finder"
       ? "Mobile To Name Finder"
       : selectedService === "ip_lookup"
@@ -596,9 +631,11 @@ function TestApiPage() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {selectedService === "ip_lookup"
-                  ? "Direct IP Geolocation and Network Intelligence Gateway powered by APILAYER."
+                  ? "Direct IP Geolocation and Network Intelligence Gateway powered by Bharat API Cloud."
                   : selectedService === "reverse_geocode"
-                  ? "Direct GPS Coordinates to Street Address & Administrative Geocoding powered by OpenStreetMap Nominatim."
+                  ? "Direct GPS Coordinates to Street Address & Administrative Geocoding powered by Bharat API Cloud."
+                  : selectedService === "bank_validation"
+                  ? "Direct Bank Account Validation and Beneficiary Name Verification powered by Bharat API Cloud."
                   : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (${selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.`}
               </p>
             </div>
@@ -614,6 +651,8 @@ function TestApiPage() {
                       ? "aadhaar-without-otp"
                       : selectedService === "bank"
                       ? "bank-penny-less"
+                      : selectedService === "bank_validation"
+                      ? "bank-validation"
                       : selectedService === "name_finder"
                       ? "mobile-name-finder"
                       : selectedService === "ip_lookup"
@@ -641,6 +680,7 @@ function TestApiPage() {
                   {selectedService === "pan" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
+                  {selectedService === "bank_validation" && <Landmark className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
@@ -648,7 +688,8 @@ function TestApiPage() {
                   <span>
                     {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
                     {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
-                    {selectedService === "bank" && "Bank Verification - Penny Less V2 (/idfc/beneficiary)"}
+                    {selectedService === "bank" && "Bank Verification - Penny Less V2 (/srv1/beneficiary)"}
+                    {selectedService === "bank_validation" && "Bank Account Validation (/api/v1/validate_bank_account)"}
                     {selectedService === "prefill" && "Mobile to Prefill (/srv4/credit-report/prefill)"}
                     {selectedService === "name_finder" && "Mobile To Name Finder (/srv2/mobile-name-finder)"}
                     {selectedService === "ip_lookup" && "Requester IP Lookup (/check)"}
@@ -932,6 +973,38 @@ function TestApiPage() {
                             onChange={(e) => setLongitude(e.target.value.trim())}
                             placeholder="e.g. 77.2090"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-teal-400"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : selectedService === "bank_validation" ? (
+                    /* Bank Account Validation Form */
+                    <>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Bank Account Number *</span>
+                            <span className="text-[11px] text-muted-foreground">9 to 18 Digits</span>
+                          </div>
+                          <input
+                            value={bankValidateAccountNumber}
+                            onChange={(e) => setBankValidateAccountNumber(e.target.value.trim())}
+                            placeholder="e.g. 38237401582"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Bank IFSC Code *</span>
+                            <span className="text-[11px] text-muted-foreground">11 Characters (e.g. SBIN0002296)</span>
+                          </div>
+                          <input
+                            value={bankValidateIfscCode}
+                            onChange={(e) => setBankValidateIfscCode(e.target.value.toUpperCase().trim())}
+                            placeholder="e.g. SBIN0002296"
+                            maxLength={11}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400 uppercase"
                           />
                         </div>
                       </div>
@@ -1327,7 +1400,7 @@ function TestApiPage() {
                                   <ShieldCheck className="h-3.5 w-3.5" /> GEOLOCATION RESOLVED
                                 </span>
                                 <span className="rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-semibold text-cyan-400">
-                                  APILAYER Gateway
+                                  Bharat API Gateway
                                 </span>
                               </div>
                             </div>
@@ -1488,7 +1561,7 @@ function TestApiPage() {
                                     </span>
                                   </div>
                                   <p className="text-xs text-muted-foreground line-clamp-1 max-w-xl">
-                                    {String(responseJson?.display_name || "Address resolved from OpenStreetMap Nominatim")}
+                                    {String(responseJson?.display_name || "Address resolved via Bharat API Geocoding Engine")}
                                   </p>
                                 </div>
                               </div>
@@ -1498,7 +1571,7 @@ function TestApiPage() {
                                   <ShieldCheck className="h-3.5 w-3.5" /> COORDINATES RESOLVED
                                 </span>
                                 <span className="rounded-full bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 text-[11px] font-semibold text-teal-400">
-                                  OpenStreetMap Nominatim
+                                  Bharat API Geocoding
                                 </span>
                               </div>
                             </div>
@@ -1571,7 +1644,7 @@ function TestApiPage() {
                                   Lat: {String(responseJson?.lat || latitude || "—")}, Lon: {String(responseJson?.lon || longitude || "—")}
                                 </p>
                                 <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-emerald-400 font-medium">✓ OpenStreetMap GPS Lock</span>
+                                  <span className="text-emerald-400 font-medium">✓ GPS Precision Lock</span>
                                   {responseJson?.importance !== undefined && (
                                     <span className="text-muted-foreground font-mono">
                                       Importance: <strong className="text-foreground">{String(responseJson.importance)}</strong>
@@ -1580,11 +1653,11 @@ function TestApiPage() {
                                 </div>
                               </div>
 
-                              {/* OSM Classification & Hierarchy */}
+                              {/* Location Classification & Hierarchy */}
                               <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                 <div className="flex items-center gap-1.5 text-muted-foreground">
                                   <Terminal className="h-3.5 w-3.5 text-teal-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">OSM Hierarchy & Type</span>
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Location Hierarchy & Type</span>
                                 </div>
                                 <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
                                   <span>Class: {String(responseJson?.class || "—")}</span>
@@ -1595,7 +1668,7 @@ function TestApiPage() {
                                   )}
                                 </div>
                                 <p className="text-[11px] text-muted-foreground font-mono">
-                                  Rank: {String(responseJson?.place_rank || "—")} · Type: {String(responseJson?.osm_type || "—")}
+                                  Rank: {String(responseJson?.place_rank || "—")} · Category: {String(responseJson?.addresstype || "—")}
                                 </p>
                               </div>
 
@@ -1607,7 +1680,7 @@ function TestApiPage() {
                                     <span className="font-medium uppercase tracking-wider text-[10px]">Complete Formatted Address & Bounding Box</span>
                                   </div>
                                   <span className="text-[10px] font-mono text-muted-foreground">
-                                    Place ID: <strong className="text-foreground font-mono">{String(responseJson?.place_id || "—")}</strong> (OSM: {String(responseJson?.osm_id || "—")})
+                                    Place ID: <strong className="text-foreground font-mono">{String(responseJson?.place_id || "—")}</strong>
                                   </span>
                                 </div>
                                 <p className="text-xs text-foreground font-medium bg-muted/30 p-2 rounded border border-border/40">
@@ -1616,12 +1689,140 @@ function TestApiPage() {
                                 {Array.isArray(responseJson?.boundingbox) && (
                                   <div className="border-t border-border/50 pt-1.5 flex flex-wrap items-center justify-between text-[11px] font-mono text-muted-foreground">
                                     <span>GPS Box: <code className="text-foreground">[{responseJson.boundingbox.join(", ")}]</code></span>
-                                    {Boolean(responseJson?.licence) && (
-                                      <span className="text-[10px] text-muted-foreground">© OpenStreetMap Contributors</span>
-                                    )}
+                                    <span className="text-[10px] text-muted-foreground">Bharat API Spatial Data</span>
                                   </div>
                                 )}
                               </div>
+                            </div>
+                          </>
+                        ) : selectedService === "bank_validation" ? (
+                          /* ========================================================= */
+                          /* 🏦 BANK ACCOUNT VALIDATION DEDICATED CARD                 */
+                          /* ========================================================= */
+                          <>
+                            {/* Top Banner */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-400 border border-emerald-500/30">
+                                  <Landmark className="h-6 w-6" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-base font-bold text-foreground">
+                                      {String(
+                                        resData.name_at_bank ||
+                                        resData.beneficiary_name ||
+                                        resData.fullname ||
+                                        resData.creditorName ||
+                                        "Beneficiary Identified"
+                                      )}
+                                    </p>
+                                    <span className="rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                      {String(resData.verification_type || "NF")} · PENNY LESS
+                                    </span>
+                                  </div>
+                                  <p className="font-mono text-xs text-muted-foreground">
+                                    Account: {String(resData.account_number || resData.creditorAccountId || bankValidateAccountNumber || "38237401582")} · IFSC: {String(resData.ifsc || resData.ifscCode || bankValidateIfscCode || "SBIN0002296")}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> BANK ACCOUNT VERIFIED
+                                </span>
+                                <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                  Bharat API Verified
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                              {/* Beneficiary Name / Name at Bank */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <User className="h-3.5 w-3.5 text-emerald-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Beneficiary Name (Name At Bank)</span>
+                                </div>
+                                <p className="font-bold text-foreground text-base">
+                                  {String(resData.name_at_bank || resData.beneficiary_name || resData.fullname || "—")}
+                                </p>
+                                <p className="text-[11px] text-emerald-400 font-medium">
+                                  ✓ Live Bank Record Verified
+                                </p>
+                              </div>
+
+                              {/* Account Number & IFSC Code */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <CreditCard className="h-3.5 w-3.5 text-emerald-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Account Number & IFSC</span>
+                                </div>
+                                <p className="font-mono font-bold text-primary text-base">
+                                  {String(resData.account_number || resData.creditorAccountId || bankValidateAccountNumber || "38237401582")}
+                                </p>
+                                <p className="font-mono text-[11px] text-muted-foreground">
+                                  IFSC Code: <span className="text-foreground font-semibold">{String(resData.ifsc || resData.ifscCode || bankValidateIfscCode || "SBIN0002296")}</span>
+                                </p>
+                              </div>
+
+                              {/* Account Status & Validity */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Landmark className="h-3.5 w-3.5 text-emerald-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Account Status</span>
+                                </div>
+                                <p className="font-semibold text-emerald-400 text-sm">
+                                  {String(resData.account_status || "ACTIVE")}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Account Exists: <span className="text-foreground font-bold">{resData.account_exists ? "YES" : "NO"}</span>
+                                </p>
+                              </div>
+
+                              {/* Verification Engine & Method */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Verification Engine</span>
+                                </div>
+                                <p className="font-mono font-semibold text-foreground text-xs">
+                                  Penny-Less Bank Verification
+                                </p>
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  Status: <span className="text-emerald-400 font-semibold">{String(resData.verification_status || resData.account_status || "ACTIVE")}</span>
+                                </p>
+                              </div>
+
+                              {/* Audit & Reference IDs */}
+                              {(responseJson?.request_id || responseJson?.client_ref_num) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1.5 sm:col-span-2">
+                                  <div className="flex items-center justify-between text-muted-foreground">
+                                    <div className="flex items-center gap-1.5">
+                                      <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Verification Audit & Trace</span>
+                                    </div>
+                                    {Boolean(responseJson?._cached) && (
+                                      <span className="rounded bg-emerald-500/15 text-emerald-400 font-mono text-[10px] px-2 py-0.5 border border-emerald-500/25">
+                                        ⚡ Cached Response
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2 text-xs font-mono text-muted-foreground pt-0.5">
+                                    {responseJson?.request_id && (
+                                      <p className="truncate">
+                                        Request ID: <span className="text-foreground">{String(responseJson.request_id)}</span>
+                                      </p>
+                                    )}
+                                    {responseJson?.client_ref_num && (
+                                      <p className="truncate">
+                                        Client Ref: <span className="text-foreground">{String(responseJson.client_ref_num)}</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </>
                         ) : selectedService === "prefill" ? (
@@ -2185,6 +2386,8 @@ function TestApiPage() {
                               ? `IP Address: ${ipAddress || "Caller IP (Auto-detect)"}`
                               : selectedService === "reverse_geocode"
                               ? `Coordinates: Lat: ${latitude || "28.6139"}, Lon: ${longitude || "77.2090"}`
+                              : selectedService === "bank_validation"
+                              ? `Account: ${bankValidateAccountNumber || "38237401582"} · IFSC: ${bankValidateIfscCode || "SBIN0002296"}`
                               : `Mobile: ${mobileNumber} · Name: ${firstName} ${lastName}`}
                           </p>
                           <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || responseJson.message || "Invalid / Not Found")}</p>

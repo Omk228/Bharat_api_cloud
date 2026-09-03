@@ -49,6 +49,12 @@ export const ENV = {
   NOMINATIM: {
     BASE_URL: process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org',
   },
+
+  IDFY: {
+    BASE_URL: process.env.IDFY_BASE_URL || 'https://eve.idfy.com/v3',
+    ACCOUNT_ID: process.env.IDFY_ACCOUNT_ID || '',
+    API_KEY: process.env.IDFY_API_KEY || '',
+  },
 };
 
 export default ENV;

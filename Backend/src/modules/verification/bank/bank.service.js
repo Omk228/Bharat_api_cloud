@@ -5,6 +5,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import IdfyService from '../../idfy/idfy.service.js';
 
 export class BankVerificationService {
   /**
@@ -84,7 +85,23 @@ export class BankVerificationService {
       }
     }
 
-    // 2. Cache Miss: Forward to IDSPay Upstream Provider
+    // 2. Cache Miss: Forward to IDFY Live Upstream Provider
+    if (ENV.IDFY?.API_KEY && ENV.IDFY?.ACCOUNT_ID) {
+      try {
+        console.log(`📡 [PROXY GATEWAY] Forwarding Bank Penny Less request to IDFY: Account=${cleanAccount.slice(0, 4)}XXXX, IFSC=${cleanIfsc}`);
+        return await IdfyService.validateBankAccount({
+          bank_account_no: cleanAccount,
+          bank_ifsc_code: cleanIfsc,
+          nf_verification: true,
+          client_ref_num,
+          apiClient
+        });
+      } catch (err) {
+        console.error('⚠️ IDFY Bank upstream provider call failed, falling back:', err.message);
+      }
+    }
+
+    // 3. Fallback: Forward to IDSPay Upstream Provider
     const masterApiId = ENV.IDSPAY.PROD_API_ID;
     const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
     const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
