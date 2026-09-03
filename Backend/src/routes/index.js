@@ -11,6 +11,7 @@ import nameFinderRoutes from '../modules/verification/name_finder/nameFinder.rou
 import apilayerRoutes from '../modules/apilayer/apilayer.routes.js';
 import geocodingRoutes from '../modules/geocoding/geocoding.routes.js';
 import idfyRoutes from '../modules/idfy/idfy.routes.js';
+import uanRoutes from '../modules/verification/uan/uan.routes.js';
 
 const apiRouter = Router();
 
@@ -24,6 +25,10 @@ apiRouter.use('/', aadhaarRoutes);
 apiRouter.use('/', bankRoutes);
 apiRouter.use('/', prefillRoutes);
 apiRouter.use('/', nameFinderRoutes);
+apiRouter.use('/', uanRoutes);
+apiRouter.use('/srv3/uan-mobile', uanRoutes);
+apiRouter.use('/uan-mobile', uanRoutes);
+apiRouter.use('/uan', uanRoutes);
 apiRouter.use('/', apilayerRoutes);
 apiRouter.use('/idfy', idfyRoutes);
 apiRouter.use('/validate_bank_account', idfyRoutes);

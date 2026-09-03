@@ -15,6 +15,7 @@ import nameFinderRoutes from './modules/verification/name_finder/nameFinder.rout
 import apilayerRoutes from './modules/apilayer/apilayer.routes.js';
 import geocodingRoutes from './modules/geocoding/geocoding.routes.js';
 import idfyRoutes from './modules/idfy/idfy.routes.js';
+import uanRoutes from './modules/verification/uan/uan.routes.js';
 
 const app = express();
 
@@ -56,6 +57,8 @@ app.use('/', aadhaarRoutes);
 app.use('/', bankRoutes);
 app.use('/', prefillRoutes);
 app.use('/', nameFinderRoutes);
+app.use('/', uanRoutes);
+app.use('/srv3/uan-mobile', uanRoutes);
 app.use('/', apilayerRoutes);
 app.use('/', idfyRoutes);
 app.use('/idfy', idfyRoutes);

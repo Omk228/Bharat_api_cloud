@@ -10,6 +10,9 @@ export const API_PRICING = {
   '/srv4/credit-report/prefill': 2.00,
   '/srv2/mobile-name-finder': 5.00,
   '/kyc/mobile-name-finder': 5.00,
+  '/srv3/uan-mobile': 5.00,
+  '/uan-mobile': 5.00,
+  '/validate_bank_account': 2.00,
   default: 2.00,
 };
 

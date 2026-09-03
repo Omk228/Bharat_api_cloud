@@ -23,6 +23,8 @@ import {
   Fingerprint,
   Landmark,
   Building,
+  Building2,
+  Briefcase,
   Smartphone,
   Globe,
   Compass,
@@ -96,6 +98,10 @@ export type VerificationResult = {
         state?: string;
         country?: string;
       };
+  uan?: string[];
+  summary?: Record<string, unknown>;
+  uan_details?: Record<string, unknown>;
+  uan_source?: Array<Record<string, unknown>>;
 };
 
 export type ApiResponseEnvelope = {
@@ -115,7 +121,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | undefined;
+  service?: "pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -127,6 +133,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "bank"
         : search["service"] === "bank_validation" || search["service"] === "validate_bank_account"
         ? "bank_validation"
+        : search["service"] === "uan" || search["service"] === "uan_mobile" || search["service"] === "mobile_uan"
+        ? "uan"
         : search["service"] === "prefill"
         ? "prefill"
         : search["service"] === "name_finder" || search["service"] === "mobile_name"
@@ -142,7 +150,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification, Bank Account Validation, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
+        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
       },
     ],
   }),
@@ -152,13 +160,15 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode">(
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan">(
     searchParams.service === "aadhaar"
       ? "aadhaar"
       : searchParams.service === "bank"
       ? "bank"
       : searchParams.service === "bank_validation"
       ? "bank_validation"
+      : searchParams.service === "uan"
+      ? "uan"
       : searchParams.service === "prefill"
       ? "prefill"
       : searchParams.service === "name_finder"
@@ -208,6 +218,9 @@ function TestApiPage() {
   // Bank Validation fields
   const [bankValidateAccountNumber, setBankValidateAccountNumber] = useState("");
   const [bankValidateIfscCode, setBankValidateIfscCode] = useState("");
+
+  // Mobile to UAN fields
+  const [uanMobile, setUanMobile] = useState("");
 
   // Prefill fields
   const [mobileNumber, setMobileNumber] = useState("");
@@ -308,6 +321,13 @@ function TestApiPage() {
           bank_ifsc_code: bankValidateIfscCode.trim().toUpperCase() || "SBIN0002296",
           nf_verification: true,
         }
+      : selectedService === "uan"
+      ? {
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+          mobile: uanMobile.trim().replace(/\D/g, ""),
+        }
       : {
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
@@ -332,6 +352,10 @@ function TestApiPage() {
     }
     if (selectedService === "bank_validation" && (!bankValidateAccountNumber.trim() || !bankValidateIfscCode.trim())) {
       toast.error("Please enter Bank Account Number and IFSC Code");
+      return;
+    }
+    if (selectedService === "uan" && !uanMobile.trim()) {
+      toast.error("Please enter a 10-digit mobile number");
       return;
     }
     if (selectedService === "name_finder" && !mobileNameNumber.trim()) {
@@ -376,6 +400,13 @@ function TestApiPage() {
           bank_account_no: bankValidateAccountNumber.trim() || "38237401582",
           bank_ifsc_code: bankValidateIfscCode.trim().toUpperCase() || "SBIN0002296",
           nf_verification: true,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "uan") {
+        rawData = await apiClient.verifyMobileToUan({
+          mobile: uanMobile.trim().replace(/\D/g, ""),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -429,7 +460,7 @@ function TestApiPage() {
     }
   };
 
-  // Dynamic extraction from server response (supporting IDSPay beneValidationResp, result, data)
+  // Dynamic extraction from server response (supporting standard beneValidationResp, result, data)
   const rawData = responseJson?.data as Record<string, unknown> | undefined;
   const beneResp = rawData?.beneValidationResp as Record<string, unknown> | undefined;
   const resourceData = (beneResp?.resourceData || responseJson?.result || responseJson?.data || responseJson || {}) as Record<string, unknown>;
@@ -588,6 +619,8 @@ function TestApiPage() {
       ? "/srv1/beneficiary"
       : selectedService === "bank_validation"
       ? "/api/v1/validate_bank_account"
+      : selectedService === "uan"
+      ? "/srv3/uan-mobile"
       : selectedService === "name_finder"
       ? "/srv2/mobile-name-finder"
       : selectedService === "ip_lookup"
@@ -605,6 +638,8 @@ function TestApiPage() {
       ? "Bank Verification Penny Less V2"
       : selectedService === "bank_validation"
       ? "Bank Account Validation"
+      : selectedService === "uan"
+      ? "Mobile to UAN V2"
       : selectedService === "name_finder"
       ? "Mobile To Name Finder"
       : selectedService === "ip_lookup"
@@ -626,7 +661,7 @@ function TestApiPage() {
                   Bharat API Production Gateway
                 </span>
                 <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  {selectedService === "name_finder" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
+                  {selectedService === "name_finder" || selectedService === "uan" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -636,6 +671,8 @@ function TestApiPage() {
                   ? "Direct GPS Coordinates to Street Address & Administrative Geocoding powered by Bharat API Cloud."
                   : selectedService === "bank_validation"
                   ? "Direct Bank Account Validation and Beneficiary Name Verification powered by Bharat API Cloud."
+                  : selectedService === "uan"
+                  ? "Direct Mobile to Universal Account Number (UAN) & EPFO Employment Verification powered by Bharat API Cloud."
                   : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (${selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.`}
               </p>
             </div>
@@ -653,6 +690,8 @@ function TestApiPage() {
                       ? "bank-penny-less"
                       : selectedService === "bank_validation"
                       ? "bank-validation"
+                      : selectedService === "uan"
+                      ? "mobile-to-uan"
                       : selectedService === "name_finder"
                       ? "mobile-name-finder"
                       : selectedService === "ip_lookup"
@@ -681,6 +720,7 @@ function TestApiPage() {
                   {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
                   {selectedService === "bank_validation" && <Landmark className="h-4 w-4 text-emerald-400" />}
+                  {selectedService === "uan" && <Briefcase className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
@@ -690,6 +730,7 @@ function TestApiPage() {
                     {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
                     {selectedService === "bank" && "Bank Verification - Penny Less V2 (/srv1/beneficiary)"}
                     {selectedService === "bank_validation" && "Bank Account Validation (/api/v1/validate_bank_account)"}
+                    {selectedService === "uan" && "Mobile to UAN V2 (/srv3/uan-mobile)"}
                     {selectedService === "prefill" && "Mobile to Prefill (/srv4/credit-report/prefill)"}
                     {selectedService === "name_finder" && "Mobile To Name Finder (/srv2/mobile-name-finder)"}
                     {selectedService === "ip_lookup" && "Requester IP Lookup (/check)"}
@@ -988,6 +1029,31 @@ function TestApiPage() {
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400 uppercase"
                           />
                         </div>
+                      </div>
+                    </>
+                  ) : selectedService === "uan" ? (
+                    /* Mobile to UAN V2 Form */
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Registered Mobile Number *</span>
+                          <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 8130823774)</span>
+                        </div>
+                        <input
+                          value={uanMobile}
+                          maxLength={10}
+                          onChange={(e) => setUanMobile(e.target.value.replace(/\D/g, ""))}
+                          placeholder="e.g. 8130823774"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-indigo-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-2.5 text-xs text-indigo-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-indigo-400">₹5.00 / Hit</span>
                       </div>
                     </>
                   ) : (
@@ -1806,7 +1872,202 @@ function TestApiPage() {
                               )}
                             </div>
                           </>
-                        ) : selectedService === "prefill" ? (
+                        ) : selectedService === "uan" ? (
+                            /* ========================================================= */
+                            /* 🪪 MOBILE TO UAN V2 DEDICATED VIRTUAL CARD                */
+                            /* ========================================================= */
+                            (() => {
+                              const uanList: string[] = Array.isArray(resData?.uan) ? (resData.uan as string[]) : [];
+                              const summary = (resData?.summary || {}) as Record<string, any>;
+                              const recentEmployer = (summary?.recent_employer_data || {}) as Record<string, any>;
+                              const primaryUan = uanList[0] || recentEmployer?.matching_uan || summary?.matching_uan || "—";
+                              const uanDetailsMap = (resData?.uan_details || {}) as Record<string, any>;
+                              const uanDetail = uanDetailsMap[primaryUan] || Object.values(uanDetailsMap)[0] || {};
+                              const basicDetails = (uanDetail?.basic_details || {}) as Record<string, any>;
+                              const employmentDetails = (uanDetail?.employment_details || {}) as Record<string, any>;
+                              const uanSources: Array<{ uan?: string; source?: string }> = Array.isArray(resData?.uan_source) ? (resData.uan_source as any) : [];
+                              const isEmployed = summary?.is_employed !== undefined ? Boolean(summary.is_employed) : null;
+
+                              return (
+                                <>
+                                  {/* Top Banner */}
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="rounded-lg bg-indigo-500/15 p-2 text-indigo-400 border border-indigo-500/30">
+                                        <Briefcase className="h-5 w-5" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-bold text-foreground">
+                                            {String(
+                                              basicDetails.name ||
+                                              recentEmployer.establishment_name ||
+                                              "EPFO Universal Account"
+                                            )}
+                                          </p>
+                                          <span className="rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                            UAN RECORD
+                                          </span>
+                                        </div>
+                                        <p className="font-mono text-xs text-muted-foreground">
+                                          Primary UAN: <span className="text-foreground font-semibold">{primaryUan}</span> · Mobile: {uanMobile || basicDetails.mobile || "—"}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      {isEmployed !== null ? (
+                                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 border ${
+                                          isEmployed
+                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                            : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                        }`}>
+                                          <ShieldCheck className="h-3.5 w-3.5" />
+                                          {isEmployed ? "CURRENTLY EMPLOYED" : "EXIT MARKED / INACTIVE"}
+                                        </span>
+                                      ) : (
+                                        <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                          <ShieldCheck className="h-3.5 w-3.5" /> UAN VERIFIED
+                                        </span>
+                                      )}
+                                      <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                        Bharat API Verified
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Details Grid */}
+                                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                    {/* Primary UAN Number */}
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                                          <CreditCard className="h-3.5 w-3.5 text-indigo-400" />
+                                          <span className="font-medium uppercase tracking-wider text-[10px]">Universal Account Number (UAN)</span>
+                                        </div>
+                                        <span className="rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/25 px-1.5 py-0.5 font-mono text-[10px] font-bold">
+                                          Count: {String(summary.uan_count || uanList.length || 1)}
+                                        </span>
+                                      </div>
+                                      <p className="font-mono font-bold text-primary text-base">
+                                        {primaryUan}
+                                      </p>
+                                      {uanList.length > 1 && (
+                                        <div className="flex flex-wrap gap-1 pt-1">
+                                          {uanList.map((u, i) => (
+                                            <span key={i} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border">
+                                              {u}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Recent Employer / Establishment */}
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Building2 className="h-3.5 w-3.5 text-indigo-400" />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Recent Employer / Establishment</span>
+                                      </div>
+                                      <p className="font-bold text-foreground text-sm truncate" title={String(recentEmployer.establishment_name || employmentDetails.establishment_name || "—")}>
+                                        {String(recentEmployer.establishment_name || employmentDetails.establishment_name || "—")}
+                                      </p>
+                                      <p className="font-mono text-[11px] text-muted-foreground">
+                                        Est ID: <span className="text-foreground font-semibold">{String(recentEmployer.establishment_id || employmentDetails.establishment_id || "—")}</span>
+                                      </p>
+                                    </div>
+
+                                    {/* Employee Profile */}
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <User className="h-3.5 w-3.5 text-indigo-400" />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Employee Profile</span>
+                                      </div>
+                                      <div className="space-y-1 font-mono text-xs">
+                                        <p className="text-foreground font-semibold">
+                                          Name: <span className="text-primary font-bold">{String(basicDetails.name || "—")}</span>
+                                        </p>
+                                        <p className="text-muted-foreground text-[11px]">
+                                          DOB: <span className="text-foreground">{String(basicDetails.date_of_birth || "—")}</span> · Gender: <span className="text-foreground">{String(basicDetails.gender || "—")}</span>
+                                        </p>
+                                        <p className="text-muted-foreground text-[11px]">
+                                          Aadhaar Status: <span className={basicDetails.aadhaar_verification_status ? "text-emerald-400 font-semibold" : "text-muted-foreground"}>
+                                            {basicDetails.aadhaar_verification_status ? "✓ Verified" : "Pending / Unlinked"}
+                                          </span>
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Employment Timeline & Member ID */}
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Membership & Timeline</span>
+                                      </div>
+                                      <div className="space-y-1 font-mono text-xs">
+                                        <p className="text-muted-foreground text-[11px] truncate">
+                                          Member ID: <span className="text-foreground font-semibold">{String(recentEmployer.member_id || employmentDetails.member_id || "—")}</span>
+                                        </p>
+                                        <p className="text-muted-foreground text-[11px]">
+                                          Date of Joining: <span className="text-emerald-400 font-semibold">{String(recentEmployer.date_of_joining || employmentDetails.date_of_joining || "—")}</span>
+                                        </p>
+                                        <p className="text-muted-foreground text-[11px]">
+                                          Date of Exit: <span className="text-foreground">{String(recentEmployer.date_of_exit || employmentDetails.date_of_exit || "Active / Not Marked")}</span>
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* UAN Sources Resolution */}
+                                    {uanSources.length > 0 && (
+                                      <div className="rounded-lg border border-border bg-card p-3 space-y-1 sm:col-span-2">
+                                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                                          <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                                          <span className="font-medium uppercase tracking-wider text-[10px]">UAN Source Resolution</span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                                          {uanSources.map((src, idx) => (
+                                            <span key={idx} className="rounded bg-indigo-500/10 border border-indigo-500/25 px-2 py-0.5 font-mono text-[11px] text-indigo-300 inline-flex items-center gap-1.5">
+                                              <Phone className="h-3 w-3 text-indigo-400" />
+                                              <span>UAN: <strong className="text-foreground">{src.uan}</strong> (via {src.source})</span>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Audit & Reference IDs */}
+                                    {(responseJson?.request_id || responseJson?.client_ref_num) && (
+                                      <div className="rounded-lg border border-border bg-card p-3 space-y-1.5 sm:col-span-2">
+                                        <div className="flex items-center justify-between text-muted-foreground">
+                                          <div className="flex items-center gap-1.5">
+                                            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                                            <span className="font-medium uppercase tracking-wider text-[10px]">Verification Audit & Trace</span>
+                                          </div>
+                                          {Boolean(responseJson?._cached) && (
+                                            <span className="rounded bg-emerald-500/15 text-emerald-400 font-mono text-[10px] px-2 py-0.5 border border-emerald-500/25">
+                                              ⚡ Cached Response
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2 text-xs font-mono text-muted-foreground pt-0.5">
+                                          {responseJson?.request_id && (
+                                            <p className="truncate">
+                                              Request ID: <span className="text-foreground">{String(responseJson.request_id)}</span>
+                                            </p>
+                                          )}
+                                          {responseJson?.client_ref_num && (
+                                            <p className="truncate">
+                                              Client Ref: <span className="text-foreground">{String(responseJson.client_ref_num)}</span>
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              );
+                            })()
+                          ) : selectedService === "prefill" ? (
                           <>
                             {/* Top Banner */}
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
@@ -2369,6 +2630,8 @@ function TestApiPage() {
                               ? `Coordinates: Lat: ${latitude || "28.6139"}, Lon: ${longitude || "77.2090"}`
                               : selectedService === "bank_validation"
                               ? `Account: ${bankValidateAccountNumber || "38237401582"} · IFSC: ${bankValidateIfscCode || "SBIN0002296"}`
+                              : selectedService === "uan"
+                              ? `Mobile: ${uanMobile}`
                               : `Mobile: ${mobileNumber} · Name: ${firstName} ${lastName}`}
                           </p>
                           <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || responseJson.message || "Invalid / Not Found")}</p>
