@@ -210,12 +210,12 @@ function TestApiPage() {
   const [bankValidateIfscCode, setBankValidateIfscCode] = useState("");
 
   // Prefill fields
-  const [mobileNumber, setMobileNumber] = useState("9876543210");
-  const [firstName, setFirstName] = useState("Som");
-  const [lastName, setLastName] = useState("Kumar");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
   // Mobile To Name Finder fields
-  const [mobileNameNumber, setMobileNameNumber] = useState("9876543210");
+  const [mobileNameNumber, setMobileNameNumber] = useState("");
   const [ipAddress, setIpAddress] = useState("");
 
   // Reverse Geocoding fields
@@ -897,25 +897,6 @@ function TestApiPage() {
                           placeholder="Enter mobile"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary"
                         />
-                      </div>
-
-                      {/* Quick Presets */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[10px] text-muted-foreground">Quick Test:</span>
-                        <button
-                          type="button"
-                          onClick={() => setMobileNameNumber("9971222197")}
-                          className="rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 font-mono text-[10px] hover:bg-emerald-500/25 transition-colors font-semibold"
-                        >
-                          9971222197 (Piyush Pandey)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMobileNameNumber("9876543210")}
-                          className="rounded bg-secondary/80 px-2 py-0.5 font-mono text-[10px] hover:bg-secondary text-foreground transition-colors"
-                        >
-                          9876543210 (Sample)
-                        </button>
                       </div>
 
                       {/* Pricing Banner */}
