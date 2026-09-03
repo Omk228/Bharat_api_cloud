@@ -38,6 +38,12 @@ export const ENV = {
   APILAYER: {
     BASE_URL: process.env.APILAYER_BASE_URL || 'http://api.ipstack.com',
     API_KEY: process.env.APILAYER_API_KEY || 'bf84d54dbdaaec1f0de7b4fe72700f64',
+    API_KEY_2: process.env.APILAYER_API_KEY_2 || '9ead07fd7a2835ddaa0a86777d3ee6bf',
+    KEYS: [
+      process.env.APILAYER_API_KEY || 'bf84d54dbdaaec1f0de7b4fe72700f64',
+      process.env.APILAYER_API_KEY_2 || '9ead07fd7a2835ddaa0a86777d3ee6bf',
+    ].filter(Boolean),
+    ROTATION_THRESHOLD: parseInt(process.env.APILAYER_KEY_ROTATION_THRESHOLD || '99', 10),
   },
 };
 

@@ -1,6 +1,10 @@
 import { ENV } from '../../core/config/env.config.js';
 import CacheService from '../../core/cache/cache.service.js';
 
+// In-memory RAM counter fallback (persists in process memory)
+let memoryHitCount = 0;
+const REDIS_KEY_HIT_COUNT = 'apilayer:rotation:hit_count';
+
 export class ApiLayerService {
   /**
    * Check if IP is localhost or private loopback
@@ -20,7 +24,87 @@ export class ApiLayerService {
   }
 
   /**
-   * Lookup IP Geolocation via APILAYER
+   * Get total request hit count from Redis or Memory
+   */
+  static async getHitCount() {
+    try {
+      const val = await CacheService.get(REDIS_KEY_HIT_COUNT);
+      if (val !== null && val !== undefined) {
+        return parseInt(val, 10) || 0;
+      }
+    } catch {
+      // Redis error, fallback to memory
+    }
+    return memoryHitCount;
+  }
+
+  /**
+   * Increment request hit count in Redis and Memory
+   */
+  static async incrementHitCount() {
+    memoryHitCount++;
+    try {
+      const current = await this.getHitCount();
+      const updated = current + 1;
+      await CacheService.set(REDIS_KEY_HIT_COUNT, updated, 86400 * 30); // 30 days retention
+      return updated;
+    } catch {
+      return memoryHitCount;
+    }
+  }
+
+  /**
+   * Get Active API Key based on 99-request rotation rule
+   * - Hits 0 to 98 (first 99 requests): Key A
+   * - Hits 99 to 197 (next 99 requests): Key B
+   * - Cycles smoothly every 99 requests across configured keys
+   */
+  static async getActiveApiKey() {
+    const keys =
+      ENV.APILAYER.KEYS && ENV.APILAYER.KEYS.length > 0
+        ? ENV.APILAYER.KEYS
+        : [ENV.APILAYER.API_KEY, ENV.APILAYER.API_KEY_2].filter(Boolean);
+
+    if (keys.length <= 1) {
+      return { key: keys[0], index: 0, currentKeyHits: 1, threshold: 99, totalHits: 0, label: 'Key A' };
+    }
+
+    const threshold = ENV.APILAYER.ROTATION_THRESHOLD || 99;
+    const totalHits = await this.getHitCount();
+
+    const keyIndex = Math.floor(totalHits / threshold) % keys.length;
+    const currentKeyHits = (totalHits % threshold) + 1; // 1 to 99
+    const label = keyIndex === 0 ? 'Key A' : 'Key B';
+
+    return {
+      key: keys[keyIndex],
+      index: keyIndex,
+      currentKeyHits,
+      threshold,
+      totalHits,
+      label,
+    };
+  }
+
+  /**
+   * Get the alternate key for failover
+   */
+  static getNextApiKey(currentIndex) {
+    const keys =
+      ENV.APILAYER.KEYS && ENV.APILAYER.KEYS.length > 0
+        ? ENV.APILAYER.KEYS
+        : [ENV.APILAYER.API_KEY, ENV.APILAYER.API_KEY_2].filter(Boolean);
+
+    const nextIndex = (currentIndex + 1) % keys.length;
+    return {
+      key: keys[nextIndex],
+      index: nextIndex,
+      label: nextIndex === 0 ? 'Key A' : 'Key B',
+    };
+  }
+
+  /**
+   * Lookup IP Geolocation via APILAYER with 99-request Key Rotation
    * @param {string} ip - Target IP address or 'check'
    */
   static async lookupIp(ip) {
@@ -31,8 +115,6 @@ export class ApiLayerService {
     if (!targetIp || this.isLocalOrPrivateIp(targetIp)) {
       targetIp = '182.156.19.94';
     }
-
-    const cacheKey = `apilayer:ip:${targetIp}`;
 
     // 1. Check Redis Cache first (<2ms)
     try {
@@ -45,24 +127,49 @@ export class ApiLayerService {
       // cache miss / redis fallback
     }
 
-    // 2. Fetch from APILAYER upstream
+    // 2. Determine active key via 99-request rotation rule
     const baseUrl = ENV.APILAYER.BASE_URL.replace(/\/+$/, '');
-    const apiKey = ENV.APILAYER.API_KEY;
-    const upstreamUrl = `${baseUrl}/${targetIp}?access_key=${apiKey}`;
+    const activeKeyInfo = await this.getActiveApiKey();
 
-    console.log(`📡 [APILAYER UPSTREAM] Fetching IP Geolocation: ${baseUrl}/${targetIp}`);
+    console.log(
+      `🔑 [APILAYER KEY ROTATION] Active: ${activeKeyInfo.label} (${activeKeyInfo.key.slice(0, 6)}...${activeKeyInfo.key.slice(-4)}) | Request ${activeKeyInfo.currentKeyHits}/${activeKeyInfo.threshold} (Total Requests: ${activeKeyInfo.totalHits})`
+    );
 
-    const res = await fetch(upstreamUrl, {
+    let upstreamUrl = `${baseUrl}/${targetIp}?access_key=${activeKeyInfo.key}`;
+    console.log(`📡 [APILAYER UPSTREAM] Fetching IP Geolocation: ${baseUrl}/${targetIp} using ${activeKeyInfo.label}`);
+
+    let res = await fetch(upstreamUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
     });
 
-    const data = await res.json();
+    let data = await res.json();
+
+    // 3. Auto-Failover: If active key hits usage limit / rate limit, switch to next key
+    if (data?.error && (data.error.code === 104 || data.error.type === 'usage_limit_reached' || res.status === 429)) {
+      const fallbackKeyInfo = this.getNextApiKey(activeKeyInfo.index);
+      console.warn(
+        `⚠️ [APILAYER FAILOVER] ${activeKeyInfo.label} limit reached (${data.error.info || 'Usage limit'}). Switching immediately to ${fallbackKeyInfo.label} (${fallbackKeyInfo.key.slice(0, 6)}...)...`
+      );
+
+      upstreamUrl = `${baseUrl}/${targetIp}?access_key=${fallbackKeyInfo.key}`;
+      res = await fetch(upstreamUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      data = await res.json();
+    }
+
     console.log(`📥 [APILAYER RESPONSE] Status ${res.status}:`, JSON.stringify(data, null, 2));
 
-    // 3. Cache valid response in Redis for 24 hours
+    // 4. Increment hit counter upon successful upstream request
+    await this.incrementHitCount();
+
+    // 5. Cache valid response in Redis for 24 hours
     if (data && data.ip && !data.error) {
       try {
         await CacheService.setVerification('apilayer', targetIp, data, 86400);
