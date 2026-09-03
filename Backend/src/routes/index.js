@@ -5,6 +5,10 @@ import credentialRoutes from '../modules/credentials/credential.routes.js';
 import walletRoutes from '../modules/wallet/wallet.routes.js';
 import panRoutes from '../modules/verification/pan/pan.routes.js';
 import aadhaarRoutes from '../modules/verification/aadhaar/aadhaar.routes.js';
+import bankRoutes from '../modules/verification/bank/bank.routes.js';
+import prefillRoutes from '../modules/verification/prefill/prefill.routes.js';
+import nameFinderRoutes from '../modules/verification/name_finder/nameFinder.routes.js';
+import apilayerRoutes from '../modules/apilayer/apilayer.routes.js';
 
 const apiRouter = Router();
 
@@ -15,5 +19,9 @@ apiRouter.use('/credentials', credentialRoutes);
 apiRouter.use('/wallet', walletRoutes);
 apiRouter.use('/', panRoutes);
 apiRouter.use('/', aadhaarRoutes);
+apiRouter.use('/', bankRoutes);
+apiRouter.use('/', prefillRoutes);
+apiRouter.use('/', nameFinderRoutes);
+apiRouter.use('/', apilayerRoutes);
 
 export default apiRouter;

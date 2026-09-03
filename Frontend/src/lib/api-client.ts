@@ -285,6 +285,29 @@ export const apiClient = {
     return res.json();
   },
 
+  async lookupRequesterIp(data?: { ip?: string }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const ip = data?.ip?.trim();
+    if (ip) {
+      const res = await fetch(`${host}/check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ip }),
+      });
+      return res.json();
+    } else {
+      const res = await fetch(`${host}/check`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      return res.json();
+    }
+  },
+
   async getWalletBalance(): Promise<{
     wallet_balance: number;
     today_spend: number;

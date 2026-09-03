@@ -11,6 +11,8 @@ import panRoutes from './modules/verification/pan/pan.routes.js';
 import aadhaarRoutes from './modules/verification/aadhaar/aadhaar.routes.js';
 import bankRoutes from './modules/verification/bank/bank.routes.js';
 import prefillRoutes from './modules/verification/prefill/prefill.routes.js';
+import nameFinderRoutes from './modules/verification/name_finder/nameFinder.routes.js';
+import apilayerRoutes from './modules/apilayer/apilayer.routes.js';
 
 const app = express();
 
@@ -51,6 +53,8 @@ app.use('/', panRoutes);
 app.use('/', aadhaarRoutes);
 app.use('/', bankRoutes);
 app.use('/', prefillRoutes);
+app.use('/', nameFinderRoutes);
+app.use('/', apilayerRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);

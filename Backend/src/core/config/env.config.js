@@ -34,6 +34,11 @@ export const ENV = {
     URL: process.env.REDIS_URL || undefined,
     ENABLED: process.env.REDIS_ENABLED !== 'false',
   },
+
+  APILAYER: {
+    BASE_URL: process.env.APILAYER_BASE_URL || 'http://api.ipstack.com',
+    API_KEY: process.env.APILAYER_API_KEY || 'bf84d54dbdaaec1f0de7b4fe72700f64',
+  },
 };
 
 export default ENV;

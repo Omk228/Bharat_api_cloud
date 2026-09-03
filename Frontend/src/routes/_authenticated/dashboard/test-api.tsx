@@ -24,6 +24,8 @@ import {
   Landmark,
   Building,
   Smartphone,
+  Globe,
+  Compass,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -57,6 +59,7 @@ export type VerificationResult = {
   is_valid?: boolean;
   fullname?: string;
   full_name?: string;
+  mobile_linked_name?: string;
   operator?: string;
   circle?: string;
   first_name?: string;
@@ -111,7 +114,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | undefined;
+  service?: "pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -125,6 +128,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "prefill"
         : search["service"] === "name_finder" || search["service"] === "mobile_name"
         ? "name_finder"
+        : search["service"] === "ip_lookup" || search["service"] === "requester_ip" || search["service"] === "ip"
+        ? "ip_lookup"
         : "pan",
   }),
   head: () => ({
@@ -132,7 +137,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, Mobile to Prefill, and Mobile To Name Finder verification APIs.",
+        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, Mobile to Prefill, Mobile To Name Finder, and Requester IP Lookup APIs.",
       },
     ],
   }),
@@ -142,7 +147,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill" | "name_finder">(
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup">(
     searchParams.service === "aadhaar"
       ? "aadhaar"
       : searchParams.service === "bank"
@@ -151,6 +156,8 @@ function TestApiPage() {
       ? "prefill"
       : searchParams.service === "name_finder"
       ? "name_finder"
+      : searchParams.service === "ip_lookup"
+      ? "ip_lookup"
       : "pan"
   );
 
@@ -191,6 +198,7 @@ function TestApiPage() {
 
   // Mobile To Name Finder fields
   const [mobileNameNumber, setMobileNameNumber] = useState("9876543210");
+  const [ipAddress, setIpAddress] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
@@ -250,6 +258,10 @@ function TestApiPage() {
           token_id: tokenId || (activeCred ? activeCred.token_id : ""),
           mobile: mobileNameNumber.trim().replace(/\D/g, ""),
         }
+      : selectedService === "ip_lookup"
+      ? {
+          ip: ipAddress.trim(),
+        }
       : {
           api_id: apiId || (activeCred ? activeCred.api_id : ""),
           api_key: apiKey || (activeCred ? activeCred.api_key : ""),
@@ -294,6 +306,8 @@ function TestApiPage() {
         rawData = await apiClient.verifyBankPennyLess(requestPayload as Parameters<typeof apiClient.verifyBankPennyLess>[0]);
       } else if (selectedService === "name_finder") {
         rawData = await apiClient.verifyMobileNameFinder(requestPayload as Parameters<typeof apiClient.verifyMobileNameFinder>[0]);
+      } else if (selectedService === "ip_lookup") {
+        rawData = await apiClient.lookupRequesterIp({ ip: ipAddress.trim() });
       } else {
         rawData = await apiClient.verifyMobilePrefill(requestPayload as Parameters<typeof apiClient.verifyMobilePrefill>[0]);
       }
@@ -423,7 +437,8 @@ function TestApiPage() {
     gender: (resourceData.gender || rawRes.gender || "") as string,
     email: (resourceData.email || rawRes.email || "") as string,
     mobile: (resourceData.mobile || rawRes.mobile || "") as string,
-    full_name: (resourceData.full_name || resourceData.fullname || rawRes.full_name || rawRes.fullname || resourceData.name || rawRes.name || "") as string,
+    mobile_linked_name: (resourceData.mobile_linked_name || rawRes.mobile_linked_name || "") as string,
+    full_name: (resourceData.mobile_linked_name || resourceData.full_name || resourceData.fullname || rawRes.full_name || rawRes.fullname || resourceData.name || rawRes.name || "") as string,
     first_name: (resourceData.first_name || rawRes.first_name || "") as string,
     middle_name: (resourceData.middle_name || rawRes.middle_name || "") as string,
     last_name: (resourceData.last_name || rawRes.last_name || "") as string,
@@ -441,6 +456,9 @@ function TestApiPage() {
       responseJson?.result_code === 101 ||
       responseJson?.status?.type === "success" ||
       responseJson?.message === "success" ||
+      Boolean(resData.mobile_linked_name) ||
+      Boolean(responseJson?.ip) ||
+      Boolean(responseJson?.message?.includes("Mobile name finder")) ||
       Boolean(resData.name) ||
       Boolean(resData.fullname) ||
       Boolean(resData.full_name) ||
@@ -450,6 +468,7 @@ function TestApiPage() {
     ) &&
     !(
       (responseJson?.result_code === 102 || responseJson?.result_code === 103) &&
+      !resData.mobile_linked_name &&
       !resData.name &&
       !resData.fullname &&
       !resData.full_name &&
@@ -459,6 +478,7 @@ function TestApiPage() {
     );
 
   const extractedFullName =
+    resData.mobile_linked_name ||
     resData.name ||
     resData.fullname ||
     resData.beneficiary_name ||
@@ -494,6 +514,8 @@ function TestApiPage() {
       ? "/idfc/beneficiary"
       : selectedService === "name_finder"
       ? "/srv2/mobile-name-finder"
+      : selectedService === "ip_lookup"
+      ? "/check"
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
@@ -505,6 +527,8 @@ function TestApiPage() {
       ? "Bank Verification Penny Less V2"
       : selectedService === "name_finder"
       ? "Mobile To Name Finder"
+      : selectedService === "ip_lookup"
+      ? "Requester IP Lookup"
       : "Mobile to Prefill Verification";
 
   return (
@@ -520,11 +544,13 @@ function TestApiPage() {
                   Bharat API Production Gateway
                 </span>
                 <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  {selectedService === "name_finder" ? "₹5.00 / Request" : "₹2.00 / Request"}
+                  {selectedService === "name_finder" ? "₹5.00 / Request" : selectedService === "ip_lookup" ? "Live Gateway" : "₹2.00 / Request"}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit ({selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.
+                {selectedService === "ip_lookup"
+                  ? "Direct IP Geolocation and Network Intelligence Gateway powered by APILAYER."
+                  : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (${selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.`}
               </p>
             </div>
 
@@ -541,6 +567,8 @@ function TestApiPage() {
                       ? "bank-penny-less"
                       : selectedService === "name_finder"
                       ? "mobile-name-finder"
+                      : selectedService === "ip_lookup"
+                      ? "requester-ip-lookup"
                       : "mobile-to-prefill",
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -564,12 +592,14 @@ function TestApiPage() {
                   {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
                   {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
+                  {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   <span>
                     {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
                     {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
                     {selectedService === "bank" && "Bank Verification - Penny Less V2 (/idfc/beneficiary)"}
                     {selectedService === "prefill" && "Mobile to Prefill (/srv4/credit-report/prefill)"}
                     {selectedService === "name_finder" && "Mobile To Name Finder (/srv2/mobile-name-finder)"}
+                    {selectedService === "ip_lookup" && "Requester IP Lookup (/check)"}
                   </span>
                 </div>
               </div>
@@ -780,17 +810,17 @@ function TestApiPage() {
                         <span className="text-[10px] text-muted-foreground">Quick Test:</span>
                         <button
                           type="button"
+                          onClick={() => setMobileNameNumber("9971222197")}
+                          className="rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 font-mono text-[10px] hover:bg-emerald-500/25 transition-colors font-semibold"
+                        >
+                          9971222197 (Piyush Pandey)
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setMobileNameNumber("9876543210")}
                           className="rounded bg-secondary/80 px-2 py-0.5 font-mono text-[10px] hover:bg-secondary text-foreground transition-colors"
                         >
                           9876543210 (Sample)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMobileNameNumber("9811012345")}
-                          className="rounded bg-secondary/80 px-2 py-0.5 font-mono text-[10px] hover:bg-secondary text-foreground transition-colors"
-                        >
-                          9811012345 (Airtel)
                         </button>
                       </div>
 
@@ -805,6 +835,22 @@ function TestApiPage() {
                       <p className="text-[11px] text-muted-foreground">
                         👉 Response will reflect in the response section
                       </p>
+                    </>
+                  ) : selectedService === "ip_lookup" ? (
+                    /* Requester IP Lookup Form */
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Target IP Address</span>
+                          <span className="text-[11px] text-muted-foreground">Leave empty for auto-detect</span>
+                        </div>
+                        <input
+                          value={ipAddress}
+                          onChange={(e) => setIpAddress(e.target.value.trim())}
+                          placeholder="Enter IP Address (or leave blank for caller IP)"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-cyan-400"
+                        />
+                      </div>
                     </>
                   ) : (
                     /* Mobile to Prefill Form */
@@ -1014,10 +1060,13 @@ function TestApiPage() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-bold text-foreground">
-                                    {resData.full_name || resData.fullname || resData.name || "Verified Subscriber Record"}
+                                    {resData.mobile_linked_name || resData.full_name || resData.fullname || resData.name || "Subscriber Identified"}
                                   </p>
                                   <p className="font-mono text-xs text-muted-foreground">
-                                    Mobile: +91 {mobileNameNumber} · Operator: {String(resData.operator || "Telecom Verified")}
+                                    Mobile: +91 {mobileNameNumber}
+                                    {resData.operator && (
+                                      <> · Operator: <span className="text-foreground font-semibold">{String(resData.operator)}</span></>
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -1034,14 +1083,17 @@ function TestApiPage() {
 
                             {/* Details Grid */}
                             <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                              {/* Full Name */}
+                              {/* Registered / Linked Subscriber Name */}
                               <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                 <div className="flex items-center gap-1.5 text-muted-foreground">
                                   <User className="h-3.5 w-3.5 text-amber-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Registered Name</span>
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Subscriber Linked Name</span>
                                 </div>
                                 <p className="font-bold text-foreground text-base">
-                                  {resData.full_name || resData.fullname || resData.name || "—"}
+                                  {resData.mobile_linked_name || resData.full_name || resData.fullname || resData.name || "—"}
+                                </p>
+                                <p className="text-[11px] text-emerald-400 font-medium">
+                                  ✓ Live Verified from Telecom Records
                                 </p>
                               </div>
 
@@ -1054,29 +1106,278 @@ function TestApiPage() {
                                 <p className="font-mono font-bold text-primary text-base">
                                   +91 {mobileNameNumber}
                                 </p>
-                              </div>
-
-                              {/* Telecom Operator */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Building className="h-3.5 w-3.5 text-amber-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Telecom Operator</span>
-                                </div>
-                                <p className="font-semibold text-foreground text-sm">
-                                  {String(resData.operator || "AIRTEL / JIO / VI")}
+                                <p className="text-[11px] text-emerald-400">
+                                  Status: Active & Linked
                                 </p>
                               </div>
 
-                              {/* Telecom Circle */}
+                              {/* Telecom Operator ONLY if returned in JSON */}
+                              {Boolean(resData.operator) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Building className="h-3.5 w-3.5 text-amber-400" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Telecom Operator</span>
+                                  </div>
+                                  <p className="font-semibold text-foreground text-sm">
+                                    {String(resData.operator)}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Telecom Circle ONLY if returned in JSON */}
+                              {Boolean(resData.circle) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <MapPin className="h-3.5 w-3.5 text-amber-400" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Telecom Circle / Region</span>
+                                  </div>
+                                  <p className="font-semibold text-foreground text-sm">
+                                    {String(resData.circle)}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Any dynamic extra fields returned in data */}
+                              {Object.entries(resourceData || {})
+                                .filter(([key, val]) => {
+                                  const k = key.toLowerCase();
+                                  const handled = [
+                                    "mobile_linked_name", "full_name", "fullname", "name", "mobile",
+                                    "operator", "circle", "status", "code", "type", "message"
+                                  ];
+                                  if (handled.includes(k)) return false;
+                                  if (val === null || val === undefined || val === "") return false;
+                                  if (typeof val === "object") return false;
+                                  return true;
+                                })
+                                .map(([key, val]) => (
+                                  <div key={key} className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">
+                                        {key.replace(/_/g, " ")}
+                                      </span>
+                                    </div>
+                                    <p className="font-semibold text-foreground text-sm font-mono">
+                                      {String(val)}
+                                    </p>
+                                  </div>
+                                ))}
+
+                              {/* Verification Audit & Trace */}
+                              {(responseJson?.request_id || responseJson?.client_ref_num) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1.5 sm:col-span-2">
+                                  <div className="flex items-center justify-between text-muted-foreground">
+                                    <div className="flex items-center gap-1.5">
+                                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Verification Audit & Trace</span>
+                                    </div>
+                                    {Boolean(responseJson?._cached) && (
+                                      <span className="rounded bg-amber-500/15 text-amber-400 font-mono text-[10px] px-2 py-0.5 border border-amber-500/25">
+                                        ⚡ Cached Response
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2 text-xs font-mono text-muted-foreground pt-0.5">
+                                    {responseJson?.request_id && (
+                                      <p className="truncate">
+                                        Request ID: <span className="text-foreground">{String(responseJson.request_id)}</span>
+                                      </p>
+                                    )}
+                                    {responseJson?.client_ref_num && (
+                                      <p className="truncate">
+                                        Client Ref: <span className="text-foreground">{String(responseJson.client_ref_num)}</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        ) : selectedService === "ip_lookup" ? (
+                          <>
+                            {/* Top Banner */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="rounded-lg bg-cyan-500/15 p-1.5 text-cyan-400 border border-cyan-500/30 flex items-center justify-center overflow-hidden h-12 w-12 shrink-0">
+                                  {Boolean((responseJson?.location as Record<string, unknown>)?.country_flag) ? (
+                                    <img
+                                      src={String((responseJson?.location as Record<string, unknown>).country_flag)}
+                                      alt="Country Flag"
+                                      className="h-8 w-10 object-contain rounded"
+                                      onError={(e) => {
+                                        (e.target as HTMLElement).style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="text-2xl">
+                                      {((responseJson?.location as Record<string, unknown>)?.country_flag_emoji as string) || "🌐"}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-base font-mono font-bold text-foreground">
+                                      {String(responseJson?.ip || ipAddress || "Requester IP")}
+                                    </p>
+                                    <span className="rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                      {String(responseJson?.type || "ipv4")}
+                                    </span>
+                                    {Boolean((responseJson?.location as Record<string, unknown>)?.country_flag_emoji) && (
+                                      <span className="text-base" title="Country Flag">
+                                        {String((responseJson?.location as Record<string, unknown>).country_flag_emoji)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {String(responseJson?.city || "")}
+                                    {responseJson?.region_name ? `, ${String(responseJson.region_name)}` : ""}
+                                    {responseJson?.country_name ? `, ${String(responseJson.country_name)}` : ""}
+                                    {responseJson?.zip ? ` · PIN/ZIP: ${String(responseJson.zip)}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> GEOLOCATION RESOLVED
+                                </span>
+                                <span className="rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-semibold text-cyan-400">
+                                  APILAYER Gateway
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                              {/* City & Regional Division */}
                               <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <MapPin className="h-3.5 w-3.5 text-amber-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Telecom Circle / Region</span>
+                                  <MapPin className="h-3.5 w-3.5 text-cyan-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">City & Regional Division</span>
                                 </div>
-                                <p className="font-semibold text-foreground text-sm">
-                                  {String(resData.circle || resData.state || "India (National)")}
+                                <p className="font-bold text-foreground text-base">
+                                  {String(responseJson?.city || "—")}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                                  <span>Region: <strong className="text-foreground">{String(responseJson?.region_name || "—")}</strong> ({String(responseJson?.region_code || "")})</span>
+                                  <span>·</span>
+                                  <span>ZIP: <strong className="text-foreground font-mono">{String(responseJson?.zip || "—")}</strong></span>
+                                </div>
+                              </div>
+
+                              {/* Country & Continent */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Globe className="h-3.5 w-3.5 text-cyan-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Country & Geopolitics</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{((responseJson?.location as Record<string, unknown>)?.country_flag_emoji as string) || "🇮🇳"}</span>
+                                  <p className="font-bold text-foreground text-base">
+                                    {String(responseJson?.country_name || "India")} ({String(responseJson?.country_code || "IN")})
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                                  <span>Continent: <strong className="text-foreground">{String(responseJson?.continent_name || "Asia")}</strong> ({String(responseJson?.continent_code || "AS")})</span>
+                                  {(responseJson?.location as Record<string, unknown>)?.geoname_id && (
+                                    <>
+                                      <span>·</span>
+                                      <span>Geoname: <strong className="text-foreground font-mono">{String((responseJson.location as Record<string, unknown>).geoname_id)}</strong></span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Geographical Coordinates & Precision */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Compass className="h-3.5 w-3.5 text-cyan-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Geographical Coordinates</span>
+                                </div>
+                                <p className="font-mono font-bold text-foreground text-sm">
+                                  Lat: {String(responseJson?.latitude || "—")}, Long: {String(responseJson?.longitude || "—")}
+                                </p>
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-emerald-400 font-medium">✓ GPS Position Locked</span>
+                                  {Boolean(responseJson?.radius) && (
+                                    <span className="text-muted-foreground font-mono">
+                                      Accuracy Radius: <strong className="text-foreground">{String(responseJson.radius)} km</strong>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Network, Connection & Routing */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Terminal className="h-3.5 w-3.5 text-cyan-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Network & Routing</span>
+                                </div>
+                                <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
+                                  <span>Routing: {String(responseJson?.ip_routing_type || "fixed")}</span>
+                                  {Boolean(responseJson?.connection_type) && (
+                                    <span className="rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 px-1.5 py-0.5 text-[10px] uppercase font-bold">
+                                      {String(responseJson.connection_type)}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  Protocol: {String(responseJson?.type || "ipv4").toUpperCase()} · Fixed IP Routing
                                 </p>
                               </div>
+
+                              {/* Country Intelligence & Cultural Profile (Full width) */}
+                              {Boolean(responseJson?.location) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-2 sm:col-span-2">
+                                  <div className="flex items-center justify-between text-muted-foreground">
+                                    <div className="flex items-center gap-1.5">
+                                      <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Country Intelligence & National Profile</span>
+                                    </div>
+                                    <span className="text-[10px] font-mono text-muted-foreground">
+                                      EU Member: <strong className="text-foreground">{Boolean((responseJson.location as Record<string, unknown>).is_eu) ? "Yes" : "No"}</strong>
+                                    </span>
+                                  </div>
+                                  <div className="grid gap-3 sm:grid-cols-4 text-xs font-mono pt-1">
+                                    <div>
+                                      <span className="text-muted-foreground text-[10px] block">NATIONAL CAPITAL</span>
+                                      <span className="text-foreground font-semibold font-sans">
+                                        {String(((responseJson?.location as Record<string, unknown>)?.capital as string) || "New Delhi")}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground text-[10px] block">CALLING CODE</span>
+                                      <span className="text-cyan-400 font-bold">
+                                        +{String(((responseJson?.location as Record<string, unknown>)?.calling_code as string) || "91")}
+                                      </span>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                      <span className="text-muted-foreground text-[10px] block">OFFICIAL LANGUAGES</span>
+                                      <span className="text-foreground font-sans truncate block">
+                                        {Array.isArray((responseJson?.location as Record<string, unknown>)?.languages)
+                                          ? ((responseJson?.location as Record<string, unknown>).languages as Array<{ name?: string; native?: string }>).map((l) => `${l.name} (${l.native})`).join(", ")
+                                          : "Hindi, English"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {(responseJson?.location as Record<string, unknown>)?.country_flag_emoji_unicode && (
+                                    <div className="border-t border-border/50 pt-1.5 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                                      <span>Flag Unicode: <code className="text-foreground">{String((responseJson.location as Record<string, unknown>).country_flag_emoji_unicode)}</code></span>
+                                      {(responseJson?.location as Record<string, unknown>)?.country_flag && (
+                                        <a
+                                          href={String((responseJson.location as Record<string, unknown>).country_flag)}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-cyan-400 hover:underline flex items-center gap-1"
+                                        >
+                                          SVG Flag Asset <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </>
                         ) : selectedService === "prefill" ? (
