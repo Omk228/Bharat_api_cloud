@@ -8,6 +8,8 @@ export const API_PRICING = {
   '/srv3/verification/aadhar': 2.00,
   '/idfc/beneficiary': 2.00,
   '/srv4/credit-report/prefill': 2.00,
+  '/srv2/mobile-name-finder': 5.00,
+  '/kyc/mobile-name-finder': 5.00,
   default: 2.00,
 };
 

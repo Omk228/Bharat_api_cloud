@@ -23,7 +23,6 @@ import {
   Fingerprint,
   Landmark,
   Building,
-  ChevronDown,
   Smartphone,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -57,6 +56,9 @@ export type VerificationResult = {
   status?: string;
   is_valid?: boolean;
   fullname?: string;
+  full_name?: string;
+  operator?: string;
+  circle?: string;
   first_name?: string;
   middle_name?: string;
   last_name?: string;
@@ -68,6 +70,7 @@ export type VerificationResult = {
   age?: string | number;
   age_band?: string;
   state?: string;
+  country?: string;
   mobile?: string;
   mobile_digits?: string;
   email?: string;
@@ -108,7 +111,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | "prefill" | undefined;
+  service?: "pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -120,6 +123,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "bank"
         : search["service"] === "prefill"
         ? "prefill"
+        : search["service"] === "name_finder" || search["service"] === "mobile_name"
+        ? "name_finder"
         : "pan",
   }),
   head: () => ({
@@ -127,7 +132,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, and Mobile to Prefill verification APIs.",
+        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, Mobile to Prefill, and Mobile To Name Finder verification APIs.",
       },
     ],
   }),
@@ -137,13 +142,15 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill">(
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill" | "name_finder">(
     searchParams.service === "aadhaar"
       ? "aadhaar"
       : searchParams.service === "bank"
       ? "bank"
       : searchParams.service === "prefill"
       ? "prefill"
+      : searchParams.service === "name_finder"
+      ? "name_finder"
       : "pan"
   );
 
@@ -181,6 +188,9 @@ function TestApiPage() {
   const [mobileNumber, setMobileNumber] = useState("9876543210");
   const [firstName, setFirstName] = useState("Som");
   const [lastName, setLastName] = useState("Kumar");
+
+  // Mobile To Name Finder fields
+  const [mobileNameNumber, setMobileNameNumber] = useState("9876543210");
 
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
@@ -233,6 +243,13 @@ function TestApiPage() {
           creditorAccountId: creditorAccountId.trim(),
           ifscCode: ifscCode.trim().toUpperCase(),
         }
+      : selectedService === "name_finder"
+      ? {
+          api_id: apiId || (activeCred ? activeCred.api_id : ""),
+          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
+          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          mobile: mobileNameNumber.trim().replace(/\D/g, ""),
+        }
       : {
           api_id: apiId || (activeCred ? activeCred.api_id : ""),
           api_key: apiKey || (activeCred ? activeCred.api_key : ""),
@@ -255,6 +272,10 @@ function TestApiPage() {
       toast.error("Please enter Account Number and IFSC Code");
       return;
     }
+    if (selectedService === "name_finder" && !mobileNameNumber.trim()) {
+      toast.error("Please enter a 10-digit mobile number");
+      return;
+    }
     if (selectedService === "prefill" && (!mobileNumber.trim() || !firstName.trim())) {
       toast.error("Please enter Mobile Number and First Name");
       return;
@@ -271,6 +292,8 @@ function TestApiPage() {
         rawData = await apiClient.verifyAadhaar(requestPayload as Parameters<typeof apiClient.verifyAadhaar>[0]);
       } else if (selectedService === "bank") {
         rawData = await apiClient.verifyBankPennyLess(requestPayload as Parameters<typeof apiClient.verifyBankPennyLess>[0]);
+      } else if (selectedService === "name_finder") {
+        rawData = await apiClient.verifyMobileNameFinder(requestPayload as Parameters<typeof apiClient.verifyMobileNameFinder>[0]);
       } else {
         rawData = await apiClient.verifyMobilePrefill(requestPayload as Parameters<typeof apiClient.verifyMobilePrefill>[0]);
       }
@@ -399,6 +422,16 @@ function TestApiPage() {
     age: (resourceData.age || rawRes.age || "") as string,
     gender: (resourceData.gender || rawRes.gender || "") as string,
     email: (resourceData.email || rawRes.email || "") as string,
+    mobile: (resourceData.mobile || rawRes.mobile || "") as string,
+    full_name: (resourceData.full_name || resourceData.fullname || rawRes.full_name || rawRes.fullname || resourceData.name || rawRes.name || "") as string,
+    first_name: (resourceData.first_name || rawRes.first_name || "") as string,
+    middle_name: (resourceData.middle_name || rawRes.middle_name || "") as string,
+    last_name: (resourceData.last_name || rawRes.last_name || "") as string,
+    country: (resourceData.country || rawRes.country || "") as string,
+    city: (resourceData.city || rawRes.city || "") as string,
+    state: (resourceData.state || rawRes.state || "") as string,
+    operator: (resourceData.operator || rawRes.operator || rawRes.telecom_provider || "") as string,
+    circle: (resourceData.circle || rawRes.circle || rawRes.telecom_circle || "") as string,
     address: extractedAddresses.length > 0 ? extractedAddresses : (rawRes.address as any),
   };
 
@@ -410,6 +443,7 @@ function TestApiPage() {
       responseJson?.message === "success" ||
       Boolean(resData.name) ||
       Boolean(resData.fullname) ||
+      Boolean(resData.full_name) ||
       Boolean(resData.pan && resData.pan_status !== "Invalid") ||
       Boolean(resData.aadhaar && resData.aadhaar_status !== "Invalid") ||
       Boolean(resData.creditorAccountId && resData.account_status !== "INVALID")
@@ -418,6 +452,7 @@ function TestApiPage() {
       (responseJson?.result_code === 102 || responseJson?.result_code === 103) &&
       !resData.name &&
       !resData.fullname &&
+      !resData.full_name &&
       !resData.pan &&
       !resData.aadhaar &&
       !resData.creditorAccountId
@@ -457,6 +492,8 @@ function TestApiPage() {
       ? "/srv3/verification/aadhar"
       : selectedService === "bank"
       ? "/idfc/beneficiary"
+      : selectedService === "name_finder"
+      ? "/srv2/mobile-name-finder"
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
@@ -466,6 +503,8 @@ function TestApiPage() {
       ? "Aadhar Fetch Without OTP"
       : selectedService === "bank"
       ? "Bank Verification Penny Less V2"
+      : selectedService === "name_finder"
+      ? "Mobile To Name Finder"
       : "Mobile to Prefill Verification";
 
   return (
@@ -480,9 +519,12 @@ function TestApiPage() {
                 <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
                   Bharat API Production Gateway
                 </span>
+                <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
+                  {selectedService === "name_finder" ? "₹5.00 / Request" : "₹2.00 / Request"}
+                </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit & refunds.
+                Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit ({selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.
               </p>
             </div>
 
@@ -497,6 +539,8 @@ function TestApiPage() {
                       ? "aadhaar-without-otp"
                       : selectedService === "bank"
                       ? "bank-penny-less"
+                      : selectedService === "name_finder"
+                      ? "mobile-name-finder"
                       : "mobile-to-prefill",
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -509,43 +553,24 @@ function TestApiPage() {
           {/* Service Selector Tabs & Environment Notice */}
           <div className="rounded-xl border border-border bg-card/60 p-4 text-xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-              {/* Service Dropdown */}
+              {/* Active Service Display (Opened via Test in Console) */}
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  Select Service:
+                  Active Service:
                 </span>
-                <div className="relative min-w-[260px] sm:min-w-[310px]">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-primary">
-                    {selectedService === "pan" && <CreditCard className="h-4 w-4" />}
-                    {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
-                    {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
-                    {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
-                  </div>
-                  <select
-                    value={selectedService}
-                    onChange={(e) => {
-                      setSelectedService(e.target.value as "pan" | "aadhaar" | "bank" | "prefill");
-                      setResponseJson(null);
-                      setResponseStatus(null);
-                    }}
-                    className="w-full appearance-none rounded-lg border border-border bg-background pl-8 pr-8 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm cursor-pointer transition-all hover:border-primary/50"
-                  >
-                    <option value="pan" className="bg-card text-foreground py-1.5">
-                      Pan Details V2 (/srv2/validation/pan)
-                    </option>
-                    <option value="aadhaar" className="bg-card text-foreground py-1.5">
-                      Aadhar Fetch - Without OTP (/srv3/verification/aadhar)
-                    </option>
-                    <option value="bank" className="bg-card text-foreground py-1.5">
-                      Bank Verification - Penny Less V2 (/idfc/beneficiary)
-                    </option>
-                    <option value="prefill" className="bg-card text-foreground py-1.5">
-                      Mobile to Prefill (/srv4/credit-report/prefill)
-                    </option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-muted-foreground">
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </div>
+                <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "pan" && <CreditCard className="h-4 w-4 text-primary" />}
+                  {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
+                  {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
+                  {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
+                  {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
+                  <span>
+                    {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
+                    {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
+                    {selectedService === "bank" && "Bank Verification - Penny Less V2 (/idfc/beneficiary)"}
+                    {selectedService === "prefill" && "Mobile to Prefill (/srv4/credit-report/prefill)"}
+                    {selectedService === "name_finder" && "Mobile To Name Finder (/srv2/mobile-name-finder)"}
+                  </span>
                 </div>
               </div>
 
@@ -592,9 +617,9 @@ function TestApiPage() {
                     </div>
                     <input
                       value={apiId}
-                      onChange={(e) => setApiId(e.target.value)}
+                      readOnly
                       placeholder="e.g. APIDC9272C"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
+                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground cursor-not-allowed outline-none select-all focus:border-border"
                     />
                   </label>
 
@@ -604,9 +629,9 @@ function TestApiPage() {
                     </div>
                     <input
                       value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
+                      readOnly
                       placeholder="e.g. fc62efa1-4aff-478d-9b1b-6589e6262cba"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
+                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground cursor-not-allowed outline-none select-all focus:border-border"
                     />
                   </label>
 
@@ -616,9 +641,9 @@ function TestApiPage() {
                     </div>
                     <input
                       value={tokenId}
-                      onChange={(e) => setTokenId(e.target.value)}
+                      readOnly
                       placeholder="e.g. 1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary"
+                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground cursor-not-allowed outline-none select-all focus:border-border"
                     />
                   </label>
                 </div>
@@ -733,6 +758,54 @@ function TestApiPage() {
                         />
                       </div>
                     </>
+                  ) : selectedService === "name_finder" ? (
+                    /* Mobile To Name Finder Form */
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Mobile *</span>
+                          <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 9876543210)</span>
+                        </div>
+                        <input
+                          value={mobileNameNumber}
+                          maxLength={10}
+                          onChange={(e) => setMobileNameNumber(e.target.value.replace(/\D/g, ""))}
+                          placeholder="Enter mobile"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-muted-foreground">Quick Test:</span>
+                        <button
+                          type="button"
+                          onClick={() => setMobileNameNumber("9876543210")}
+                          className="rounded bg-secondary/80 px-2 py-0.5 font-mono text-[10px] hover:bg-secondary text-foreground transition-colors"
+                        >
+                          9876543210 (Sample)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMobileNameNumber("9811012345")}
+                          className="rounded bg-secondary/80 px-2 py-0.5 font-mono text-[10px] hover:bg-secondary text-foreground transition-colors"
+                        >
+                          9811012345 (Airtel)
+                        </button>
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-amber-400">₹5.00 / Hit</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Response will reflect in the response section
+                      </p>
+                    </>
                   ) : (
                     /* Mobile to Prefill Form */
                     <>
@@ -775,22 +848,40 @@ function TestApiPage() {
                   )}
                 </div>
 
-                {/* Send Button */}
-                <button
-                  onClick={handleSendRequest}
-                  disabled={loading}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-all disabled:opacity-60 shadow-md hover:shadow-lg active:scale-[0.99]"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Verifying with Bharat API Cloud Gateway...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" /> Send Request
-                    </>
+                {/* Send & Report Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSendRequest}
+                    disabled={loading}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-all disabled:opacity-60 shadow-md hover:shadow-lg active:scale-[0.99]"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Verifying with Bharat API Cloud Gateway...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" /> Send Request
+                      </>
+                    )}
+                  </button>
+
+                  {selectedService === "name_finder" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!responseJson) {
+                          toast.info("Please send a request first to generate the report.");
+                        } else {
+                          toast.success("PDF Report downloaded successfully.");
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/80 px-4 py-3 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground" /> PDF Report
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             </div>
 
@@ -883,7 +974,6 @@ function TestApiPage() {
                     </div>
                   </div>
                 )}
-
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
@@ -893,12 +983,14 @@ function TestApiPage() {
                       <Fingerprint className="h-8 w-8 opacity-40 text-primary" />
                     ) : selectedService === "bank" ? (
                       <Landmark className="h-8 w-8 opacity-40 text-blue-400" />
+                    ) : selectedService === "name_finder" ? (
+                      <Phone className="h-8 w-8 opacity-40 text-amber-400" />
                     ) : (
                       <Smartphone className="h-8 w-8 opacity-40 text-emerald-400" />
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "pan" ? "a PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "pan" ? "a PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -910,9 +1002,84 @@ function TestApiPage() {
                     {isSuccess ? (
                       <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent p-5 space-y-4">
                         {/* ========================================================= */}
-                        {/* 📱 MOBILE TO PREFILL DEDICATED CARD                      */}
+                        {/* 🔍 MOBILE TO NAME FINDER DEDICATED CARD                   */}
                         {/* ========================================================= */}
-                        {selectedService === "prefill" ? (
+                        {selectedService === "name_finder" ? (
+                          <>
+                            {/* Top Banner */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="rounded-lg bg-amber-500/15 p-2 text-amber-400 border border-amber-500/30">
+                                  <Phone className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-foreground">
+                                    {resData.full_name || resData.fullname || resData.name || "Verified Subscriber Record"}
+                                  </p>
+                                  <p className="font-mono text-xs text-muted-foreground">
+                                    Mobile: +91 {mobileNameNumber} · Operator: {String(resData.operator || "Telecom Verified")}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400 inline-flex items-center gap-1">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> SUBSCRIBER IDENTIFIED
+                                </span>
+                                <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                  ₹5.00 Billed
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                              {/* Full Name */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <User className="h-3.5 w-3.5 text-amber-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Registered Name</span>
+                                </div>
+                                <p className="font-bold text-foreground text-base">
+                                  {resData.full_name || resData.fullname || resData.name || "—"}
+                                </p>
+                              </div>
+
+                              {/* Mobile Number */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Phone className="h-3.5 w-3.5 text-amber-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Mobile Number</span>
+                                </div>
+                                <p className="font-mono font-bold text-primary text-base">
+                                  +91 {mobileNameNumber}
+                                </p>
+                              </div>
+
+                              {/* Telecom Operator */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Building className="h-3.5 w-3.5 text-amber-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Telecom Operator</span>
+                                </div>
+                                <p className="font-semibold text-foreground text-sm">
+                                  {String(resData.operator || "AIRTEL / JIO / VI")}
+                                </p>
+                              </div>
+
+                              {/* Telecom Circle */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <MapPin className="h-3.5 w-3.5 text-amber-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Telecom Circle / Region</span>
+                                </div>
+                                <p className="font-semibold text-foreground text-sm">
+                                  {String(resData.circle || resData.state || "India (National)")}
+                                </p>
+                              </div>
+                            </div>
+                          </>
+                        ) : selectedService === "prefill" ? (
                           <>
                             {/* Top Banner */}
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
@@ -1157,14 +1324,14 @@ function TestApiPage() {
                                 </div>
                               )}
 
-                              {(resData.mobile || resData.email) && (
+                              {Boolean(resourceData.mobile || resourceData.email) && (
                                 <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                   <div className="flex items-center gap-1.5 text-muted-foreground">
                                     <Phone className="h-3.5 w-3.5 text-primary" />
                                     <span className="font-medium uppercase tracking-wider text-[10px]">Contact Info</span>
                                   </div>
-                                  <p className="font-mono text-xs text-foreground">{resData.mobile || "—"}</p>
-                                  <p className="font-mono text-[11px] text-muted-foreground">{resData.email || ""}</p>
+                                  <p className="font-mono text-xs text-foreground">{String(resourceData.mobile || "")}</p>
+                                  {resourceData.email && <p className="font-mono text-[11px] text-muted-foreground">{String(resourceData.email)}</p>}
                                 </div>
                               )}
 
@@ -1175,6 +1342,75 @@ function TestApiPage() {
                                     <span className="font-medium uppercase tracking-wider text-[10px]">Registered Address</span>
                                   </div>
                                   <p className="text-xs leading-relaxed text-foreground/90 pt-0.5">{extractedAddress}</p>
+                                </div>
+                              )}
+
+                              {/* Linked Aadhaar Number if returned in PAN response */}
+                              {(resData.aadhaar_number || resData.aadhaar) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Fingerprint className="h-3.5 w-3.5 text-emerald-400" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Linked Aadhaar</span>
+                                  </div>
+                                  <p className="font-mono font-semibold text-foreground">{resData.aadhaar_number || resData.aadhaar}</p>
+                                  <p className="text-[11px] text-emerald-400">✓ Linked to PAN Record</p>
+                                </div>
+                              )}
+
+                              {/* Name Breakdown if present */}
+                              {(resData.first_name || resData.last_name) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <User className="h-3.5 w-3.5 text-primary" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Name Breakdown</span>
+                                  </div>
+                                  <p className="text-xs text-foreground font-medium">
+                                    First: <span className="font-semibold">{resData.first_name || "—"}</span>
+                                    {resData.middle_name && <> · Mid: <span className="font-semibold">{resData.middle_name}</span></>}
+                                    {resData.last_name && <> · Last: <span className="font-semibold">{resData.last_name}</span></>}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Location / Country if present */}
+                              {(resData.country || resData.state || resData.city) && !extractedAddress && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <MapPin className="h-3.5 w-3.5 text-primary" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Location</span>
+                                  </div>
+                                  <p className="font-semibold text-foreground">
+                                    {[resData.city, resData.state, resData.country].filter(Boolean).join(", ")}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Audit & Reference IDs (request_id, client_ref_num, _cached) */}
+                              {(responseJson?.request_id || responseJson?.client_ref_num) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1.5 sm:col-span-2">
+                                  <div className="flex items-center justify-between text-muted-foreground">
+                                    <div className="flex items-center gap-1.5">
+                                      <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Verification Audit & Trace</span>
+                                    </div>
+                                    {Boolean(responseJson?._cached) && (
+                                      <span className="rounded bg-emerald-500/15 text-emerald-400 font-mono text-[10px] px-2 py-0.5 border border-emerald-500/25">
+                                        ⚡ Cached Response
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2 text-xs font-mono text-muted-foreground pt-0.5">
+                                    {responseJson?.request_id && (
+                                      <p className="truncate">
+                                        Request ID: <span className="text-foreground">{String(responseJson.request_id)}</span>
+                                      </p>
+                                    )}
+                                    {responseJson?.client_ref_num && (
+                                      <p className="truncate">
+                                        Client Ref: <span className="text-foreground">{String(responseJson.client_ref_num)}</span>
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -1190,10 +1426,13 @@ function TestApiPage() {
                                 <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                                 <div>
                                   <p className="text-sm font-bold text-foreground">
-                                    {extractedFullName || "Aadhaar Verified & Active"}
+                                    {extractedFullName || resData.fullname || "Aadhaar Verified & Active"}
                                   </p>
                                   <p className="font-mono text-xs text-muted-foreground">
                                     Aadhaar: {resData.aadhaar_number || resData.aadhaar || aadhaar}
+                                    {resData.pan && (
+                                      <> · PAN: <span className="text-primary font-semibold">{resData.pan}</span></>
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -1207,16 +1446,18 @@ function TestApiPage() {
 
                             {/* Details Grid */}
                             <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                              {extractedFullName && (
+                              {/* Full Name */}
+                              {(extractedFullName || resData.fullname) && (
                                 <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                   <div className="flex items-center gap-1.5 text-muted-foreground">
                                     <User className="h-3.5 w-3.5 text-primary" />
                                     <span className="font-medium uppercase tracking-wider text-[10px]">Full Name</span>
                                   </div>
-                                  <p className="font-semibold text-foreground text-sm">{extractedFullName}</p>
+                                  <p className="font-semibold text-foreground text-sm">{extractedFullName || resData.fullname}</p>
                                 </div>
                               )}
 
+                              {/* Aadhaar Number */}
                               <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                 <div className="flex items-center gap-1.5 text-muted-foreground">
                                   <Fingerprint className="h-3.5 w-3.5 text-emerald-400" />
@@ -1226,17 +1467,33 @@ function TestApiPage() {
                                 <p className="text-[11px] text-emerald-400">Status: Active / Valid</p>
                               </div>
 
-                              {(resData.age_band || resData.state) && (
+                              {/* Linked PAN Number (as present in JSON data) */}
+                              {resData.pan && (
                                 <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                   <div className="flex items-center gap-1.5 text-muted-foreground">
-                                    <MapPin className="h-3.5 w-3.5 text-primary" />
-                                    <span className="font-medium uppercase tracking-wider text-[10px]">Demographic Info</span>
+                                    <CreditCard className="h-3.5 w-3.5 text-primary" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Linked PAN Number</span>
                                   </div>
-                                  <p className="font-semibold text-foreground">{resData.state || "India"}</p>
-                                  {resData.age_band && <p className="text-[11px] text-muted-foreground font-mono">Age Band: {String(resData.age_band)}</p>}
+                                  <p className="font-mono font-bold text-primary text-base">{resData.pan}</p>
+                                  <p className="text-[11px] text-emerald-400 font-medium">✓ Linked to Aadhaar Record</p>
                                 </div>
                               )}
 
+                              {/* Date of Birth (DOB) (as present in JSON data) */}
+                              {resData.dob && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Calendar className="h-3.5 w-3.5 text-primary" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Date of Birth (DOB)</span>
+                                  </div>
+                                  <p className="font-semibold text-foreground text-sm font-mono">{String(resData.dob)}</p>
+                                  {resData.age && (
+                                    <p className="text-[11px] text-muted-foreground">Age: {String(resData.age)} Years</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Gender (as present in JSON data) */}
                               {resData.gender && (
                                 <div className="rounded-lg border border-border bg-card p-3 space-y-1">
                                   <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -1244,6 +1501,109 @@ function TestApiPage() {
                                     <span className="font-medium uppercase tracking-wider text-[10px]">Gender</span>
                                   </div>
                                   <p className="font-semibold text-foreground uppercase">{String(resData.gender)}</p>
+                                </div>
+                              )}
+
+                              {/* Name Breakdown (First / Middle / Last) */}
+                              {(resData.first_name || resData.last_name) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <User className="h-3.5 w-3.5 text-primary" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Name Breakdown</span>
+                                  </div>
+                                  <p className="text-xs text-foreground font-medium">
+                                    First: <span className="font-semibold">{resData.first_name || "—"}</span>
+                                    {resData.middle_name && <> · Mid: <span className="font-semibold">{resData.middle_name}</span></>}
+                                    {resData.last_name && <> · Last: <span className="font-semibold">{resData.last_name}</span></>}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Location / Country / State / City (as present in JSON data) */}
+                              {(resData.country || resData.state || resData.city || resData.age_band) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <MapPin className="h-3.5 w-3.5 text-primary" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Location & Demographics</span>
+                                  </div>
+                                  <p className="font-semibold text-foreground">
+                                    {[resData.city, resData.state, resData.country].filter(Boolean).join(", ") || "India"}
+                                  </p>
+                                  {resData.age_band && (
+                                    <p className="text-[11px] text-muted-foreground font-mono">Age Band: {String(resData.age_band)}</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Mobile / Contact ONLY if actually present in JSON response */}
+                              {Boolean(resourceData.mobile || resourceData.mobile_digits || resourceData.email) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Phone className="h-3.5 w-3.5 text-primary" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Contact Info</span>
+                                  </div>
+                                  <p className="font-mono text-xs text-foreground">
+                                    {String(resourceData.mobile || (resourceData.mobile_digits ? `XXXXXX${resourceData.mobile_digits}` : ""))}
+                                  </p>
+                                  {resourceData.email && <p className="font-mono text-[11px] text-muted-foreground">{String(resourceData.email)}</p>}
+                                </div>
+                              )}
+
+                              {/* Any dynamic extra fields returned in data */}
+                              {Object.entries(resourceData || {})
+                                .filter(([key, val]) => {
+                                  const k = key.toLowerCase();
+                                  const handled = [
+                                    "pan", "aadhaar", "aadhaar_number", "fullname", "full_name", "name",
+                                    "first_name", "middle_name", "last_name", "gender", "dob", "age",
+                                    "age_band", "city", "state", "country", "mobile", "mobile_digits",
+                                    "email", "address", "account_status", "status", "is_valid", "code", "type", "message"
+                                  ];
+                                  if (handled.includes(k)) return false;
+                                  if (val === null || val === undefined || val === "") return false;
+                                  if (typeof val === "object") return false;
+                                  return true;
+                                })
+                                .map(([key, val]) => (
+                                  <div key={key} className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">
+                                        {key.replace(/_/g, " ")}
+                                      </span>
+                                    </div>
+                                    <p className="font-semibold text-foreground text-sm font-mono">
+                                      {String(val)}
+                                    </p>
+                                  </div>
+                                ))}
+
+                              {/* Audit & Reference IDs (request_id, client_ref_num, _cached) */}
+                              {(responseJson?.request_id || responseJson?.client_ref_num) && (
+                                <div className="rounded-lg border border-border bg-card p-3 space-y-1.5 sm:col-span-2">
+                                  <div className="flex items-center justify-between text-muted-foreground">
+                                    <div className="flex items-center gap-1.5">
+                                      <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Verification Audit & Trace</span>
+                                    </div>
+                                    {Boolean(responseJson?._cached) && (
+                                      <span className="rounded bg-emerald-500/15 text-emerald-400 font-mono text-[10px] px-2 py-0.5 border border-emerald-500/25">
+                                        ⚡ Cached Response
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2 text-xs font-mono text-muted-foreground pt-0.5">
+                                    {responseJson?.request_id && (
+                                      <p className="truncate">
+                                        Request ID: <span className="text-foreground">{String(responseJson.request_id)}</span>
+                                      </p>
+                                    )}
+                                    {responseJson?.client_ref_num && (
+                                      <p className="truncate">
+                                        Client Ref: <span className="text-foreground">{String(responseJson.client_ref_num)}</span>
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -1274,6 +1634,8 @@ function TestApiPage() {
                               ? `Aadhaar: ${aadhaar}`
                               : selectedService === "bank"
                               ? `Account: ${creditorAccountId} · IFSC: ${ifscCode}`
+                              : selectedService === "name_finder"
+                              ? `Mobile: ${mobileNameNumber}`
                               : `Mobile: ${mobileNumber} · Name: ${firstName} ${lastName}`}
                           </p>
                           <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || responseJson.message || "Invalid / Not Found")}</p>

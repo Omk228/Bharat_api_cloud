@@ -267,6 +267,24 @@ export const apiClient = {
     return res.json();
   },
 
+  async verifyMobileNameFinder(data: {
+    api_id: string;
+    api_key: string;
+    token_id: string;
+    mobile: string;
+    client_ref_num?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const res = await fetch(`${host}/srv2/mobile-name-finder`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
   async getWalletBalance(): Promise<{
     wallet_balance: number;
     today_spend: number;
