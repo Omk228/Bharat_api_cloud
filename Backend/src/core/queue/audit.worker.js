@@ -51,8 +51,8 @@ export async function processAuditJob(jobData) {
       environment
     ]);
 
-    // 2. Production Wallet Balance Settlement
-    if (environment === 'production' && cost > 0 && isSuccess && userId) {
+    // 2. Wallet Balance Settlement & Ledger Posting
+    if (cost > 0 && isSuccess && userId) {
       // Atomic wallet debit
       await dbPool.query(
         'UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id = ?',

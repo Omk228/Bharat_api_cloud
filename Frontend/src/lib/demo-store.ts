@@ -512,20 +512,48 @@ export type DashboardData = {
   webhooks: WebhookEventRow[];
 };
 
-export function getDashboard(): DashboardData {
+export async function getDashboard(): Promise<DashboardData> {
   const state = read();
   const limits = PLAN_LIMITS.find((l) => l.plan === state.profile.plan) ?? PLAN_LIMITS[0]!;
   const since = monthStart();
+
+  let liveBalance = typeof state.wallet_balance === "number" ? state.wallet_balance : 5000.00;
+  let liveTransactions: WalletTransactionRow[] = state.wallet_transactions?.length ? state.wallet_transactions : getDefaultWalletTransactions();
+  let liveHitLogs: ApiHitLogRow[] = state.api_hit_logs?.length ? state.api_hit_logs : getDefaultApiHitLogs();
+
+  if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
+    try {
+      const { apiClient } = await import("./api-client");
+      const [walletRes, txsRes, logsRes] = await Promise.allSettled([
+        apiClient.getWalletBalance(),
+        apiClient.getWalletTransactions({ limit: 100 }),
+        apiClient.getApiHitLogs({ limit: 100 }),
+      ]);
+
+      if (walletRes.status === "fulfilled" && walletRes.value) {
+        liveBalance = walletRes.value.wallet_balance;
+      }
+      if (txsRes.status === "fulfilled" && txsRes.value?.length) {
+        liveTransactions = txsRes.value as WalletTransactionRow[];
+      }
+      if (logsRes.status === "fulfilled" && logsRes.value?.length) {
+        liveHitLogs = logsRes.value as ApiHitLogRow[];
+      }
+    } catch (err) {
+      console.warn("Backend live wallet sync notice:", err);
+    }
+  }
+
   return {
     session: state.session,
     profile: state.profile,
     keys: state.keys,
     limits,
     allLimits: PLAN_LIMITS,
-    monthlyUsage: state.usage.filter((u) => u.created_at >= since).length,
-    walletBalance: typeof state.wallet_balance === "number" ? state.wallet_balance : 4993.40,
-    walletTransactions: state.wallet_transactions?.length ? state.wallet_transactions : getDefaultWalletTransactions(),
-    apiHitLogs: state.api_hit_logs?.length ? state.api_hit_logs : getDefaultApiHitLogs(),
+    monthlyUsage: liveHitLogs.filter((u) => u.created_at >= since).length || state.usage.filter((u) => u.created_at >= since).length,
+    walletBalance: liveBalance,
+    walletTransactions: liveTransactions,
+    apiHitLogs: liveHitLogs,
     ipWhitelist: state.ip_whitelist?.length ? state.ip_whitelist : getDefaultIpWhitelist(),
     ipEnforcementEnabled: state.ip_enforcement_enabled ?? true,
     usage: state.usage,
@@ -595,10 +623,10 @@ export function setIpEnforcementMode(enabled: boolean) {
   return { ok: true as const };
 }
 
-export function topupWallet(input: { amount: number; paymentMethod: string; note?: string }) {
+export async function topupWallet(input: { amount: number; paymentMethod: string; note?: string }) {
   const state = read();
-  const current = typeof state.wallet_balance === "number" ? state.wallet_balance : 4993.40;
-  const newBalance = Number((current + input.amount).toFixed(2));
+  const current = typeof state.wallet_balance === "number" ? state.wallet_balance : 5000.00;
+  let newBalance = Number((current + input.amount).toFixed(2));
   const txnId = `txn_w_${randomHex(8)}`;
   const row: WalletTransactionRow = {
     id: txnId,
@@ -612,6 +640,23 @@ export function topupWallet(input: { amount: number; paymentMethod: string; note
     status: "success",
     created_at: new Date().toISOString(),
   };
+
+  if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
+    try {
+      const { apiClient } = await import("./api-client");
+      const backendRes = await apiClient.topupWallet({
+        amount: input.amount,
+        method: input.paymentMethod,
+        referenceId: `pay_${randomHex(8)}`,
+      });
+      if (backendRes) {
+        newBalance = backendRes.wallet_balance;
+        row.balance_after = newBalance;
+      }
+    } catch (err) {
+      console.warn("Backend topup sync notice:", err);
+    }
+  }
 
   update((s) => {
     s.wallet_balance = newBalance;

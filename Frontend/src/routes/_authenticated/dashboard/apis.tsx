@@ -174,6 +174,24 @@ function ApisPage() {
                         ⚡ Test In Console
                       </Link>
                     )}
+                    {ep.id === "bank-penny-less" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "bank" }}
+                        className="inline-flex items-center gap-1 rounded bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 font-medium text-blue-400 hover:bg-blue-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {ep.id === "mobile-to-prefill" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "prefill" }}
+                        className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     <Link
                       to="/docs"
                       search={{ endpoint: ep.id }}

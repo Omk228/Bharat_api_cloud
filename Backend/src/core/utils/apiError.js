@@ -21,6 +21,10 @@ export class ApiError extends Error {
     return new ApiError(401, message, errors);
   }
 
+  static paymentRequired(message = 'Payment required', errors = []) {
+    return new ApiError(402, message, errors);
+  }
+
   static forbidden(message = 'Forbidden access', errors = []) {
     return new ApiError(403, message, errors);
   }

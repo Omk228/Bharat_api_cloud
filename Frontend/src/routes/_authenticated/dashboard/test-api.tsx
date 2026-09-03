@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Terminal,
@@ -135,6 +135,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 });
 
 function TestApiPage() {
+  const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
   const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill">(
     searchParams.service === "aadhaar"
@@ -314,6 +315,8 @@ function TestApiPage() {
       toast.error(errMsg);
     } finally {
       setLoading(false);
+      // Immediately invalidate dashboard queries to refresh live wallet balance in header pill
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     }
   };
 

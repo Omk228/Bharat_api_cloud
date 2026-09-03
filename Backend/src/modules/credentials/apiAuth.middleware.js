@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import CredentialService from './credential.service.js';
 import CacheService from '../../core/cache/cache.service.js';
+import { dbPool } from '../../core/config/db.config.js';
 import { asyncHandler } from '../../core/utils/asyncHandler.js';
 
 /**
@@ -50,12 +51,16 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
       const providedBuf = Buffer.from(cleanTokenId);
 
       if (expectedBuf.length === providedBuf.length && crypto.timingSafeEqual(expectedBuf, providedBuf)) {
+        // Fetch real-time live wallet balance from DB
+        const [[userRow]] = await dbPool.query('SELECT wallet_balance FROM users WHERE id = ?', [cachedCred.user_id]);
+        const currentBalance = parseFloat(userRow?.wallet_balance ?? cachedCred.wallet_balance ?? '0.00');
+
         req.apiClient = {
           user_id: cachedCred.user_id,
           credential_id: cachedCred.credential_id,
           environment: cachedCred.environment,
           plan: cachedCred.plan,
-          wallet_balance: parseFloat(cachedCred.wallet_balance || '0.00'),
+          wallet_balance: currentBalance,
           client_ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
         };
         return next();

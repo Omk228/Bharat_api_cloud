@@ -266,6 +266,118 @@ export const apiClient = {
     });
     return res.json();
   },
+
+  async getWalletBalance(): Promise<{
+    wallet_balance: number;
+    today_spend: number;
+    month_spend: number;
+    total_hits: number;
+    plan: string;
+  }> {
+    const token = this.getToken();
+    const res = await fetch(`${API_BASE}/wallet/balance`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to fetch wallet balance');
+    return json.data;
+  },
+
+  async getWalletTransactions(params?: {
+    limit?: number;
+    offset?: number;
+    type?: string;
+    search?: string;
+  }): Promise<Array<{
+    id: string;
+    type: 'credit' | 'debit';
+    amount: number;
+    balance_after: number;
+    category: string;
+    description: string;
+    reference_id: string;
+    created_at: string;
+  }>> {
+    const token = this.getToken();
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    if (params?.type && params.type !== 'all') query.set('type', params.type);
+    if (params?.search) query.set('search', params.search);
+
+    const res = await fetch(`${API_BASE}/wallet/transactions?${query.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to fetch transactions');
+    return json.data || [];
+  },
+
+  async getApiHitLogs(params?: {
+    limit?: number;
+    offset?: number;
+    statusCode?: number;
+    search?: string;
+  }): Promise<Array<{
+    id: string;
+    request_id: string;
+    endpoint: string;
+    method: string;
+    group: string;
+    status_code: number;
+    response_time_ms: number;
+    cost_deducted: number;
+    api_key_used: string;
+    key_label: string;
+    environment: string;
+    ip_address: string;
+    client_ref_num?: string;
+    created_at: string;
+  }>> {
+    const token = this.getToken();
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    if (params?.statusCode) query.set('statusCode', String(params.statusCode));
+    if (params?.search) query.set('search', params.search);
+
+    const res = await fetch(`${API_BASE}/wallet/logs?${query.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to fetch logs');
+    return json.data || [];
+  },
+
+  async topupWallet(data: {
+    amount: number;
+    method?: string;
+    referenceId?: string;
+  }): Promise<{
+    wallet_balance: number;
+    amount_added: number;
+    reference_id: string;
+    created_at: string;
+  }> {
+    const token = this.getToken();
+    const res = await fetch(`${API_BASE}/wallet/topup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to top-up wallet');
+    return json.data;
+  },
 };
 
 export default apiClient;

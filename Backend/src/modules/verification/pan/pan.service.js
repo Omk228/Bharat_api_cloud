@@ -2,6 +2,8 @@ import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
+import { getApiPrice } from '../../../core/config/pricing.config.js';
+import { ApiError } from '../../../core/utils/apiError.js';
 import crypto from 'node:crypto';
 
 export class PanVerificationService {
@@ -23,6 +25,13 @@ export class PanVerificationService {
     const cleanName = (name || '').trim();
     const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const endpoint = '/srv2/validation/pan';
+    const hitCost = getApiPrice(endpoint);
+
+    // Pre-flight wallet balance check
+    if (apiClient?.user_id && apiClient.wallet_balance < hitCost) {
+      throw ApiError.paymentRequired(`Insufficient wallet balance (₹${hitCost.toFixed(2)} required). Please recharge your wallet.`);
+    }
 
     // 1. Check Smart Result Cache first (<2ms) 🔥
     if (cleanPan) {
@@ -51,7 +60,7 @@ export class PanVerificationService {
             resultCode: cachedResponse.result_code || 101,
             durationMs,
             clientIp: apiClient.client_ip,
-            cost: 0.00,
+            cost: hitCost,
             environment: apiClient.environment,
             isSuccess: true
           }).catch(() => {});
@@ -206,14 +215,13 @@ export class PanVerificationService {
     }
 
     const durationMs = Date.now() - startedAt;
-    const hitCost = apiClient?.environment === 'production' ? 1.50 : 0.00;
 
     // 4. Asynchronously push to BullMQ queue without blocking Express (<0.8ms)
     if (apiClient?.user_id) {
       QueueService.addAuditJob({
         userId: apiClient.user_id,
         credentialId: apiClient.credential_id,
-        endpoint: '/srv2/validation/pan',
+        endpoint,
         method: 'POST',
         requestId,
         clientRefNum: clientRef,
