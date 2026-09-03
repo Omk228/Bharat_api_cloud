@@ -9,6 +9,7 @@ import bankRoutes from '../modules/verification/bank/bank.routes.js';
 import prefillRoutes from '../modules/verification/prefill/prefill.routes.js';
 import nameFinderRoutes from '../modules/verification/name_finder/nameFinder.routes.js';
 import apilayerRoutes from '../modules/apilayer/apilayer.routes.js';
+import geocodingRoutes from '../modules/geocoding/geocoding.routes.js';
 
 const apiRouter = Router();
 
@@ -23,5 +24,9 @@ apiRouter.use('/', bankRoutes);
 apiRouter.use('/', prefillRoutes);
 apiRouter.use('/', nameFinderRoutes);
 apiRouter.use('/', apilayerRoutes);
+apiRouter.use('/reverse-geocode', geocodingRoutes);
+apiRouter.use('/reverse', geocodingRoutes);
+apiRouter.use('/geocode', geocodingRoutes);
+apiRouter.use('/', geocodingRoutes);
 
 export default apiRouter;

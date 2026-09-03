@@ -8,10 +8,10 @@ import { asyncHandler } from '../../core/utils/asyncHandler.js';
  * High-Speed Cached Middleware to authenticate public API requests (<0.5ms on Cache Hit)
  */
 export const verifyApiClientCredentials = asyncHandler(async (req, res, next) => {
-  // Extract credentials from body or custom headers
-  const api_id = req.body.api_id || req.headers['x-api-id'];
-  const api_key = req.body.api_key || req.headers['x-api-key'];
-  const token_id = req.body.token_id || req.headers['x-token-id'] || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
+  // Extract credentials from custom headers, query parameters (for GET requests), or body (for POST requests)
+  const api_id = req.headers['x-api-id'] || req.query?.api_id || req.body?.api_id;
+  const api_key = req.headers['x-api-key'] || req.query?.api_key || req.body?.api_key;
+  const token_id = req.headers['x-token-id'] || req.query?.token_id || req.body?.token_id || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
 
   if (!api_id || !api_key || !token_id) {
     return res.status(401).json({

@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import ApiLayerController from './apilayer.controller.js';
+import verifyApiClientCredentials from '../credentials/apiAuth.middleware.js';
 
 const router = Router();
+
+// Enforce Bharat API Cloud credentials (api_id, api_key, token_id)
+router.use(verifyApiClientCredentials);
 
 /**
  * APILAYER IP Geolocation Endpoints

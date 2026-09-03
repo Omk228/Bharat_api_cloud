@@ -13,6 +13,7 @@ import bankRoutes from './modules/verification/bank/bank.routes.js';
 import prefillRoutes from './modules/verification/prefill/prefill.routes.js';
 import nameFinderRoutes from './modules/verification/name_finder/nameFinder.routes.js';
 import apilayerRoutes from './modules/apilayer/apilayer.routes.js';
+import geocodingRoutes from './modules/geocoding/geocoding.routes.js';
 
 const app = express();
 
@@ -55,6 +56,8 @@ app.use('/', bankRoutes);
 app.use('/', prefillRoutes);
 app.use('/', nameFinderRoutes);
 app.use('/', apilayerRoutes);
+app.use('/reverse-geocode', geocodingRoutes);
+app.use('/reverse', geocodingRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);

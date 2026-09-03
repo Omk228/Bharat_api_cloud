@@ -35,6 +35,10 @@ export type AuthResponse = {
   };
 };
 
+const DEFAULT_API_ID = 'APIDC9272C';
+const DEFAULT_API_KEY = 'fc62efa1-4aff-478d-9b1b-6589e6262cba';
+const DEFAULT_TOKEN_ID = '1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9';
+
 export const apiClient = {
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -285,27 +289,84 @@ export const apiClient = {
     return res.json();
   },
 
-  async lookupRequesterIp(data?: { ip?: string }): Promise<Record<string, unknown>> {
+  async lookupRequesterIp(data?: {
+    ip?: string;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
     const host = API_BASE.replace('/api/v1', '');
     const ip = data?.ip?.trim();
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'X-Api-Id': effectiveApiId,
+      'X-Api-Key': effectiveApiKey,
+      'X-Token-Id': effectiveTokenId,
+    };
+
     if (ip) {
+      headers['Content-Type'] = 'application/json';
       const res = await fetch(`${host}/check`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ip }),
+        headers,
+        body: JSON.stringify({
+          ip,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }),
       });
       return res.json();
     } else {
-      const res = await fetch(`${host}/check`, {
+      const query = new URLSearchParams({
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      });
+      const res = await fetch(`${host}/check?${query.toString()}`, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers,
       });
       return res.json();
     }
+  },
+
+  async reverseGeocode(data: {
+    lat: number | string;
+    lon: number | string;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'X-Api-Id': effectiveApiId,
+      'X-Api-Key': effectiveApiKey,
+      'X-Token-Id': effectiveTokenId,
+    };
+
+    const query = new URLSearchParams({
+      lat: String(data.lat),
+      lon: String(data.lon),
+      api_id: effectiveApiId,
+      api_key: effectiveApiKey,
+      token_id: effectiveTokenId,
+    });
+
+    const res = await fetch(`${host}/reverse?${query.toString()}`, {
+      method: 'GET',
+      headers,
+    });
+    return res.json();
   },
 
   async getWalletBalance(): Promise<{

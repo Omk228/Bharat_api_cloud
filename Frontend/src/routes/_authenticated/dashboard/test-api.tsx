@@ -26,6 +26,7 @@ import {
   Smartphone,
   Globe,
   Compass,
+  Navigation,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -114,7 +115,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup" | undefined;
+  service?: "pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -130,6 +131,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "name_finder"
         : search["service"] === "ip_lookup" || search["service"] === "requester_ip" || search["service"] === "ip"
         ? "ip_lookup"
+        : search["service"] === "reverse_geocode" || search["service"] === "reverse" || search["service"] === "geocode"
+        ? "reverse_geocode"
         : "pan",
   }),
   head: () => ({
@@ -137,7 +140,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, Mobile to Prefill, Mobile To Name Finder, and Requester IP Lookup APIs.",
+        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification Penny Less V2, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
       },
     ],
   }),
@@ -147,7 +150,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup">(
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode">(
     searchParams.service === "aadhaar"
       ? "aadhaar"
       : searchParams.service === "bank"
@@ -158,6 +161,8 @@ function TestApiPage() {
       ? "name_finder"
       : searchParams.service === "ip_lookup"
       ? "ip_lookup"
+      : searchParams.service === "reverse_geocode"
+      ? "reverse_geocode"
       : "pan"
   );
 
@@ -172,11 +177,15 @@ function TestApiPage() {
     },
   });
 
+  const DEFAULT_API_ID = "APIDC9272C";
+  const DEFAULT_API_KEY = "fc62efa1-4aff-478d-9b1b-6589e6262cba";
+  const DEFAULT_TOKEN_ID = "1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9";
+
   const activeCred = creds && creds.length > 0 ? creds[0] : null;
 
-  const [apiId, setApiId] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [tokenId, setTokenId] = useState("");
+  const [apiId, setApiId] = useState(DEFAULT_API_ID);
+  const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
+  const [tokenId, setTokenId] = useState(DEFAULT_TOKEN_ID);
   
   // PAN fields
   const [pan, setPan] = useState("");
@@ -200,6 +209,10 @@ function TestApiPage() {
   const [mobileNameNumber, setMobileNameNumber] = useState("9876543210");
   const [ipAddress, setIpAddress] = useState("");
 
+  // Reverse Geocoding fields
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
   const [responseTime, setResponseTime] = useState<number | null>(null);
@@ -210,9 +223,9 @@ function TestApiPage() {
   // Sync credentials when loaded
   useEffect(() => {
     if (activeCred) {
-      setApiId(activeCred.api_id || "");
-      setApiKey(activeCred.api_key || "");
-      setTokenId(activeCred.token_id || activeCred.token_id_preview || "");
+      setApiId(activeCred.api_id || DEFAULT_API_ID);
+      setApiKey(activeCred.api_key || DEFAULT_API_KEY);
+      setTokenId(activeCred.token_id || activeCred.token_id_preview || DEFAULT_TOKEN_ID);
     }
   }, [activeCred]);
 
@@ -223,13 +236,17 @@ function TestApiPage() {
     }
   }, [searchParams.service]);
 
+  const effectiveApiId = apiId || activeCred?.api_id || DEFAULT_API_ID;
+  const effectiveApiKey = apiKey || activeCred?.api_key || DEFAULT_API_KEY;
+  const effectiveTokenId = tokenId || activeCred?.token_id || DEFAULT_TOKEN_ID;
+
   // Dynamic request payload based on selected service
   const requestPayload =
     selectedService === "pan"
       ? {
-          api_id: apiId || (activeCred ? activeCred.api_id : ""),
-          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
-          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
           pan: pan.trim().toUpperCase(),
           name: name.trim(),
           pan_display_name: panDisplayName,
@@ -237,35 +254,46 @@ function TestApiPage() {
         }
       : selectedService === "aadhaar"
       ? {
-          api_id: apiId || (activeCred ? activeCred.api_id : ""),
-          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
-          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
           aadhaar: aadhaar.trim().replace(/\s|-/g, ""),
           ...(name.trim() ? { name: name.trim() } : {}),
         }
       : selectedService === "bank"
       ? {
-          api_id: apiId || (activeCred ? activeCred.api_id : ""),
-          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
-          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
           creditorAccountId: creditorAccountId.trim(),
           ifscCode: ifscCode.trim().toUpperCase(),
         }
       : selectedService === "name_finder"
       ? {
-          api_id: apiId || (activeCred ? activeCred.api_id : ""),
-          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
-          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
           mobile: mobileNameNumber.trim().replace(/\D/g, ""),
         }
       : selectedService === "ip_lookup"
       ? {
           ip: ipAddress.trim(),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "reverse_geocode"
+      ? {
+          lat: latitude.trim() || "28.6139",
+          lon: longitude.trim() || "77.2090",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
         }
       : {
-          api_id: apiId || (activeCred ? activeCred.api_id : ""),
-          api_key: apiKey || (activeCred ? activeCred.api_key : ""),
-          token_id: tokenId || (activeCred ? activeCred.token_id : ""),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
           mobile_number: mobileNumber.trim().replace(/\D/g, ""),
           first_name: firstName.trim(),
           last_name: lastName.trim(),
@@ -307,7 +335,20 @@ function TestApiPage() {
       } else if (selectedService === "name_finder") {
         rawData = await apiClient.verifyMobileNameFinder(requestPayload as Parameters<typeof apiClient.verifyMobileNameFinder>[0]);
       } else if (selectedService === "ip_lookup") {
-        rawData = await apiClient.lookupRequesterIp({ ip: ipAddress.trim() });
+        rawData = await apiClient.lookupRequesterIp({
+          ip: ipAddress.trim(),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "reverse_geocode") {
+        rawData = await apiClient.reverseGeocode({
+          lat: latitude.trim() || "28.6139",
+          lon: longitude.trim() || "77.2090",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
       } else {
         rawData = await apiClient.verifyMobilePrefill(requestPayload as Parameters<typeof apiClient.verifyMobilePrefill>[0]);
       }
@@ -458,6 +499,8 @@ function TestApiPage() {
       responseJson?.message === "success" ||
       Boolean(resData.mobile_linked_name) ||
       Boolean(responseJson?.ip) ||
+      Boolean(responseJson?.place_id) ||
+      Boolean(responseJson?.osm_id) ||
       Boolean(responseJson?.message?.includes("Mobile name finder")) ||
       Boolean(resData.name) ||
       Boolean(resData.fullname) ||
@@ -516,6 +559,8 @@ function TestApiPage() {
       ? "/srv2/mobile-name-finder"
       : selectedService === "ip_lookup"
       ? "/check"
+      : selectedService === "reverse_geocode"
+      ? "/reverse"
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
@@ -529,6 +574,8 @@ function TestApiPage() {
       ? "Mobile To Name Finder"
       : selectedService === "ip_lookup"
       ? "Requester IP Lookup"
+      : selectedService === "reverse_geocode"
+      ? "Reverse Geocoding (Coordinates to Address)"
       : "Mobile to Prefill Verification";
 
   return (
@@ -544,12 +591,14 @@ function TestApiPage() {
                   Bharat API Production Gateway
                 </span>
                 <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  {selectedService === "name_finder" ? "₹5.00 / Request" : selectedService === "ip_lookup" ? "Live Gateway" : "₹2.00 / Request"}
+                  {selectedService === "name_finder" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {selectedService === "ip_lookup"
                   ? "Direct IP Geolocation and Network Intelligence Gateway powered by APILAYER."
+                  : selectedService === "reverse_geocode"
+                  ? "Direct GPS Coordinates to Street Address & Administrative Geocoding powered by OpenStreetMap Nominatim."
                   : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (${selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.`}
               </p>
             </div>
@@ -569,6 +618,8 @@ function TestApiPage() {
                       ? "mobile-name-finder"
                       : selectedService === "ip_lookup"
                       ? "requester-ip-lookup"
+                      : selectedService === "reverse_geocode"
+                      ? "reverse-geocoding"
                       : "mobile-to-prefill",
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -593,6 +644,7 @@ function TestApiPage() {
                   {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
+                  {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
                     {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
                     {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
@@ -600,6 +652,7 @@ function TestApiPage() {
                     {selectedService === "prefill" && "Mobile to Prefill (/srv4/credit-report/prefill)"}
                     {selectedService === "name_finder" && "Mobile To Name Finder (/srv2/mobile-name-finder)"}
                     {selectedService === "ip_lookup" && "Requester IP Lookup (/check)"}
+                    {selectedService === "reverse_geocode" && "Reverse Geocoding (/reverse)"}
                   </span>
                 </div>
               </div>
@@ -634,7 +687,7 @@ function TestApiPage() {
                     <Terminal className="h-4 w-4 text-primary" /> Request Parameters
                   </h2>
                   <span className="rounded bg-secondary px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
-                    POST
+                    {selectedService === "reverse_geocode" ? "GET" : selectedService === "ip_lookup" ? "GET / POST" : "POST"}
                   </span>
                 </div>
 
@@ -649,7 +702,7 @@ function TestApiPage() {
                       value={apiId}
                       readOnly
                       placeholder="e.g. APIDC9272C"
-                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground cursor-not-allowed outline-none select-all focus:border-border"
+                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs font-semibold text-foreground cursor-not-allowed outline-none select-all focus:border-border"
                     />
                   </label>
 
@@ -661,7 +714,7 @@ function TestApiPage() {
                       value={apiKey}
                       readOnly
                       placeholder="e.g. fc62efa1-4aff-478d-9b1b-6589e6262cba"
-                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground cursor-not-allowed outline-none select-all focus:border-border"
+                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs font-semibold text-foreground cursor-not-allowed outline-none select-all focus:border-border"
                     />
                   </label>
 
@@ -673,7 +726,7 @@ function TestApiPage() {
                       value={tokenId}
                       readOnly
                       placeholder="e.g. 1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9"
-                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs text-muted-foreground cursor-not-allowed outline-none select-all focus:border-border"
+                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs font-semibold text-foreground cursor-not-allowed outline-none select-all focus:border-border"
                     />
                   </label>
                 </div>
@@ -850,6 +903,37 @@ function TestApiPage() {
                           placeholder="Enter IP Address (or leave blank for caller IP)"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-cyan-400"
                         />
+                      </div>
+                    </>
+                  ) : selectedService === "reverse_geocode" ? (
+                    /* Reverse Geocoding Form */
+                    <>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Latitude Coordinate (lat)</span>
+                            <span className="text-[11px] text-muted-foreground">-90.0 to 90.0</span>
+                          </div>
+                          <input
+                            value={latitude}
+                            onChange={(e) => setLatitude(e.target.value.trim())}
+                            placeholder="e.g. 28.6139"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-teal-400"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Longitude Coordinate (lon)</span>
+                            <span className="text-[11px] text-muted-foreground">-180.0 to 180.0</span>
+                          </div>
+                          <input
+                            value={longitude}
+                            onChange={(e) => setLongitude(e.target.value.trim())}
+                            placeholder="e.g. 77.2090"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-teal-400"
+                          />
+                        </div>
                       </div>
                     </>
                   ) : (
@@ -1378,6 +1462,166 @@ function TestApiPage() {
                                   )}
                                 </div>
                               )}
+                            </div>
+                          </>
+                        ) : selectedService === "reverse_geocode" ? (
+                          <>
+                            {/* Top Banner */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="rounded-lg bg-teal-500/15 p-2 text-teal-400 border border-teal-500/30">
+                                  <Compass className="h-6 w-6" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-base font-bold text-foreground">
+                                      {String(
+                                        responseJson?.name ||
+                                        (responseJson?.address as Record<string, unknown>)?.road ||
+                                        (responseJson?.address as Record<string, unknown>)?.suburb ||
+                                        (responseJson?.address as Record<string, unknown>)?.city ||
+                                        "Geocoded Location"
+                                      )}
+                                    </p>
+                                    <span className="rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                      {String(responseJson?.addresstype || responseJson?.class || "LOCATION")}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground line-clamp-1 max-w-xl">
+                                    {String(responseJson?.display_name || "Address resolved from OpenStreetMap Nominatim")}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> COORDINATES RESOLVED
+                                </span>
+                                <span className="rounded-full bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 text-[11px] font-semibold text-teal-400">
+                                  OpenStreetMap Nominatim
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                              {/* Road & Suburb */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Navigation className="h-3.5 w-3.5 text-teal-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Road & Suburb / Locality</span>
+                                </div>
+                                <p className="font-bold text-foreground text-base">
+                                  {String((responseJson?.address as Record<string, unknown>)?.road || "—")}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  Suburb: <strong className="text-foreground">{String((responseJson?.address as Record<string, unknown>)?.suburb || "—")}</strong>
+                                </p>
+                              </div>
+
+                              {/* City & District */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Building className="h-3.5 w-3.5 text-teal-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">City & District</span>
+                                </div>
+                                <p className="font-bold text-foreground text-base">
+                                  {String((responseJson?.address as Record<string, unknown>)?.city || (responseJson?.address as Record<string, unknown>)?.town || "—")}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  District: <strong className="text-foreground">{String((responseJson?.address as Record<string, unknown>)?.state_district || "—")}</strong>
+                                </p>
+                              </div>
+
+                              {/* State & Country */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Globe className="h-3.5 w-3.5 text-teal-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">State & Country</span>
+                                </div>
+                                <p className="font-bold text-foreground text-base">
+                                  {String((responseJson?.address as Record<string, unknown>)?.state || "—")} ({String((responseJson?.address as Record<string, unknown>)?.["ISO3166-2-lvl4"] || "")})
+                                </p>
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  Country: <strong className="text-foreground">{String((responseJson?.address as Record<string, unknown>)?.country || "India")}</strong> ({String((responseJson?.address as Record<string, unknown>)?.country_code || "in").toUpperCase()})
+                                </p>
+                              </div>
+
+                              {/* Postal / PIN Code */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <FileText className="h-3.5 w-3.5 text-teal-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Postal / PIN Code</span>
+                                </div>
+                                <p className="font-mono font-bold text-teal-400 text-base">
+                                  {String((responseJson?.address as Record<string, unknown>)?.postcode || "—")}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  Postal Delivery Jurisdiction
+                                </p>
+                              </div>
+
+                              {/* GPS Coordinates & Precision */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Compass className="h-3.5 w-3.5 text-teal-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">Resolved Coordinates</span>
+                                </div>
+                                <p className="font-mono font-bold text-foreground text-sm">
+                                  Lat: {String(responseJson?.lat || latitude || "—")}, Lon: {String(responseJson?.lon || longitude || "—")}
+                                </p>
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-emerald-400 font-medium">✓ OpenStreetMap GPS Lock</span>
+                                  {responseJson?.importance !== undefined && (
+                                    <span className="text-muted-foreground font-mono">
+                                      Importance: <strong className="text-foreground">{String(responseJson.importance)}</strong>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* OSM Classification & Hierarchy */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Terminal className="h-3.5 w-3.5 text-teal-400" />
+                                  <span className="font-medium uppercase tracking-wider text-[10px]">OSM Hierarchy & Type</span>
+                                </div>
+                                <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
+                                  <span>Class: {String(responseJson?.class || "—")}</span>
+                                  {Boolean(responseJson?.type) && (
+                                    <span className="rounded bg-teal-500/15 text-teal-400 border border-teal-500/25 px-1.5 py-0.5 text-[10px] uppercase font-bold">
+                                      {String(responseJson.type)}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground font-mono">
+                                  Rank: {String(responseJson?.place_rank || "—")} · Type: {String(responseJson?.osm_type || "—")}
+                                </p>
+                              </div>
+
+                              {/* Full Administrative Profile & Bounding Box */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-2 sm:col-span-2">
+                                <div className="flex items-center justify-between text-muted-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <Sparkles className="h-3.5 w-3.5 text-teal-400" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Complete Formatted Address & Bounding Box</span>
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground">
+                                    Place ID: <strong className="text-foreground font-mono">{String(responseJson?.place_id || "—")}</strong> (OSM: {String(responseJson?.osm_id || "—")})
+                                  </span>
+                                </div>
+                                <p className="text-xs text-foreground font-medium bg-muted/30 p-2 rounded border border-border/40">
+                                  {String(responseJson?.display_name || "—")}
+                                </p>
+                                {Array.isArray(responseJson?.boundingbox) && (
+                                  <div className="border-t border-border/50 pt-1.5 flex flex-wrap items-center justify-between text-[11px] font-mono text-muted-foreground">
+                                    <span>GPS Box: <code className="text-foreground">[{responseJson.boundingbox.join(", ")}]</code></span>
+                                    {Boolean(responseJson?.licence) && (
+                                      <span className="text-[10px] text-muted-foreground">© OpenStreetMap Contributors</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </>
                         ) : selectedService === "prefill" ? (
@@ -1937,6 +2181,10 @@ function TestApiPage() {
                               ? `Account: ${creditorAccountId} · IFSC: ${ifscCode}`
                               : selectedService === "name_finder"
                               ? `Mobile: ${mobileNameNumber}`
+                              : selectedService === "ip_lookup"
+                              ? `IP Address: ${ipAddress || "Caller IP (Auto-detect)"}`
+                              : selectedService === "reverse_geocode"
+                              ? `Coordinates: Lat: ${latitude || "28.6139"}, Lon: ${longitude || "77.2090"}`
                               : `Mobile: ${mobileNumber} · Name: ${firstName} ${lastName}`}
                           </p>
                           <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || responseJson.message || "Invalid / Not Found")}</p>

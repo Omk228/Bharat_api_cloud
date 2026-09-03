@@ -45,6 +45,10 @@ export const ENV = {
     ].filter(Boolean),
     ROTATION_THRESHOLD: parseInt(process.env.APILAYER_KEY_ROTATION_THRESHOLD || '99', 10),
   },
+
+  NOMINATIM: {
+    BASE_URL: process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org',
+  },
 };
 
 export default ENV;
