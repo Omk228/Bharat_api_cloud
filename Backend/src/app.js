@@ -59,6 +59,7 @@ app.use('/', prefillRoutes);
 app.use('/', nameFinderRoutes);
 app.use('/', uanRoutes);
 app.use('/srv3/uan-mobile', uanRoutes);
+app.use('/srv3/uan-direct', uanRoutes);
 app.use('/', apilayerRoutes);
 app.use('/', idfyRoutes);
 app.use('/idfy', idfyRoutes);

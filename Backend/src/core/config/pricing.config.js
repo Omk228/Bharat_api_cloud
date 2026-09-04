@@ -12,6 +12,8 @@ export const API_PRICING = {
   '/kyc/mobile-name-finder': 5.00,
   '/srv3/uan-mobile': 5.00,
   '/uan-mobile': 5.00,
+  '/srv3/uan-direct': 5.00,
+  '/uan-direct': 5.00,
   '/validate_bank_account': 2.00,
   default: 2.00,
 };

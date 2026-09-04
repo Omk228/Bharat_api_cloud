@@ -29,6 +29,8 @@ apiRouter.use('/', uanRoutes);
 apiRouter.use('/srv3/uan-mobile', uanRoutes);
 apiRouter.use('/uan-mobile', uanRoutes);
 apiRouter.use('/uan', uanRoutes);
+apiRouter.use('/srv3/uan-direct', uanRoutes);
+apiRouter.use('/uan-direct', uanRoutes);
 apiRouter.use('/', apilayerRoutes);
 apiRouter.use('/idfy', idfyRoutes);
 apiRouter.use('/validate_bank_account', idfyRoutes);
