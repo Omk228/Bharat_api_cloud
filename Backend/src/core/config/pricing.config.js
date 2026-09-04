@@ -5,6 +5,8 @@
  */
 export const API_PRICING = {
   '/srv2/validation/pan': 2.00,
+  '/srv2/validation/pan/plus': 2.00,
+  '/pan/plus': 2.00,
   '/srv3/verification/aadhar': 2.00,
   '/idfc/beneficiary': 2.00,
   '/srv4/credit-report/prefill': 2.00,

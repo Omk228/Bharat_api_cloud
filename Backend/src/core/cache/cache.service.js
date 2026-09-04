@@ -150,6 +150,15 @@ export class CacheService {
   }
 
   /**
+   * Delete cached verification result
+   */
+  static async deleteVerification(serviceType, identifier) {
+    const cleanId = String(identifier || '').trim().toUpperCase();
+    const key = `verify:${serviceType}:${cleanId}`;
+    return this.del(key);
+  }
+
+  /**
    * Cache Stats and Health
    */
   static getStats() {

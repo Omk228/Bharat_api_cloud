@@ -121,13 +121,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "aadhaar"
+      search["service"] === "pan_plus" || search["service"] === "pan-plus" || search["service"] === "plus"
+        ? "pan_plus"
+        : search["service"] === "aadhaar"
         ? "aadhaar"
         : search["service"] === "bank"
         ? "bank"
@@ -152,7 +154,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
+        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
       },
     ],
   }),
@@ -162,8 +164,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct">(
-    searchParams.service === "aadhaar"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct">(
+    searchParams.service === "pan_plus"
+      ? "pan_plus"
+      : searchParams.service === "aadhaar"
       ? "aadhaar"
       : searchParams.service === "bank"
       ? "bank"
@@ -211,6 +215,9 @@ function TestApiPage() {
   const [name, setName] = useState("");
   const [panDisplayName, setPanDisplayName] = useState("false");
   const [nameMatchMethod, setNameMatchMethod] = useState("fuzzy");
+
+  // Pan Details Plus fields
+  const [panPlusNumber, setPanPlusNumber] = useState("");
 
   // Aadhaar fields
   const [aadhaar, setAadhaar] = useState("");
@@ -279,7 +286,14 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "pan"
+    selectedService === "pan_plus"
+      ? {
+          pan: panPlusNumber.trim().toUpperCase(),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "pan"
       ? {
           pan_number: pan.trim().toUpperCase(),
           ...(name.trim() ? { name: name.trim() } : {}),
@@ -359,6 +373,10 @@ function TestApiPage() {
         };
 
   const handleSendRequest = async () => {
+    if (selectedService === "pan_plus" && !panPlusNumber.trim()) {
+      toast.error("Please enter a 10-character PAN number");
+      return;
+    }
     if (selectedService === "pan" && !pan.trim()) {
       toast.error("Please enter a PAN number");
       return;
@@ -397,7 +415,14 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "pan") {
+      if (selectedService === "pan_plus") {
+        rawData = await apiClient.verifyPanPlus({
+          pan: panPlusNumber.trim().toUpperCase(),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "pan") {
         rawData = await apiClient.verifyPan(requestPayload as Parameters<typeof apiClient.verifyPan>[0]);
       } else if (selectedService === "aadhaar") {
         rawData = await apiClient.verifyAadhaar(requestPayload as Parameters<typeof apiClient.verifyAadhaar>[0]);
@@ -632,7 +657,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "pan"
+    selectedService === "pan_plus"
+      ? "/srv2/validation/pan/plus"
+      : selectedService === "pan"
       ? "/srv2/validation/pan"
       : selectedService === "aadhaar"
       ? "/srv3/verification/aadhar"
@@ -653,7 +680,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "pan"
+    selectedService === "pan_plus"
+      ? "Pan Details Plus (Deep PAN Demographic Verification)"
+      : selectedService === "pan"
       ? "PAN Verification API (Pan Details V2)"
       : selectedService === "aadhaar"
       ? "Aadhar Fetch Without OTP"
@@ -690,7 +719,9 @@ function TestApiPage() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "ip_lookup"
+                {selectedService === "pan_plus"
+                  ? "Direct deep PAN demographic verification, Aadhaar seeding linkage, allotment date, and salaried/director profile powered by Bharat API Cloud."
+                  : selectedService === "ip_lookup"
                   ? "Direct IP Geolocation and Network Intelligence Gateway powered by Bharat API Cloud."
                   : selectedService === "reverse_geocode"
                   ? "Direct GPS Coordinates to Street Address & Administrative Geocoding powered by Bharat API Cloud."
@@ -709,7 +740,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "pan"
+                    selectedService === "pan_plus"
+                      ? "verify-pan-plus"
+                      : selectedService === "pan"
                       ? "verify-pan"
                       : selectedService === "aadhaar"
                       ? "aadhaar-without-otp"
@@ -745,6 +778,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "pan_plus" && <CreditCard className="h-4 w-4 text-sky-400" />}
                   {selectedService === "pan" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
@@ -756,6 +790,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "pan_plus" && "Pan Details Plus (/srv2/validation/pan/plus)"}
                     {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
                     {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
                     {selectedService === "bank" && "Bank Verification - Penny Less V2 (/srv1/beneficiary)"}
@@ -782,6 +817,7 @@ function TestApiPage() {
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               <span className="text-[11px] text-muted-foreground font-medium mr-1">Switch Service:</span>
               {[
+                { id: "pan_plus", label: "Pan Details Plus" },
                 { id: "pan", label: "PAN V2" },
                 { id: "aadhaar", label: "Aadhaar" },
                 { id: "bank", label: "Bank Penny Less" },
@@ -926,7 +962,35 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "pan" ? (
+                  {selectedService === "pan_plus" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">PAN Number *</span>
+                          <span className="text-[11px] text-muted-foreground">10 Alphanumeric</span>
+                        </div>
+                        <input
+                          value={panPlusNumber}
+                          maxLength={10}
+                          onChange={(e) => setPanPlusNumber(e.target.value.toUpperCase())}
+                          placeholder="Enter 10-digit PAN (e.g. ABCDE1234F)"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-sky-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-sky-500/10 border border-sky-500/20 p-2.5 text-xs text-sky-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-sky-400">₹2.00 / Hit</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Live demographic, Aadhaar linkage & allotment data will reflect dynamically in the Visual Identity Card.
+                      </p>
+                    </>
+                  ) : selectedService === "pan" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -1370,8 +1434,8 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    {selectedService === "pan" ? (
-                      <CreditCard className="h-8 w-8 opacity-40 text-primary" />
+                    {selectedService === "pan" || selectedService === "pan_plus" ? (
+                      <CreditCard className="h-8 w-8 opacity-40 text-sky-400" />
                     ) : selectedService === "aadhaar" ? (
                       <Fingerprint className="h-8 w-8 opacity-40 text-primary" />
                     ) : selectedService === "bank" ? (
@@ -1383,7 +1447,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "pan" ? "a PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -2393,6 +2457,255 @@ function TestApiPage() {
                               </div>
                             </div>
                           </>
+                        ) : selectedService === "pan_plus" ? (
+                          /* ========================================================= */
+                          /* 🪪 PAN DETAILS PLUS DEDICATED VIRTUAL IDENTITY CARD       */
+                          /* ========================================================= */
+                          (() => {
+                            const pData = (
+                              (responseJson?.data as Record<string, any>) ||
+                              (responseJson?.result as Record<string, any>) ||
+                              resData ||
+                              {}
+                            );
+                            const panNum = String(pData.pan || panPlusNumber || "—");
+                            const panStatus = String(pData.pan_status || "Active and operative");
+                            const panType = String(pData.pan_type || "Individual");
+                            const legalFullName = String(pData.fullname || [pData.first_name, pData.middle_name, pData.last_name].filter(Boolean).join(" ") || "—");
+                            const isOperative = panStatus.toLowerCase().includes("operative") && !panStatus.toLowerCase().includes("inoperative");
+                            const aadhaarLinked = Boolean(pData.aadhaar_linked);
+                            const addrObj = (pData.address && typeof pData.address === "object") ? pData.address : {};
+                            const addressParts = [
+                              addrObj.building_name,
+                              addrObj.street_name,
+                              addrObj.locality,
+                              addrObj.city,
+                              addrObj.state,
+                              addrObj.pincode,
+                              addrObj.country,
+                            ].filter((item) => Boolean(item && String(item).trim().length > 0));
+
+                            return (
+                              <>
+                                {/* Top Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg bg-sky-500/15 p-2 text-sky-400 border border-sky-500/30">
+                                      <CreditCard className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-bold text-foreground">
+                                          {legalFullName}
+                                        </p>
+                                        <span className="rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                          PAN PLUS RECORD
+                                        </span>
+                                      </div>
+                                      <p className="font-mono text-xs text-muted-foreground">
+                                        PAN: <span className="text-foreground font-semibold">{panNum}</span> · Type: <span className="text-foreground">{panType}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 border ${
+                                        isOperative
+                                          ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                          : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                      }`}
+                                    >
+                                      <ShieldCheck className="h-3.5 w-3.5" /> {panStatus}
+                                    </span>
+                                    <span
+                                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 border ${
+                                        aadhaarLinked
+                                          ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                          : "bg-red-500/15 border-red-500/30 text-red-400"
+                                      }`}
+                                    >
+                                      <Fingerprint className="h-3.5 w-3.5" />
+                                      {aadhaarLinked ? "Aadhaar Linked" : "Aadhaar Not Linked"}
+                                    </span>
+                                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                      ₹2.00 Billed
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                  {/* Full Legal Name */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <User className="h-3.5 w-3.5 text-sky-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Full Legal Name</span>
+                                    </div>
+                                    <p className="font-bold text-foreground text-base">
+                                      {legalFullName}
+                                    </p>
+                                    <p className="text-[11px] text-sky-400 font-medium">
+                                      ✓ ITD Official Record Verified
+                                    </p>
+                                  </div>
+
+                                  {/* PAN & Category */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <CreditCard className="h-3.5 w-3.5 text-sky-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Permanent Account Number</span>
+                                    </div>
+                                    <p className="font-mono font-bold text-primary text-base">
+                                      {panNum}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Entity Category: <strong className="text-foreground">{panType}</strong>
+                                    </p>
+                                  </div>
+
+                                  {/* Name Breakdown */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <User className="h-3.5 w-3.5 text-sky-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Name Breakdown</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 pt-0.5 text-xs font-mono">
+                                      <div>
+                                        <span className="text-[10px] text-muted-foreground block">First</span>
+                                        <span className="font-semibold text-foreground">{String(pData.first_name || "—")}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[10px] text-muted-foreground block">Middle</span>
+                                        <span className="font-semibold text-foreground">{String(pData.middle_name || "—")}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[10px] text-muted-foreground block">Last</span>
+                                        <span className="font-semibold text-foreground">{String(pData.last_name || "—")}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Date of Birth & Gender */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Calendar className="h-3.5 w-3.5 text-sky-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">DOB & Gender</span>
+                                    </div>
+                                    <p className="font-semibold text-foreground text-sm">
+                                      {String(pData.dob || "—")}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground uppercase">
+                                      Gender: <strong className="text-foreground">{String(pData.gender || "—")}</strong>
+                                    </p>
+                                  </div>
+
+                                  {/* Linked Aadhaar Details */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Fingerprint className="h-3.5 w-3.5 text-emerald-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Linked Aadhaar Seeding</span>
+                                    </div>
+                                    <p className="font-mono font-bold text-foreground text-sm">
+                                      {String(pData.aadhaar_number || "—")}
+                                    </p>
+                                    <p className="text-[11px] text-emerald-400">
+                                      {aadhaarLinked ? "✓ Aadhaar Linked with Income Tax Department" : "✗ Aadhaar Not Linked"}
+                                      {pData.aadhaar_seeding_status ? ` (Status: ${pData.aadhaar_seeding_status})` : ""}
+                                    </p>
+                                  </div>
+
+                                  {/* PAN Allotment Date */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">PAN Allotment Date</span>
+                                    </div>
+                                    <p className="font-mono font-semibold text-foreground text-sm">
+                                      {String(pData.pan_allotment_date || "—")}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Status: <strong className="text-emerald-400">{panStatus}</strong>
+                                    </p>
+                                  </div>
+
+                                  {/* Employment & Corporate Profile */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1.5 sm:col-span-2">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Briefcase className="h-3.5 w-3.5 text-sky-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Employment & Corporate Profile</span>
+                                    </div>
+                                    <div className="grid gap-2 sm:grid-cols-3 pt-1 text-xs">
+                                      <div className="rounded bg-secondary/40 p-2 border border-border/50">
+                                        <span className="text-[10px] text-muted-foreground block uppercase">Salaried Individual</span>
+                                        <span className="font-semibold text-foreground">
+                                          {pData.is_salaried === "Y" ? "Yes (Salaried)" : pData.is_salaried === "N" ? "No" : String(pData.is_salaried || "—")}
+                                        </span>
+                                      </div>
+                                      <div className="rounded bg-secondary/40 p-2 border border-border/50">
+                                        <span className="text-[10px] text-muted-foreground block uppercase">Company Director</span>
+                                        <span className="font-semibold text-foreground">
+                                          {pData.is_director === "Y" ? "Yes (Director)" : pData.is_director === "N" ? "No" : String(pData.is_director || "—")}
+                                        </span>
+                                      </div>
+                                      <div className="rounded bg-secondary/40 p-2 border border-border/50">
+                                        <span className="text-[10px] text-muted-foreground block uppercase">Sole Proprietor</span>
+                                        <span className="font-semibold text-foreground">
+                                          {pData.is_sole_proprietor === "Y" ? "Yes (Proprietor)" : pData.is_sole_proprietor === "N" ? "No" : String(pData.is_sole_proprietor || "—")}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Registered Address */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1 sm:col-span-2">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <MapPin className="h-3.5 w-3.5 text-sky-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Official Registered Address</span>
+                                    </div>
+                                    {addressParts.length > 0 ? (
+                                      <p className="text-xs leading-relaxed text-foreground font-medium pt-0.5">
+                                        {addressParts.join(", ")}
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground pt-0.5">
+                                        Country: <strong className="text-foreground">{addrObj.country || "India"}</strong> · Specific street details protected under privacy norms
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Verification Audit & Trace */}
+                                  {(responseJson?.request_id || responseJson?.client_ref_num) && (
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-1.5 sm:col-span-2">
+                                      <div className="flex items-center justify-between text-muted-foreground">
+                                        <div className="flex items-center gap-1.5">
+                                          <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+                                          <span className="font-medium uppercase tracking-wider text-[10px]">Verification Audit & Trace</span>
+                                        </div>
+                                        {Boolean(responseJson?._cached) && (
+                                          <span className="rounded bg-sky-500/15 text-sky-400 font-mono text-[10px] px-2 py-0.5 border border-sky-500/25">
+                                            ⚡ Cached Response
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="grid gap-2 sm:grid-cols-2 text-xs font-mono text-muted-foreground pt-0.5">
+                                        {responseJson?.request_id && (
+                                          <p className="truncate">
+                                            Request ID: <span className="text-foreground">{String(responseJson.request_id)}</span>
+                                          </p>
+                                        )}
+                                        {responseJson?.client_ref_num && (
+                                          <p className="truncate">
+                                            Client Ref: <span className="text-foreground">{String(responseJson.client_ref_num)}</span>
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </>
+                            );
+                          })()
                         ) : selectedService === "pan" ? (
                           /* ========================================================= */
                           /* 💳 PAN VERIFICATION DEDICATED CARD                       */

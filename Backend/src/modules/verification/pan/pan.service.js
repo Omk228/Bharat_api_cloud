@@ -237,6 +237,242 @@ export class PanVerificationService {
 
     return finalResponse;
   }
+
+  /**
+   * Verify PAN Details Plus with Demographic, Address, and Allotment data
+   * Endpoint: POST /srv2/validation/pan/plus
+   */
+  static async verifyPanPlus({ pan, client_ref_num, apiClient }) {
+    const startedAt = Date.now();
+    const cleanPan = (pan || '').trim().toUpperCase();
+    const requestId = 'REQ_' + crypto.randomUUID();
+    const clientRef = client_ref_num || `BHARAT_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+    const endpoint = '/srv2/validation/pan/plus';
+    const hitCost = getApiPrice(endpoint) || 2.00;
+
+    // Pre-flight wallet balance check
+    if (apiClient?.user_id) {
+      const currentBalance = parseFloat(apiClient.wallet_balance || 0);
+      if (currentBalance < hitCost) {
+        throw ApiError.paymentRequired(
+          `Insufficient wallet balance. Required: ₹${hitCost.toFixed(2)}, Available: ₹${currentBalance.toFixed(2)}`
+        );
+      }
+    }
+
+    // 1. Check Redis Cache (TTL: 24h)
+    if (cleanPan) {
+      const cachedResult = await CacheService.getVerification('pan_plus', cleanPan);
+      if (cachedResult) {
+        // Purge any stale simulated/hardcoded data previously stored in cache
+        if (cachedResult.data?.fullname === 'VERIFIED PAN HOLDER' || cachedResult._simulated) {
+          console.log(`🧹 [PAN PLUS CACHE EVICT] Stale simulation data found for ${cleanPan}, purging cache...`);
+          await CacheService.deleteVerification('pan_plus', cleanPan);
+        } else {
+          const durationMs = Date.now() - startedAt;
+          console.log(`⚡ [PAN PLUS CACHE HIT] Returned from Cache in ${durationMs}ms: PAN=${cleanPan}`);
+
+          const cachedResponse = {
+            ...cachedResult,
+            request_id: cachedResult.request_id || requestId,
+            client_ref_num: clientRef,
+            _cached: true,
+          };
+
+          if (apiClient?.user_id) {
+            QueueService.addAuditJob({
+              userId: apiClient.user_id,
+              credentialId: apiClient.credential_id,
+              endpoint,
+              method: 'POST',
+              requestId: cachedResponse.request_id,
+              clientRefNum: clientRef,
+              statusCode: 200,
+              resultCode: 101,
+              durationMs,
+              clientIp: apiClient.client_ip,
+              cost: 0.00,
+              environment: apiClient.environment || 'production',
+              isSuccess: true,
+            }).catch(err => {
+              console.error('Queue dispatch note:', err.message);
+            });
+          }
+
+          return cachedResponse;
+        }
+      }
+    }
+
+    // 2. Cache Miss: Forward to IDSPay Upstream Provider
+    const masterApiId = ENV.IDSPAY.PROD_API_ID;
+    const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
+    const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
+    const upstreamUrl = `${ENV.IDSPAY.PROD_BASE_URL}/srv2/validation/pan/plus`;
+
+    let finalResponse;
+    let resultCode = 101;
+    let isSuccess = false;
+
+    if (masterApiId && masterApiKey && masterTokenId) {
+      try {
+        console.log(`📡 [PROXY GATEWAY] Forwarding PAN Plus request to Upstream: ${upstreamUrl}`);
+        console.log(`🔑 Master Creds: API_ID=${masterApiId}, PAN=${cleanPan.substring(0, 5)}XXXX`);
+
+        const upstreamRes = await upstreamFetch(upstreamUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            api_id: masterApiId,
+            api_key: masterApiKey,
+            token_id: masterTokenId,
+            pan: cleanPan,
+          }),
+        });
+
+        console.log(`⏱️ [PAN PLUS UPSTREAM LATENCY]: ${upstreamRes.upstreamLatencyMs}ms`);
+
+        const upstreamData = await upstreamRes.json();
+        console.log(`📥 [PAN PLUS UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
+
+        finalResponse = {
+          status: upstreamData.status || {
+            code: upstreamRes.ok ? 200 : upstreamRes.status,
+            type: upstreamRes.ok ? 'success' : 'failed',
+            message: upstreamData.message || (upstreamRes.ok ? 'Pan details validation successful.' : 'Verification failed'),
+          },
+          message: upstreamData.message || (upstreamRes.ok ? 'Pan details validation successful.' : 'Verification failed'),
+          data: upstreamData.data !== undefined ? upstreamData.data : (upstreamData.result || null),
+          request_id: upstreamData.request_id || requestId,
+          client_ref_num: upstreamData.client_ref_num || clientRef,
+        };
+
+        isSuccess = upstreamRes.ok && (
+          upstreamData.status?.code === 200 ||
+          upstreamData.status?.type === 'success' ||
+          upstreamData.message === 'Pan details validation successful.' ||
+          Boolean(upstreamData.data?.pan)
+        );
+        resultCode = isSuccess ? 101 : 102;
+      } catch (err) {
+        console.error('⚠️ Upstream PAN Plus call failed:', err.message);
+        resultCode = 102;
+        isSuccess = false;
+        finalResponse = {
+          status: {
+            code: 502,
+            type: 'failed',
+            message: 'Upstream verification service temporarily unavailable. Please try again.',
+          },
+          message: 'Upstream verification service temporarily unavailable. Please try again.',
+          data: null,
+          request_id: requestId,
+          client_ref_num: clientRef,
+        };
+      }
+    } else {
+      console.log('ℹ️ No IDSPay master keys found in .env, using gateway simulated sandbox.');
+    }
+
+    // Fallback sandbox simulation ONLY if upstream keys were not configured
+    if (!finalResponse) {
+      const isValidFormat = this.isValidPanFormat(cleanPan);
+      if (!isValidFormat || cleanPan.startsWith('INVALID')) {
+        resultCode = 102;
+        isSuccess = false;
+        finalResponse = {
+          status: {
+            code: 400,
+            type: 'failed',
+            message: 'Invalid PAN number or combination of inputs.',
+          },
+          message: 'Invalid PAN number or combination of inputs.',
+          data: null,
+          request_id: requestId,
+          client_ref_num: clientRef,
+        };
+      } else {
+        resultCode = 101;
+        isSuccess = true;
+        const panType = cleanPan[3] === 'P' ? 'Individual' : cleanPan[3] === 'C' ? 'Company' : 'Individual';
+
+        finalResponse = {
+          status: {
+            code: 200,
+            type: 'success',
+            message: 'Pan details validation successful.',
+          },
+          message: 'Pan details validation successful.',
+          data: {
+            pan: cleanPan,
+            pan_status: 'Active and inoperative',
+            pan_type: panType,
+            fullname: 'VERIFIED PAN HOLDER',
+            first_name: 'VERIFIED',
+            middle_name: '',
+            last_name: 'HOLDER',
+            gender: 'male',
+            aadhaar_seeding_status: 'Y',
+            aadhaar_number: 'XXXXXXXX1234',
+            aadhaar_linked: true,
+            dob: '30/05/1985',
+            address: {
+              building_name: 'Tower 4, Floor 5',
+              locality: 'Cyber City',
+              street_name: 'DLF Phase 2',
+              pincode: '122002',
+              city: 'Gurugram',
+              state: 'Haryana',
+              country: 'India',
+            },
+            mobile: '98XXXXXX10',
+            email: 'user*****@gmail.com',
+            signatory_details: [],
+            is_sole_proprietor: 'N',
+            is_director: 'N',
+            is_salaried: 'Y',
+            pan_allotment_date: '12/11/2008',
+          },
+          request_id: requestId,
+          client_ref_num: clientRef,
+          _simulated: true,
+        };
+      }
+    }
+
+    const durationMs = Date.now() - startedAt;
+
+    // 3. Store result in Cache (24 Hours for valid upstream response ONLY, never cache simulation)
+    if (cleanPan && finalResponse && isSuccess && finalResponse.data?.pan && finalResponse.data?.fullname !== 'VERIFIED PAN HOLDER' && !finalResponse._simulated) {
+      await CacheService.setVerification('pan_plus', cleanPan, finalResponse, 86400);
+      console.log(`💾 [PAN PLUS CACHED] Key verify:pan_plus:${cleanPan} stored for 24h`);
+    }
+
+    // 4. Non-Blocking Background Job via BullMQ (Wallet Debit ₹2.00 + Audit Log)
+    if (apiClient?.user_id) {
+      QueueService.addAuditJob({
+        userId: apiClient.user_id,
+        credentialId: apiClient.credential_id,
+        endpoint,
+        method: 'POST',
+        requestId,
+        clientRefNum: clientRef,
+        statusCode: 200,
+        resultCode,
+        durationMs,
+        clientIp: apiClient.client_ip,
+        cost: isSuccess ? hitCost : 0.00,
+        environment: apiClient.environment || 'production',
+        isSuccess,
+      }).catch(err => {
+        console.error('Queue dispatch note:', err.message);
+      });
+    }
+
+    return finalResponse;
+  }
 }
 
 export default PanVerificationService;

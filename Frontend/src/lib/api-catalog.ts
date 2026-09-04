@@ -147,6 +147,79 @@ export const endpoints: ApiEndpoint[] = [
     statusMessage: "Refund processed",
   },
   {
+    id: "verify-pan-plus",
+    group: "KYC",
+    method: "POST",
+    path: "/srv2/validation/pan/plus",
+    title: "Pan Details Plus",
+    desc: "Comprehensive Permanent Account Number verification with demographic details, Aadhaar seeding status, allotment date, and corporate/salaried profile.",
+    tags: ["pan", "pan plus", "kyc", "identity", "aadhaar link", "allotment"],
+    latency: "~1.8s",
+    params: [
+      { name: "pan", type: "string", required: true, desc: "10-character alphanumeric PAN, e.g. ABCDE1234F." },
+    ],
+    sampleBody: { pan: "ABCDE1234F" },
+    sampleResponse: {
+      status: {
+        code: 200,
+        type: "success",
+        message: "Pan details validation successful."
+      },
+      message: "Pan details validation successful.",
+      data: {
+        pan: "ABCDE1234F",
+        pan_type: "Individual",
+        fullname: "KUMAR SHARMA",
+        first_name: "KUMAR",
+        middle_name: "",
+        last_name: "SHARMA",
+        gender: "male",
+        aadhaar_number: "XXXXXXXX1234",
+        aadhaar_linked: true,
+        dob: "15/08/1990",
+        address: {
+          building_name: "",
+          locality: "",
+          street_name: "",
+          pincode: "",
+          city: "",
+          state: "",
+          country: "India"
+        },
+        mobile: "",
+        email: "",
+        signatory_details: [],
+        is_sole_proprietor: "N",
+        is_director: "N",
+        is_salaried: "N",
+        pan_status: "Active and operative",
+        pan_allotment_date: "10/05/2015"
+      },
+      request_id: "REQ_e8f23019-32ca-492a-b73a-4467c672b123",
+      client_ref_num: "BHARAT_SAMPLE"
+    },
+    sampleFailedResponse: {
+      status: {
+        code: 500,
+        type: "error",
+        message: "Pan details validation failed"
+      },
+      message: "Pan details validation failed",
+      data: null,
+      request_id: "REQ_fa72019-09ca-492a-b73a-000000000000",
+      client_ref_num: "BHARAT_SAMPLE"
+    },
+    errorCodes: [
+      { code: 400, meaning: "Invalid Indian PAN format (Expected: 5 letters, 4 digits, 1 letter)." },
+      { code: 401, meaning: "Unauthorized — invalid or missing API credentials." },
+      { code: 402, meaning: "Insufficient wallet balance for ₹2.00 verification fee." },
+      { code: 500, meaning: "Pan details validation failed or record not found." },
+      { code: 502, meaning: "Upstream verification service temporarily unavailable." },
+      { code: 504, meaning: "Gateway Timeout — Upstream KYC provider timed out." },
+    ],
+    statusMessage: "Refund processed on failure",
+  },
+  {
     id: "aadhaar-otp",
     group: "KYC",
     method: "POST",

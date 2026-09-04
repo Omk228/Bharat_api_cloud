@@ -10,4 +10,10 @@ router.post('/verify/pan', verifyApiClientCredentials, PanVerificationController
 router.post('/validation/pan', verifyApiClientCredentials, PanVerificationController.verifyPan);
 router.post('/pan', verifyApiClientCredentials, PanVerificationController.verifyPan);
 
+// Pan Details Plus Endpoints
+router.post('/srv2/validation/pan/plus', verifyApiClientCredentials, PanVerificationController.verifyPanPlus);
+router.post('/validation/pan/plus', verifyApiClientCredentials, PanVerificationController.verifyPanPlus);
+router.post('/pan/plus', verifyApiClientCredentials, PanVerificationController.verifyPanPlus);
+router.post('/verify/pan/plus', verifyApiClientCredentials, PanVerificationController.verifyPanPlus);
+
 export default router;

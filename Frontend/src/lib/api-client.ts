@@ -213,6 +213,23 @@ export const apiClient = {
     return res.json();
   },
 
+  async verifyPanPlus(data: {
+    api_id: string;
+    api_key: string;
+    token_id: string;
+    pan: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const res = await fetch(`${host}/srv2/validation/pan/plus`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
   async verifyAadhaar(data: {
     api_id: string;
     api_key: string;

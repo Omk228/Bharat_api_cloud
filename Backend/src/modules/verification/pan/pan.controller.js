@@ -55,6 +55,47 @@ export class PanVerificationController {
 
     return res.status(200).json(response);
   });
+
+  /**
+   * Handler for POST /srv2/validation/pan/plus
+   */
+  static verifyPanPlus = asyncHandler(async (req, res) => {
+    const pan = req.body?.pan || req.query?.pan;
+    const clientRefNum = req.body?.client_ref_num || req.body?.clientRefNum || req.query?.client_ref_num;
+
+    if (!pan) {
+      return res.status(400).json({
+        status: {
+          code: 400,
+          type: 'failed',
+          message: 'Missing required parameter: pan is mandatory (10 alphanumeric characters).',
+        },
+        message: 'Missing required parameter: pan is mandatory (10 alphanumeric characters).',
+        data: null,
+      });
+    }
+
+    const cleanPan = String(pan).trim().toUpperCase();
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+      return res.status(400).json({
+        status: {
+          code: 400,
+          type: 'failed',
+          message: 'Invalid Indian PAN format. Expected format: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F).',
+        },
+        message: 'Invalid Indian PAN format. Expected format: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F).',
+        data: null,
+      });
+    }
+
+    const response = await PanVerificationService.verifyPanPlus({
+      pan: cleanPan,
+      client_ref_num: clientRefNum,
+      apiClient: req.apiClient,
+    });
+
+    return res.status(200).json(response);
+  });
 }
 
 export default PanVerificationController;
