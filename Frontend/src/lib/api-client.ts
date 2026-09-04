@@ -429,6 +429,36 @@ export const apiClient = {
     return res.json();
   },
 
+  async verifyUanDirect(data: {
+    uan: string;
+    client_ref_num?: string;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${API_BASE}/srv3/uan-direct`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        uan: data.uan,
+        client_ref_num: data.client_ref_num,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
   async getWalletBalance(): Promise<{
     wallet_balance: number;
     today_spend: number;

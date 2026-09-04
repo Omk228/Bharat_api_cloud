@@ -121,7 +121,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | undefined;
+  service?: "pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -135,6 +135,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "bank_validation"
         : search["service"] === "uan" || search["service"] === "uan_mobile" || search["service"] === "mobile_uan"
         ? "uan"
+        : search["service"] === "uan_direct" || search["service"] === "uan_to_employment" || search["service"] === "uan-direct"
+        ? "uan_direct"
         : search["service"] === "prefill"
         ? "prefill"
         : search["service"] === "name_finder" || search["service"] === "mobile_name"
@@ -150,7 +152,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
+        content: "Live sandbox test console for PAN, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
       },
     ],
   }),
@@ -160,7 +162,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan">(
+  const [selectedService, setSelectedService] = useState<"pan" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct">(
     searchParams.service === "aadhaar"
       ? "aadhaar"
       : searchParams.service === "bank"
@@ -169,6 +171,8 @@ function TestApiPage() {
       ? "bank_validation"
       : searchParams.service === "uan"
       ? "uan"
+      : searchParams.service === "uan_direct"
+      ? "uan_direct"
       : searchParams.service === "prefill"
       ? "prefill"
       : searchParams.service === "name_finder"
@@ -221,6 +225,8 @@ function TestApiPage() {
 
   // Mobile to UAN fields
   const [uanMobile, setUanMobile] = useState("");
+  // UAN to Employment fields
+  const [directUanNumber, setDirectUanNumber] = useState("");
 
   // Prefill fields
   const [mobileNumber, setMobileNumber] = useState("");
@@ -237,6 +243,15 @@ function TestApiPage() {
 
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopyField = (text: string, fieldName: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    toast.success(`${fieldName} copied to clipboard`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
   const [responseTime, setResponseTime] = useState<number | null>(null);
   const [responseStatus, setResponseStatus] = useState<number | null>(null);
   const [responseJson, setResponseJson] = useState<ApiResponseEnvelope | null>(null);
@@ -258,44 +273,43 @@ function TestApiPage() {
     }
   }, [searchParams.service]);
 
-  const effectiveApiId = apiId || activeCred?.api_id || DEFAULT_API_ID;
-  const effectiveApiKey = apiKey || activeCred?.api_key || DEFAULT_API_KEY;
-  const effectiveTokenId = tokenId || activeCred?.token_id || DEFAULT_TOKEN_ID;
+  const effectiveApiId = apiId.trim() || DEFAULT_API_ID;
+  const effectiveApiKey = apiKey.trim() || DEFAULT_API_KEY;
+  const effectiveTokenId = tokenId.trim() || DEFAULT_TOKEN_ID;
 
-  // Dynamic request payload based on selected service
-  const requestPayload =
+  // JSON preview object for request panel
+  const requestPayload: Record<string, unknown> =
     selectedService === "pan"
       ? {
+          pan_number: pan.trim().toUpperCase(),
+          ...(name.trim() ? { name: name.trim() } : {}),
+          ...(panDisplayName === "true" ? { pan_display_name: true } : {}),
+          ...(nameMatchMethod !== "none" ? { name_match_method: nameMatchMethod } : {}),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
-          pan: pan.trim().toUpperCase(),
-          name: name.trim(),
-          pan_display_name: panDisplayName,
-          name_match_method: nameMatchMethod,
         }
       : selectedService === "aadhaar"
       ? {
+          aadhaar_number: aadhaar.trim().replace(/\D/g, ""),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
-          aadhaar: aadhaar.trim().replace(/\s|-/g, ""),
-          ...(name.trim() ? { name: name.trim() } : {}),
         }
       : selectedService === "bank"
       ? {
+          creditor_account_id: creditorAccountId.trim(),
+          ifsc_code: ifscCode.trim().toUpperCase(),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
-          creditorAccountId: creditorAccountId.trim(),
-          ifscCode: ifscCode.trim().toUpperCase(),
         }
       : selectedService === "name_finder"
       ? {
+          mobile: mobileNameNumber.trim().replace(/\D/g, ""),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
-          mobile: mobileNameNumber.trim().replace(/\D/g, ""),
         }
       : selectedService === "ip_lookup"
       ? {
@@ -328,6 +342,13 @@ function TestApiPage() {
           token_id: effectiveTokenId,
           mobile: uanMobile.trim().replace(/\D/g, ""),
         }
+      : selectedService === "uan_direct"
+      ? {
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+          uan: directUanNumber.trim().replace(/\D/g, ""),
+        }
       : {
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
@@ -358,6 +379,10 @@ function TestApiPage() {
       toast.error("Please enter a 10-digit mobile number");
       return;
     }
+    if (selectedService === "uan_direct" && !directUanNumber.trim()) {
+      toast.error("Please enter a 12-digit UAN number");
+      return;
+    }
     if (selectedService === "name_finder" && !mobileNameNumber.trim()) {
       toast.error("Please enter a 10-digit mobile number");
       return;
@@ -381,20 +406,9 @@ function TestApiPage() {
       } else if (selectedService === "name_finder") {
         rawData = await apiClient.verifyMobileNameFinder(requestPayload as Parameters<typeof apiClient.verifyMobileNameFinder>[0]);
       } else if (selectedService === "ip_lookup") {
-        rawData = await apiClient.lookupRequesterIp({
-          ip: ipAddress.trim(),
-          api_id: effectiveApiId,
-          api_key: effectiveApiKey,
-          token_id: effectiveTokenId,
-        });
+        rawData = await apiClient.lookupRequesterIp(requestPayload as Parameters<typeof apiClient.lookupRequesterIp>[0]);
       } else if (selectedService === "reverse_geocode") {
-        rawData = await apiClient.reverseGeocode({
-          lat: latitude.trim() || "28.6139",
-          lon: longitude.trim() || "77.2090",
-          api_id: effectiveApiId,
-          api_key: effectiveApiKey,
-          token_id: effectiveTokenId,
-        });
+        rawData = await apiClient.reverseGeocode(requestPayload as Parameters<typeof apiClient.reverseGeocode>[0]);
       } else if (selectedService === "bank_validation") {
         rawData = await apiClient.validateBankAccount({
           bank_account_no: bankValidateAccountNumber.trim() || "38237401582",
@@ -407,6 +421,13 @@ function TestApiPage() {
       } else if (selectedService === "uan") {
         rawData = await apiClient.verifyMobileToUan({
           mobile: uanMobile.trim().replace(/\D/g, ""),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "uan_direct") {
+        rawData = await apiClient.verifyUanDirect({
+          uan: directUanNumber.trim().replace(/\D/g, ""),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -621,6 +642,8 @@ function TestApiPage() {
       ? "/api/v1/validate_bank_account"
       : selectedService === "uan"
       ? "/srv3/uan-mobile"
+      : selectedService === "uan_direct"
+      ? "/srv3/uan-direct"
       : selectedService === "name_finder"
       ? "/srv2/mobile-name-finder"
       : selectedService === "ip_lookup"
@@ -640,6 +663,8 @@ function TestApiPage() {
       ? "Bank Account Validation"
       : selectedService === "uan"
       ? "Mobile to UAN V2"
+      : selectedService === "uan_direct"
+      ? "UAN to Employment History V2"
       : selectedService === "name_finder"
       ? "Mobile To Name Finder"
       : selectedService === "ip_lookup"
@@ -661,7 +686,7 @@ function TestApiPage() {
                   Bharat API Production Gateway
                 </span>
                 <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  {selectedService === "name_finder" || selectedService === "uan" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
+                  {selectedService === "name_finder" || selectedService === "uan" || selectedService === "uan_direct" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -673,6 +698,8 @@ function TestApiPage() {
                   ? "Direct Bank Account Validation and Beneficiary Name Verification powered by Bharat API Cloud."
                   : selectedService === "uan"
                   ? "Direct Mobile to Universal Account Number (UAN) & EPFO Employment Verification powered by Bharat API Cloud."
+                  : selectedService === "uan_direct"
+                  ? "Direct 12-digit UAN EPFO Employment History & Establishment Verification powered by Bharat API Cloud."
                   : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (${selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.`}
               </p>
             </div>
@@ -692,6 +719,8 @@ function TestApiPage() {
                       ? "bank-validation"
                       : selectedService === "uan"
                       ? "mobile-to-uan"
+                      : selectedService === "uan_direct"
+                      ? "uan-to-employment"
                       : selectedService === "name_finder"
                       ? "mobile-name-finder"
                       : selectedService === "ip_lookup"
@@ -721,6 +750,7 @@ function TestApiPage() {
                   {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
                   {selectedService === "bank_validation" && <Landmark className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "uan" && <Briefcase className="h-4 w-4 text-indigo-400" />}
+                  {selectedService === "uan_direct" && <Briefcase className="h-4 w-4 text-purple-400" />}
                   {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
@@ -731,6 +761,7 @@ function TestApiPage() {
                     {selectedService === "bank" && "Bank Verification - Penny Less V2 (/srv1/beneficiary)"}
                     {selectedService === "bank_validation" && "Bank Account Validation (/api/v1/validate_bank_account)"}
                     {selectedService === "uan" && "Mobile to UAN V2 (/srv3/uan-mobile)"}
+                    {selectedService === "uan_direct" && "UAN to Employment History V2 (/srv3/uan-direct)"}
                     {selectedService === "prefill" && "Mobile to Prefill (/srv4/credit-report/prefill)"}
                     {selectedService === "name_finder" && "Mobile To Name Finder (/srv2/mobile-name-finder)"}
                     {selectedService === "ip_lookup" && "Requester IP Lookup (/check)"}
@@ -745,6 +776,41 @@ function TestApiPage() {
                   ONLINE · LIVE
                 </span>
               </div>
+            </div>
+
+            {/* Quick Switch Service Bar */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] text-muted-foreground font-medium mr-1">Switch Service:</span>
+              {[
+                { id: "pan", label: "PAN V2" },
+                { id: "aadhaar", label: "Aadhaar" },
+                { id: "bank", label: "Bank Penny Less" },
+                { id: "bank_validation", label: "Bank Validation" },
+                { id: "uan", label: "Mobile to UAN" },
+                { id: "uan_direct", label: "UAN to Employment" },
+                { id: "prefill", label: "Prefill" },
+                { id: "name_finder", label: "Name Finder" },
+                { id: "ip_lookup", label: "IP Lookup" },
+                { id: "reverse_geocode", label: "Reverse Geocode" },
+              ].map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedService(s.id as any);
+                    setResponseJson(null);
+                    setResponseStatus(null);
+                    setResponseTime(null);
+                  }}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
+                    selectedService === s.id
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2 text-muted-foreground">
@@ -775,42 +841,87 @@ function TestApiPage() {
 
                 {/* API Credentials */}
                 <div className="space-y-3">
-                  <label className="block">
+                  <div>
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>API ID (Bharat API Credential)</span>
                       {credsLoading && <span className="text-[10px]">Loading...</span>}
                     </div>
-                    <input
-                      value={apiId}
-                      readOnly
-                      placeholder="e.g. APIDC9272C"
-                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs font-semibold text-foreground cursor-not-allowed outline-none select-all focus:border-border"
-                    />
-                  </label>
+                    <div className="relative flex items-center">
+                      <input
+                        value={apiId}
+                        readOnly
+                        placeholder="e.g. APIDC9272C"
+                        className="w-full rounded-lg border border-border bg-secondary/30 pl-3 pr-9 py-2 font-mono text-xs font-semibold text-foreground cursor-pointer outline-none select-all hover:border-border/80 focus:border-primary transition-colors"
+                        onClick={() => handleCopyField(apiId, "API ID")}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCopyField(apiId, "API ID")}
+                        title="Copy API ID"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                      >
+                        {copiedField === "API ID" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-                  <label className="block">
+                  <div>
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>API Key</span>
                     </div>
-                    <input
-                      value={apiKey}
-                      readOnly
-                      placeholder="e.g. fc62efa1-4aff-478d-9b1b-6589e6262cba"
-                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs font-semibold text-foreground cursor-not-allowed outline-none select-all focus:border-border"
-                    />
-                  </label>
+                    <div className="relative flex items-center">
+                      <input
+                        value={apiKey}
+                        readOnly
+                        placeholder="e.g. fc62efa1-4aff-478d-9b1b-6589e6262cba"
+                        className="w-full rounded-lg border border-border bg-secondary/30 pl-3 pr-9 py-2 font-mono text-xs font-semibold text-foreground cursor-pointer outline-none select-all hover:border-border/80 focus:border-primary transition-colors"
+                        onClick={() => handleCopyField(apiKey, "API Key")}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCopyField(apiKey, "API Key")}
+                        title="Copy API Key"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                      >
+                        {copiedField === "API Key" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-                  <label className="block">
+                  <div>
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>Token ID</span>
                     </div>
-                    <input
-                      value={tokenId}
-                      readOnly
-                      placeholder="e.g. 1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9"
-                      className="w-full rounded-lg border border-border bg-secondary/30 px-3 py-2 font-mono text-xs font-semibold text-foreground cursor-not-allowed outline-none select-all focus:border-border"
-                    />
-                  </label>
+                    <div className="relative flex items-center">
+                      <input
+                        value={tokenId}
+                        readOnly
+                        placeholder="e.g. 1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9"
+                        className="w-full rounded-lg border border-border bg-secondary/30 pl-3 pr-9 py-2 font-mono text-xs font-semibold text-foreground cursor-pointer outline-none select-all hover:border-border/80 focus:border-primary transition-colors"
+                        onClick={() => handleCopyField(tokenId, "Token ID")}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCopyField(tokenId, "Token ID")}
+                        title="Copy Token ID"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                      >
+                        {copiedField === "Token ID" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Verification Fields - Service Specific */}
@@ -1054,6 +1165,38 @@ function TestApiPage() {
                           💰 Wallet Debit:
                         </span>
                         <span className="font-bold text-indigo-400">₹5.00 / Hit</span>
+                      </div>
+                    </>
+                  ) : selectedService === "uan_direct" ? (
+                    /* UAN to Employment History V2 Form */
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">EPFO Universal Account Number (UAN) *</span>
+                          <span className="text-[11px] text-muted-foreground">12 Digits (e.g. 101150421578)</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            value={directUanNumber}
+                            maxLength={12}
+                            onChange={(e) => setDirectUanNumber(e.target.value.replace(/\D/g, ""))}
+                            placeholder="e.g. 101150421578"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-purple-400"
+                          />
+                          {directUanNumber.length > 0 && (
+                            <span className="absolute right-3 top-3 font-mono text-[10px] text-muted-foreground">
+                              {directUanNumber.length} / 12
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-2.5 text-xs text-purple-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-purple-400">₹5.00 / Hit (Auto-refund on failure)</span>
                       </div>
                     </>
                   ) : (
@@ -1872,15 +2015,15 @@ function TestApiPage() {
                               )}
                             </div>
                           </>
-                        ) : selectedService === "uan" ? (
+                        ) : selectedService === "uan" || selectedService === "uan_direct" ? (
                             /* ========================================================= */
-                            /* 🪪 MOBILE TO UAN V2 DEDICATED VIRTUAL CARD                */
+                            /* 🪪 UAN / EMPLOYMENT HISTORY V2 DEDICATED VIRTUAL CARD     */
                             /* ========================================================= */
                             (() => {
                               const uanList: string[] = Array.isArray(resData?.uan) ? (resData.uan as string[]) : [];
                               const summary = (resData?.summary || {}) as Record<string, any>;
                               const recentEmployer = (summary?.recent_employer_data || {}) as Record<string, any>;
-                              const primaryUan = uanList[0] || recentEmployer?.matching_uan || summary?.matching_uan || "—";
+                              const primaryUan = uanList[0] || recentEmployer?.matching_uan || summary?.matching_uan || directUanNumber || "—";
                               const uanDetailsMap = (resData?.uan_details || {}) as Record<string, any>;
                               const uanDetail = uanDetailsMap[primaryUan] || Object.values(uanDetailsMap)[0] || {};
                               const basicDetails = (uanDetail?.basic_details || {}) as Record<string, any>;
@@ -1906,11 +2049,12 @@ function TestApiPage() {
                                             )}
                                           </p>
                                           <span className="rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
-                                            UAN RECORD
+                                            {selectedService === "uan_direct" ? "EPFO EMPLOYMENT RECORD" : "UAN RECORD"}
                                           </span>
                                         </div>
                                         <p className="font-mono text-xs text-muted-foreground">
-                                          Primary UAN: <span className="text-foreground font-semibold">{primaryUan}</span> · Mobile: {uanMobile || basicDetails.mobile || "—"}
+                                          Primary UAN: <span className="text-foreground font-semibold">{primaryUan}</span>
+                                          {selectedService === "uan" ? ` · Mobile: ${uanMobile || basicDetails.mobile || "—"}` : ` · Mode: Direct UAN Verification`}
                                         </p>
                                       </div>
                                     </div>
