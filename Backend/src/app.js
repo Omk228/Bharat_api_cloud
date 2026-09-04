@@ -16,6 +16,7 @@ import apilayerRoutes from './modules/apilayer/apilayer.routes.js';
 import geocodingRoutes from './modules/geocoding/geocoding.routes.js';
 import idfyRoutes from './modules/idfy/idfy.routes.js';
 import uanRoutes from './modules/verification/uan/uan.routes.js';
+import mobileUpiRoutes from './modules/verification/mobile_upi/mobileUpi.routes.js';
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use('/', nameFinderRoutes);
 app.use('/', uanRoutes);
 app.use('/srv3/uan-mobile', uanRoutes);
 app.use('/srv3/uan-direct', uanRoutes);
+app.use('/', mobileUpiRoutes);
 app.use('/', apilayerRoutes);
 app.use('/', idfyRoutes);
 app.use('/idfy', idfyRoutes);

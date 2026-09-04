@@ -4,6 +4,7 @@ import aadhaarRoutes from './aadhaar/aadhaar.routes.js';
 import bankRoutes from './bank/bank.routes.js';
 import prefillRoutes from './prefill/prefill.routes.js';
 import nameFinderRoutes from './name_finder/nameFinder.routes.js';
+import mobileUpiRoutes from './mobile_upi/mobileUpi.routes.js';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/', aadhaarRoutes);
 router.use('/', bankRoutes);
 router.use('/', prefillRoutes);
 router.use('/', nameFinderRoutes);
+router.use('/', mobileUpiRoutes);
 
 export default router;

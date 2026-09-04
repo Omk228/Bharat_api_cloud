@@ -1792,163 +1792,196 @@ function TestApiPage() {
                             </div>
                           </>
                         ) : selectedService === "reverse_geocode" ? (
-                          <>
-                            {/* Top Banner */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="rounded-lg bg-teal-500/15 p-2 text-teal-400 border border-teal-500/30">
-                                  <Compass className="h-6 w-6" />
-                                </div>
-                                <div>
+                          (() => {
+                            const addr = ((responseJson?.address as Record<string, unknown>) || {});
+                            const osmType = String(responseJson?.osm_type || "—");
+                            const itemClass = String(responseJson?.class || "—");
+                            const itemType = String(responseJson?.type || "—");
+                            const placeRank = String(responseJson?.place_rank ?? "—");
+                            const addressType = String(responseJson?.addresstype || responseJson?.address_type || "—");
+                            const displayName = String(responseJson?.display_name || "—");
+                            const residential = String(addr.residential || addr.road || addr.suburb || responseJson?.residential || "—");
+                            const cityDistrict = String(addr.city_district || addr.city_dsitrict || "—");
+                            const city = String(addr.city || addr.town || addr.village || addr.City || "—");
+                            const stateDistrict = String(addr.state_district || "—");
+                            const state = String(addr.state || "—");
+                            const pincode = String(addr.postcode || addr.pincode || addr.Pincode || "—");
+                            const country = String(addr.country || "India");
+
+                            return (
+                              <>
+                                {/* Top Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg bg-teal-500/15 p-2 text-teal-400 border border-teal-500/30">
+                                      <Compass className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-bold text-foreground">
+                                          {city !== "—" ? city : state !== "—" ? state : "Geocoded Location"}
+                                        </p>
+                                        <span className="rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                          OSM: {osmType}
+                                        </span>
+                                        <span className="rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                          TYPE: {addressType}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground line-clamp-1 max-w-xl">
+                                        {displayName}
+                                      </p>
+                                    </div>
+                                  </div>
+
                                   <div className="flex items-center gap-2">
-                                    <p className="text-base font-bold text-foreground">
-                                      {String(
-                                        responseJson?.name ||
-                                        (responseJson?.address as Record<string, unknown>)?.road ||
-                                        (responseJson?.address as Record<string, unknown>)?.suburb ||
-                                        (responseJson?.address as Record<string, unknown>)?.city ||
-                                        "Geocoded Location"
-                                      )}
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                      <ShieldCheck className="h-3.5 w-3.5" /> COORDINATES RESOLVED
+                                    </span>
+                                    <span className="rounded-full bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 text-[11px] font-semibold text-teal-400">
+                                      Bharat API Geocoding
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                  {/* City & City District */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Building className="h-3.5 w-3.5 text-teal-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">City & City District</span>
+                                    </div>
+                                    <p className="font-bold text-foreground text-base">
+                                      {city}
                                     </p>
-                                    <span className="rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
-                                      {String(responseJson?.addresstype || responseJson?.class || "LOCATION")}
-                                    </span>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      City District: <strong className="text-foreground">{cityDistrict}</strong>
+                                    </p>
                                   </div>
-                                  <p className="text-xs text-muted-foreground line-clamp-1 max-w-xl">
-                                    {String(responseJson?.display_name || "Address resolved via Bharat API Geocoding Engine")}
-                                  </p>
-                                </div>
-                              </div>
 
-                              <div className="flex items-center gap-2">
-                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
-                                  <ShieldCheck className="h-3.5 w-3.5" /> COORDINATES RESOLVED
-                                </span>
-                                <span className="rounded-full bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 text-[11px] font-semibold text-teal-400">
-                                  Bharat API Geocoding
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Details Grid */}
-                            <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                              {/* Road & Suburb */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Navigation className="h-3.5 w-3.5 text-teal-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Road & Suburb / Locality</span>
-                                </div>
-                                <p className="font-bold text-foreground text-base">
-                                  {String((responseJson?.address as Record<string, unknown>)?.road || "—")}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground font-mono">
-                                  Suburb: <strong className="text-foreground">{String((responseJson?.address as Record<string, unknown>)?.suburb || "—")}</strong>
-                                </p>
-                              </div>
-
-                              {/* City & District */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Building className="h-3.5 w-3.5 text-teal-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">City & District</span>
-                                </div>
-                                <p className="font-bold text-foreground text-base">
-                                  {String((responseJson?.address as Record<string, unknown>)?.city || (responseJson?.address as Record<string, unknown>)?.town || "—")}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground font-mono">
-                                  District: <strong className="text-foreground">{String((responseJson?.address as Record<string, unknown>)?.state_district || "—")}</strong>
-                                </p>
-                              </div>
-
-                              {/* State & Country */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Globe className="h-3.5 w-3.5 text-teal-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">State & Country</span>
-                                </div>
-                                <p className="font-bold text-foreground text-base">
-                                  {String((responseJson?.address as Record<string, unknown>)?.state || "—")} ({String((responseJson?.address as Record<string, unknown>)?.["ISO3166-2-lvl4"] || "")})
-                                </p>
-                                <p className="text-[11px] text-muted-foreground font-mono">
-                                  Country: <strong className="text-foreground">{String((responseJson?.address as Record<string, unknown>)?.country || "India")}</strong> ({String((responseJson?.address as Record<string, unknown>)?.country_code || "in").toUpperCase()})
-                                </p>
-                              </div>
-
-                              {/* Postal / PIN Code */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <FileText className="h-3.5 w-3.5 text-teal-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Postal / PIN Code</span>
-                                </div>
-                                <p className="font-mono font-bold text-teal-400 text-base">
-                                  {String((responseJson?.address as Record<string, unknown>)?.postcode || "—")}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground font-mono">
-                                  Postal Delivery Jurisdiction
-                                </p>
-                              </div>
-
-                              {/* GPS Coordinates & Precision */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Compass className="h-3.5 w-3.5 text-teal-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Resolved Coordinates</span>
-                                </div>
-                                <p className="font-mono font-bold text-foreground text-sm">
-                                  Lat: {String(responseJson?.lat || latitude || "—")}, Lon: {String(responseJson?.lon || longitude || "—")}
-                                </p>
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-emerald-400 font-medium">✓ GPS Precision Lock</span>
-                                  {responseJson?.importance !== undefined && (
-                                    <span className="text-muted-foreground font-mono">
-                                      Importance: <strong className="text-foreground">{String(responseJson.importance)}</strong>
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Location Classification & Hierarchy */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Terminal className="h-3.5 w-3.5 text-teal-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Location Hierarchy & Type</span>
-                                </div>
-                                <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
-                                  <span>Class: {String(responseJson?.class || "—")}</span>
-                                  {Boolean(responseJson?.type) && (
-                                    <span className="rounded bg-teal-500/15 text-teal-400 border border-teal-500/25 px-1.5 py-0.5 text-[10px] uppercase font-bold">
-                                      {String(responseJson.type)}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] text-muted-foreground font-mono">
-                                  Rank: {String(responseJson?.place_rank || "—")} · Category: {String(responseJson?.addresstype || "—")}
-                                </p>
-                              </div>
-
-                              {/* Full Administrative Profile & Bounding Box */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-2 sm:col-span-2">
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                  <div className="flex items-center gap-1.5">
-                                    <Sparkles className="h-3.5 w-3.5 text-teal-400" />
-                                    <span className="font-medium uppercase tracking-wider text-[10px]">Complete Formatted Address & Bounding Box</span>
+                                  {/* State & State District */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Globe className="h-3.5 w-3.5 text-teal-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">State & State District</span>
+                                    </div>
+                                    <p className="font-bold text-foreground text-base">
+                                      {state}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      State District: <strong className="text-foreground">{stateDistrict}</strong>
+                                    </p>
                                   </div>
-                                  <span className="text-[10px] font-mono text-muted-foreground">
-                                    Place ID: <strong className="text-foreground font-mono">{String(responseJson?.place_id || "—")}</strong>
-                                  </span>
-                                </div>
-                                <p className="text-xs text-foreground font-medium bg-muted/30 p-2 rounded border border-border/40">
-                                  {String(responseJson?.display_name || "—")}
-                                </p>
-                                {Array.isArray(responseJson?.boundingbox) && (
-                                  <div className="border-t border-border/50 pt-1.5 flex flex-wrap items-center justify-between text-[11px] font-mono text-muted-foreground">
-                                    <span>GPS Box: <code className="text-foreground">[{responseJson.boundingbox.join(", ")}]</code></span>
-                                    <span className="text-[10px] text-muted-foreground">Bharat API Spatial Data</span>
+
+                                  {/* Postal / PIN Code & Country */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <FileText className="h-3.5 w-3.5 text-teal-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Pincode & Country</span>
+                                    </div>
+                                    <p className="font-mono font-bold text-teal-400 text-base">
+                                      {pincode}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      Country: <strong className="text-foreground">{country}</strong>
+                                    </p>
                                   </div>
-                                )}
-                              </div>
-                            </div>
-                          </>
+
+                                  {/* Residential & OSM Type */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Navigation className="h-3.5 w-3.5 text-teal-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Residential & OSM Type</span>
+                                    </div>
+                                    <p className="font-bold text-foreground text-base truncate">
+                                      {residential}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      OSM Type: <strong className="text-foreground">{osmType}</strong>
+                                    </p>
+                                  </div>
+
+                                  {/* Location Class & Type */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Terminal className="h-3.5 w-3.5 text-teal-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Class & Type</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
+                                      <span>Class: <strong className="text-foreground">{itemClass}</strong></span>
+                                      {itemType !== "—" && (
+                                        <span className="rounded bg-teal-500/15 text-teal-400 border border-teal-500/25 px-1.5 py-0.5 text-[10px] uppercase font-bold">
+                                          {itemType}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      Type: <strong className="text-foreground">{itemType}</strong>
+                                    </p>
+                                  </div>
+
+                                  {/* Place Rank & Address Type */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Compass className="h-3.5 w-3.5 text-teal-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Place Rank & Address Type</span>
+                                    </div>
+                                    <p className="font-mono font-bold text-foreground text-base">
+                                      Rank: {placeRank}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      Address Type: <strong className="text-foreground">{addressType}</strong>
+                                    </p>
+                                  </div>
+
+                                  {/* GPS Coordinates & Precision */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1 sm:col-span-2">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <Compass className="h-3.5 w-3.5 text-teal-400" />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Resolved Coordinates</span>
+                                      </div>
+                                      <span className="text-emerald-400 font-medium text-[11px]">✓ GPS Precision Lock</span>
+                                    </div>
+                                    <p className="font-mono font-bold text-foreground text-sm">
+                                      Lat: {String(responseJson?.lat || latitude || "—")}, Lon: {String(responseJson?.lon || longitude || "—")}
+                                    </p>
+                                    {responseJson?.importance !== undefined && (
+                                      <p className="text-[11px] text-muted-foreground font-mono">
+                                        Importance: <strong className="text-foreground">{String(responseJson.importance)}</strong>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Display Name & Formatted Address */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-2 sm:col-span-2">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <Sparkles className="h-3.5 w-3.5 text-teal-400" />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Display Name & Formatted Address</span>
+                                      </div>
+                                      <span className="text-[10px] font-mono text-muted-foreground">
+                                        Place ID: <strong className="text-foreground font-mono">{String(responseJson?.place_id || "—")}</strong>
+                                      </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] uppercase font-mono text-muted-foreground">display_name:</span>
+                                      <p className="text-xs text-foreground font-medium bg-muted/30 p-2.5 rounded border border-border/40 leading-relaxed">
+                                        {displayName}
+                                      </p>
+                                    </div>
+                                    {Array.isArray(responseJson?.boundingbox) && (
+                                      <div className="border-t border-border/50 pt-1.5 flex flex-wrap items-center justify-between text-[11px] font-mono text-muted-foreground">
+                                        <span>GPS Box: <code className="text-foreground">[{responseJson.boundingbox.join(", ")}]</code></span>
+                                        <span className="text-[10px] text-muted-foreground">Bharat API Spatial Data</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          })()
                         ) : selectedService === "bank_validation" ? (
                           /* ========================================================= */
                           /* 🏦 BANK ACCOUNT VALIDATION DEDICATED CARD                 */

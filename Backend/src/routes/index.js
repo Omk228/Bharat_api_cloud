@@ -12,6 +12,7 @@ import apilayerRoutes from '../modules/apilayer/apilayer.routes.js';
 import geocodingRoutes from '../modules/geocoding/geocoding.routes.js';
 import idfyRoutes from '../modules/idfy/idfy.routes.js';
 import uanRoutes from '../modules/verification/uan/uan.routes.js';
+import mobileUpiRoutes from '../modules/verification/mobile_upi/mobileUpi.routes.js';
 
 const apiRouter = Router();
 
@@ -31,6 +32,7 @@ apiRouter.use('/uan-mobile', uanRoutes);
 apiRouter.use('/uan', uanRoutes);
 apiRouter.use('/srv3/uan-direct', uanRoutes);
 apiRouter.use('/uan-direct', uanRoutes);
+apiRouter.use('/', mobileUpiRoutes);
 apiRouter.use('/', apilayerRoutes);
 apiRouter.use('/idfy', idfyRoutes);
 apiRouter.use('/validate_bank_account', idfyRoutes);
