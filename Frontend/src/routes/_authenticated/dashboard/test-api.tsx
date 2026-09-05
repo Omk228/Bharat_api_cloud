@@ -102,6 +102,10 @@ export type VerificationResult = {
   summary?: Record<string, unknown>;
   uan_details?: Record<string, unknown>;
   uan_source?: Array<Record<string, unknown>>;
+  domain?: string;
+  creation_date?: string;
+  age_days?: number;
+  age_years?: number;
 };
 
 export type ApiResponseEnvelope = {
@@ -121,13 +125,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "pan_plus" || search["service"] === "pan-plus" || search["service"] === "plus"
+      search["service"] === "domain_age" || search["service"] === "domain-age" || search["service"] === "domain"
+        ? "domain_age"
+        : search["service"] === "pan_plus" || search["service"] === "pan-plus" || search["service"] === "plus"
         ? "pan_plus"
         : search["service"] === "aadhaar"
         ? "aadhaar"
@@ -154,7 +160,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, and Reverse Geocoding APIs.",
+        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, and Domain Age APIs.",
       },
     ],
   }),
@@ -164,8 +170,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct">(
-    searchParams.service === "pan_plus"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age">(
+    searchParams.service === "domain_age"
+      ? "domain_age"
+      : searchParams.service === "pan_plus"
       ? "pan_plus"
       : searchParams.service === "aadhaar"
       ? "aadhaar"
@@ -209,6 +217,14 @@ function TestApiPage() {
   const [apiId, setApiId] = useState(DEFAULT_API_ID);
   const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
   const [tokenId, setTokenId] = useState(DEFAULT_TOKEN_ID);
+
+  useEffect(() => {
+    if (activeCred) {
+      if (activeCred.api_id) setApiId(activeCred.api_id);
+      if (activeCred.api_key) setApiKey(activeCred.api_key);
+      if (activeCred.token_id) setTokenId(activeCred.token_id);
+    }
+  }, [activeCred]);
   
   // PAN fields
   const [pan, setPan] = useState("");
@@ -248,6 +264,9 @@ function TestApiPage() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
 
+  // Domain Age fields
+  const [domainName, setDomainName] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -286,7 +305,14 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "pan_plus"
+    selectedService === "domain_age"
+      ? {
+          domain: domainName.trim().toLowerCase(),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "pan_plus"
       ? {
           pan: panPlusNumber.trim().toUpperCase(),
           api_id: effectiveApiId,
@@ -295,6 +321,7 @@ function TestApiPage() {
         }
       : selectedService === "pan"
       ? {
+          pan: pan.trim().toUpperCase(),
           pan_number: pan.trim().toUpperCase(),
           ...(name.trim() ? { name: name.trim() } : {}),
           ...(panDisplayName === "true" ? { pan_display_name: true } : {}),
@@ -373,6 +400,10 @@ function TestApiPage() {
         };
 
   const handleSendRequest = async () => {
+    if (selectedService === "domain_age" && !domainName.trim()) {
+      toast.error("Please enter a valid domain name (e.g. geetpay.in or google.com)");
+      return;
+    }
     if (selectedService === "pan_plus" && !panPlusNumber.trim()) {
       toast.error("Please enter a 10-character PAN number");
       return;
@@ -415,7 +446,14 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "pan_plus") {
+      if (selectedService === "domain_age") {
+        rawData = await apiClient.verifyDomainAge({
+          domain: domainName.trim().toLowerCase(),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "pan_plus") {
         rawData = await apiClient.verifyPanPlus({
           pan: panPlusNumber.trim().toUpperCase(),
           api_id: effectiveApiId,
@@ -657,7 +695,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "pan_plus"
+    selectedService === "domain_age"
+      ? "/dosvak/domain-age"
+      : selectedService === "pan_plus"
       ? "/srv2/validation/pan/plus"
       : selectedService === "pan"
       ? "/srv2/validation/pan"
@@ -680,7 +720,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "pan_plus"
+    selectedService === "domain_age"
+      ? "Domain Age Verification API"
+      : selectedService === "pan_plus"
       ? "Pan Details Plus (Deep PAN Demographic Verification)"
       : selectedService === "pan"
       ? "PAN Verification API (Pan Details V2)"
@@ -719,7 +761,9 @@ function TestApiPage() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "pan_plus"
+                {selectedService === "domain_age"
+                  ? "Direct live Domain Age & Registration Verification Gateway with authoritative WHOIS and instant smart caching."
+                  : selectedService === "pan_plus"
                   ? "Direct deep PAN demographic verification, Aadhaar seeding linkage, allotment date, and salaried/director profile powered by Bharat API Cloud."
                   : selectedService === "ip_lookup"
                   ? "Direct IP Geolocation and Network Intelligence Gateway powered by Bharat API Cloud."
@@ -740,7 +784,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "pan_plus"
+                    selectedService === "domain_age"
+                      ? "domain-age"
+                      : selectedService === "pan_plus"
                       ? "verify-pan-plus"
                       : selectedService === "pan"
                       ? "verify-pan"
@@ -778,6 +824,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "domain_age" && <Globe className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "pan_plus" && <CreditCard className="h-4 w-4 text-sky-400" />}
                   {selectedService === "pan" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
@@ -790,6 +837,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "domain_age" && "Domain Age (/dosvak/domain-age)"}
                     {selectedService === "pan_plus" && "Pan Details Plus (/srv2/validation/pan/plus)"}
                     {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
                     {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
@@ -813,41 +861,6 @@ function TestApiPage() {
               </div>
             </div>
 
-            {/* Quick Switch Service Bar */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[11px] text-muted-foreground font-medium mr-1">Switch Service:</span>
-              {[
-                { id: "pan_plus", label: "Pan Details Plus" },
-                { id: "pan", label: "PAN V2" },
-                { id: "aadhaar", label: "Aadhaar" },
-                { id: "bank", label: "Bank Penny Less" },
-                { id: "bank_validation", label: "Bank Validation" },
-                { id: "uan", label: "Mobile to UAN" },
-                { id: "uan_direct", label: "UAN to Employment" },
-                { id: "prefill", label: "Prefill" },
-                { id: "name_finder", label: "Name Finder" },
-                { id: "ip_lookup", label: "IP Lookup" },
-                { id: "reverse_geocode", label: "Reverse Geocode" },
-              ].map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedService(s.id as any);
-                    setResponseJson(null);
-                    setResponseStatus(null);
-                    setResponseTime(null);
-                  }}
-                  className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
-                    selectedService === s.id
-                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                      : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
 
             <div className="grid gap-2 sm:grid-cols-2 text-muted-foreground">
               <div>
@@ -1126,6 +1139,36 @@ function TestApiPage() {
                       <p className="text-[11px] text-muted-foreground">
                         👉 Response will reflect in the response section
                       </p>
+                    </>
+                  ) : selectedService === "domain_age" ? (
+                    /* Domain Age Form */
+                    <>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Target Domain Name *</span>
+                            <span className="text-[11px] text-muted-foreground">e.g. example.com</span>
+                          </div>
+                          <input
+                            value={domainName}
+                            onChange={(e) => setDomainName(e.target.value.trim().toLowerCase())}
+                            placeholder="Enter domain (e.g. geetpay.in or google.com)"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-indigo-400"
+                          />
+                        </div>
+
+                        {/* Pricing Banner */}
+                        <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-2.5 text-xs text-indigo-300 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            💰 Wallet Debit:
+                          </span>
+                          <span className="font-bold text-indigo-400">₹2.00 / Request</span>
+                        </div>
+
+                        <p className="text-[11px] text-muted-foreground">
+                          👉 Authoritative live registry lookup with automatic 24-hour smart caching.
+                        </p>
+                      </div>
                     </>
                   ) : selectedService === "ip_lookup" ? (
                     /* Requester IP Lookup Form */
@@ -1434,7 +1477,9 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    {selectedService === "pan" || selectedService === "pan_plus" ? (
+                    {selectedService === "domain_age" ? (
+                      <Globe className="h-8 w-8 opacity-40 text-indigo-400" />
+                    ) : selectedService === "pan" || selectedService === "pan_plus" ? (
                       <CreditCard className="h-8 w-8 opacity-40 text-sky-400" />
                     ) : selectedService === "aadhaar" ? (
                       <Fingerprint className="h-8 w-8 opacity-40 text-primary" />
@@ -1447,7 +1492,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "domain_age" ? "a target domain name (e.g. geetpay.in or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -1459,9 +1504,134 @@ function TestApiPage() {
                     {isSuccess ? (
                       <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent p-5 space-y-4">
                         {/* ========================================================= */}
-                        {/* 🔍 MOBILE TO NAME FINDER DEDICATED CARD                   */}
+                        {/* 🌐 DOMAIN AGE VERIFICATION DEDICATED CARD                 */}
                         {/* ========================================================= */}
-                        {selectedService === "name_finder" ? (
+                        {selectedService === "domain_age" ? (
+                          <>
+                            {/* Top Banner */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="rounded-lg bg-indigo-500/15 p-2 text-indigo-400 border border-indigo-500/30">
+                                  <Globe className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-foreground">
+                                    {(resData.domain as string) || (responseJson?.domain as string) || domainName || "Domain Record"}
+                                  </p>
+                                  <p className="font-mono text-xs text-muted-foreground">
+                                    Authoritative Registry Verified · Live Status
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> ACTIVE · REGISTERED
+                                </span>
+                                <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                  ₹2.00 Billed
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* 3 Metric Cards Grid */}
+                            <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                              {/* Creation Date Card */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center justify-between text-muted-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Creation Date</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyField(String(resData.creation_date || responseJson?.creation_date || ""), "Creation Date")}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                    title="Copy Creation Date"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                <p className="font-bold text-foreground text-sm font-mono break-all">
+                                  {resData.creation_date || responseJson?.creation_date ? String(resData.creation_date || responseJson?.creation_date) : "—"}
+                                </p>
+                                <p className="text-[11px] text-emerald-400">
+                                  ✓ Certified Registration
+                                </p>
+                              </div>
+
+                              {/* Age in Days Card */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center justify-between text-muted-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5 text-indigo-400" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Age in Days</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyField(String(resData.age_days ?? responseJson?.age_days ?? ""), "Age in Days")}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                    title="Copy Age in Days"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                <p className="font-mono font-bold text-primary text-xl">
+                                  {resData.age_days != null || responseJson?.age_days != null
+                                    ? `${Number(resData.age_days ?? responseJson?.age_days).toLocaleString("en-IN")} Days`
+                                    : "—"}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Total days elapsed
+                                </p>
+                              </div>
+
+                              {/* Age in Years Card */}
+                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                <div className="flex items-center justify-between text-muted-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                                    <span className="font-medium uppercase tracking-wider text-[10px]">Age in Years</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyField(String(resData.age_years ?? responseJson?.age_years ?? ""), "Age in Years")}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                    title="Copy Age in Years"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                <p className="font-mono font-bold text-emerald-400 text-xl">
+                                  {resData.age_years != null || responseJson?.age_years != null
+                                    ? `${resData.age_years ?? responseJson?.age_years} Years`
+                                    : "—"}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Calculated domain lifespan
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Additional Metadata / Audit Grid */}
+                            <div className="rounded-lg border border-border/60 bg-background/50 p-3 text-xs space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
+                                <div>
+                                  <span className="font-medium text-foreground">Domain: </span>
+                                  <code className="font-mono text-primary font-bold">{(resData.domain as string) || (responseJson?.domain as string) || domainName}</code>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">Request ID: </span>
+                                  <code className="font-mono text-muted-foreground">{String(responseJson?.request_id || "—")}</code>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">Client Ref: </span>
+                                  <code className="font-mono text-muted-foreground">{String(responseJson?.client_ref_num || "—")}</code>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        ) : selectedService === "name_finder" ? (
                           <>
                             {/* Top Banner */}
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">

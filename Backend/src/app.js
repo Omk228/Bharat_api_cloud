@@ -17,6 +17,7 @@ import geocodingRoutes from './modules/geocoding/geocoding.routes.js';
 import idfyRoutes from './modules/idfy/idfy.routes.js';
 import uanRoutes from './modules/verification/uan/uan.routes.js';
 import mobileUpiRoutes from './modules/verification/mobile_upi/mobileUpi.routes.js';
+import domainRoutes from './modules/domain/domain.routes.js';
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use('/', idfyRoutes);
 app.use('/idfy', idfyRoutes);
 app.use('/reverse-geocode', geocodingRoutes);
 app.use('/reverse', geocodingRoutes);
+app.use('/', domainRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);

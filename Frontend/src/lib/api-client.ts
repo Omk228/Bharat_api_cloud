@@ -476,6 +476,37 @@ export const apiClient = {
     return res.json();
   },
 
+  async verifyDomainAge(data: {
+    domain: string;
+    client_ref_num?: string;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const host = API_BASE.replace(/\/api\/v1\/?$/, '');
+    const res = await fetch(`${host}/dosvak/domain-age`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        domain: data.domain,
+        client_ref_num: data.client_ref_num,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
   async getWalletBalance(): Promise<{
     wallet_balance: number;
     today_spend: number;

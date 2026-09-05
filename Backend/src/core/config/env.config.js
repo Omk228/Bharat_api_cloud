@@ -55,6 +55,11 @@ export const ENV = {
     ACCOUNT_ID: process.env.IDFY_ACCOUNT_ID || '',
     API_KEY: process.env.IDFY_API_KEY || '',
   },
+
+  APYHUB: {
+    BASE_URL: process.env.APYHUB_BASE_URL || 'https://api.eu.apyhub.com',
+    API_TOKEN: process.env.APYHUB_API_TOKEN || 'c9a47496f3070e07e1d4370329bf9b93e876eeb05f4cc492101a1cd4512e24e0',
+  },
 };
 
 export default ENV;

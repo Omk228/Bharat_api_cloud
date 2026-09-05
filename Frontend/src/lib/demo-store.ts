@@ -381,7 +381,7 @@ function emptyState(): DemoState {
       company_name: "",
       contact_email: "",
       plan: "free",
-      onboarded: false,
+      onboarded: true,
     },
     keys: [],
     wallet_balance: 4993.40,
@@ -456,7 +456,7 @@ export function setSessionFromBackend(user: { id: number; name: string; email: s
     state.profile.display_name = user.name || user.email.split('@')[0]!;
     state.profile.company_name = user.company_name || '';
     state.profile.plan = (user.plan as PlanId) || 'free';
-    state.profile.onboarded = Boolean(user.onboarded);
+    state.profile.onboarded = true;
     logAudit(state, "auth.sign_in", user.email, "Signed in via MySQL Backend API");
   });
 

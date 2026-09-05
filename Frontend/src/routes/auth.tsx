@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ShieldCheck, Loader2, Wand2 } from "lucide-react";
+import { ShieldCheck, Loader2, Wand2, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -90,6 +90,32 @@ function AuthPage() {
               : "Manage your API keys, monitor real-time requests and manage webhooks."}
           </p>
 
+          {/* Mode Switcher Tabs */}
+          <div className="mt-6 flex rounded-lg bg-secondary/60 p-1 border border-border/40">
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className={`flex-1 rounded-md py-2 text-sm font-medium transition-all ${
+                mode === "signin"
+                  ? "bg-background text-foreground shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className={`flex-1 rounded-md py-2 text-sm font-medium transition-all ${
+                mode === "signup"
+                  ? "bg-background text-foreground shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             {mode === "signup" && (
               <>
@@ -161,21 +187,45 @@ function Field({
   required?: boolean;
   minLength?: number;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword ? (showPassword ? "text" : "password") : type;
+
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        minLength={minLength}
-        maxLength={255}
-        className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
-      />
+      <div className="relative">
+        <input
+          type={inputType}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          minLength={minLength}
+          maxLength={255}
+          className={`w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary ${
+            isPassword ? "pr-10" : ""
+          }`}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+            title={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            tabIndex={-1}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        )}
+      </div>
     </label>
   );
 }

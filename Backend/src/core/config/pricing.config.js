@@ -19,6 +19,8 @@ export const API_PRICING = {
   '/srv2/mobile-upi-lookup/enhanced': 2.00,
   '/srv2/mobile-upi-lookup': 2.00,
   '/validate_bank_account': 2.00,
+  '/dosvak/domain-age': 2.00,
+  '/domain-age': 2.00,
   default: 2.00,
 };
 

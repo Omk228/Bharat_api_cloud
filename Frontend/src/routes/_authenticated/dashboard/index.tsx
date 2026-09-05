@@ -48,22 +48,6 @@ function DashboardOverviewPage() {
   return (
     <DashboardLayout activeTab="overview">
       {(data) => {
-        if (!data.profile.onboarded) {
-          return (
-            <Onboarding
-              defaults={{
-                display_name: data.profile.display_name,
-                company_name:
-                  data.profile.company_name ||
-                  (typeof window !== "undefined"
-                    ? (window.sessionStorage.getItem("bharatapi.signup.company") ?? "")
-                    : ""),
-                contact_email: data.profile.contact_email,
-              }}
-            />
-          );
-        }
-
         return (
           <div className="space-y-8">
             <div className="grid gap-4 sm:grid-cols-3">

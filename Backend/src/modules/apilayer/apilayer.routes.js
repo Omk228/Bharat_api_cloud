@@ -4,8 +4,7 @@ import verifyApiClientCredentials from '../credentials/apiAuth.middleware.js';
 
 const router = Router();
 
-// Enforce Bharat API Cloud credentials (api_id, api_key, token_id)
-router.use(verifyApiClientCredentials);
+// Enforce Bharat API Cloud credentials per route (api_id, api_key, token_id)
 
 /**
  * APILAYER IP Geolocation Endpoints
@@ -13,27 +12,27 @@ router.use(verifyApiClientCredentials);
  */
 
 // Requester IP Lookup (/check)
-router.get('/check', ApiLayerController.checkRequesterIp);
-router.post('/check', ApiLayerController.checkRequesterIp);
+router.get('/check', verifyApiClientCredentials, ApiLayerController.checkRequesterIp);
+router.post('/check', verifyApiClientCredentials, ApiLayerController.checkRequesterIp);
 
 // Dedicated IP routes
-router.get('/ip/check', ApiLayerController.checkRequesterIp);
-router.post('/ip/check', ApiLayerController.checkRequesterIp);
+router.get('/ip/check', verifyApiClientCredentials, ApiLayerController.checkRequesterIp);
+router.post('/ip/check', verifyApiClientCredentials, ApiLayerController.checkRequesterIp);
 
-router.get('/ip/lookup', ApiLayerController.lookupIp);
-router.post('/ip/lookup', ApiLayerController.lookupIp);
+router.get('/ip/lookup', verifyApiClientCredentials, ApiLayerController.lookupIp);
+router.post('/ip/lookup', verifyApiClientCredentials, ApiLayerController.lookupIp);
 
-router.get('/ip/:ip', ApiLayerController.lookupIp);
-router.post('/ip/:ip', ApiLayerController.lookupIp);
+router.get('/ip/:ip', verifyApiClientCredentials, ApiLayerController.lookupIp);
+router.post('/ip/:ip', verifyApiClientCredentials, ApiLayerController.lookupIp);
 
 // API v1 compatibility paths
-router.get('/api/v1/ip/check', ApiLayerController.checkRequesterIp);
-router.post('/api/v1/ip/check', ApiLayerController.checkRequesterIp);
+router.get('/api/v1/ip/check', verifyApiClientCredentials, ApiLayerController.checkRequesterIp);
+router.post('/api/v1/ip/check', verifyApiClientCredentials, ApiLayerController.checkRequesterIp);
 
-router.get('/api/v1/ip/lookup', ApiLayerController.lookupIp);
-router.post('/api/v1/ip/lookup', ApiLayerController.lookupIp);
+router.get('/api/v1/ip/lookup', verifyApiClientCredentials, ApiLayerController.lookupIp);
+router.post('/api/v1/ip/lookup', verifyApiClientCredentials, ApiLayerController.lookupIp);
 
-router.get('/api/v1/ip/:ip', ApiLayerController.lookupIp);
-router.post('/api/v1/ip/:ip', ApiLayerController.lookupIp);
+router.get('/api/v1/ip/:ip', verifyApiClientCredentials, ApiLayerController.lookupIp);
+router.post('/api/v1/ip/:ip', verifyApiClientCredentials, ApiLayerController.lookupIp);
 
 export default router;

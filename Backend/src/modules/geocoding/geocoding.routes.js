@@ -4,18 +4,17 @@ import verifyApiClientCredentials from '../credentials/apiAuth.middleware.js';
 
 const router = Router();
 
-// Enforce Bharat API Cloud credentials (api_id, api_key, token_id)
-router.use(verifyApiClientCredentials);
+// Enforce Bharat API Cloud credentials per-route (api_id, api_key, token_id)
 
 // GET & POST / (query params or body)
-router.get('/', GeocodingController.reverseGeocode);
-router.post('/', GeocodingController.reverseGeocode);
+router.get('/', verifyApiClientCredentials, GeocodingController.reverseGeocode);
+router.post('/', verifyApiClientCredentials, GeocodingController.reverseGeocode);
 
 // GET & POST /reverse
-router.get('/reverse', GeocodingController.reverseGeocode);
-router.post('/reverse', GeocodingController.reverseGeocode);
+router.get('/reverse', verifyApiClientCredentials, GeocodingController.reverseGeocode);
+router.post('/reverse', verifyApiClientCredentials, GeocodingController.reverseGeocode);
 
 // GET /:lat/:lon (e.g. /28.6139/77.2090)
-router.get('/:lat/:lon', GeocodingController.reverseGeocode);
+router.get('/:lat/:lon', verifyApiClientCredentials, GeocodingController.reverseGeocode);
 
 export default router;

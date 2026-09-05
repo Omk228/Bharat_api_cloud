@@ -6,7 +6,8 @@ export class PanVerificationController {
    * Handler for POST /srv2/validation/pan and POST /api/v1/verify/pan
    */
   static verifyPan = asyncHandler(async (req, res) => {
-    const { pan, name, pan_display_name, name_match_method, client_ref_num } = req.body;
+    const { name, pan_display_name, name_match_method, client_ref_num } = req.body;
+    const pan = req.body.pan || req.body.pan_number || req.query?.pan || req.query?.pan_number;
 
     if (!pan) {
       return res.status(200).json({

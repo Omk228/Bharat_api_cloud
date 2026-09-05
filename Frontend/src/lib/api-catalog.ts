@@ -1280,6 +1280,42 @@ export const endpoints: ApiEndpoint[] = [
     sampleBody: { payout_id: "po_5ab19f", reason: "beneficiary_account_closed" },
     sampleResponse: { reversal_id: "rv_11c8b2", payout_id: "po_5ab19f", status: "initiated", amount: 250000 },
   },
+  {
+    id: "domain-age",
+    group: "KYC",
+    method: "POST",
+    path: "/dosvak/domain-age",
+    title: "Domain Age Verification API",
+    desc: "Calculates the exact domain registration age, creation date, and lifespan in days and years using authoritative registries and smart caching.",
+    tags: ["domain", "domain-age", "whois", "kyc", "fraud-detection"],
+    latency: "~25ms",
+    params: [
+      { name: "domain", type: "string", required: true, desc: "Target domain name, e.g. geetpay.in or google.com." },
+      { name: "api_id", type: "string", required: true, desc: "Bharat API developer API ID." },
+      { name: "api_key", type: "string", required: true, desc: "Bharat API developer API Key." },
+      { name: "token_id", type: "string", required: true, desc: "Bharat API developer Token ID." },
+    ],
+    sampleBody: { domain: "geetpay.in" },
+    sampleResponse: {
+      status: "success",
+      status_message: "completed",
+      http_response_code: 200,
+      result_code: 101,
+      request_id: "febf8587-b34f-40dd-ba6f-570980fd9d56",
+      client_ref_num: "DOM_D4EE77",
+      message: "Domain age retrieved successfully",
+      data: {
+        domain: "geetpay.in",
+        creation_date: "2026-05-04T15:10:34+00:00",
+        age_days: 123,
+        age_years: 0.3,
+      },
+      domain: "geetpay.in",
+      creation_date: "2026-05-04T15:10:34+00:00",
+      age_days: 123,
+      age_years: 0.3,
+    },
+  },
 ];
 
 export const WEBHOOK_EVENTS = [

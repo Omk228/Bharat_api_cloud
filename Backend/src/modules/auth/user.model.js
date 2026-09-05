@@ -35,7 +35,7 @@ export const userModel = {
   async create({ name, company_name = null, email, password, plan = 'free', role = 'client' }) {
     const initialBalance = 5000.00;
     const [result] = await dbPool.query(
-      'INSERT INTO users (name, company_name, email, password, plan, role, wallet_balance) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO users (name, company_name, email, password, plan, role, wallet_balance, onboarded) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)',
       [name, company_name, email, password, plan, role, initialBalance]
     );
     const userId = result.insertId;
@@ -55,7 +55,7 @@ export const userModel = {
       plan,
       role,
       wallet_balance: initialBalance,
-      onboarded: false,
+      onboarded: true,
     };
   },
 
