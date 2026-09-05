@@ -100,29 +100,38 @@ export const walletService = {
    * @param {object} options 
    */
   async getHitLogs(userId, { limit = 50, offset = 0, statusCode = null, search = null } = {}) {
+    // Fetch default user API credentials as fallback if log has no credential_id
+    const [userCreds] = await dbPool.query(
+      'SELECT api_key, api_id, label FROM api_credentials WHERE user_id = ? ORDER BY id ASC LIMIT 1',
+      [userId]
+    );
+    const userDefaultCred = userCreds && userCreds.length > 0 ? userCreds[0] : null;
+
     let query = `
-      SELECT id, user_id, credential_id, endpoint, method, request_id,
-             client_ref_num, status_code, result_code, latency_ms,
-             client_ip, cost, environment, created_at
-      FROM api_hit_logs
-      WHERE user_id = ?
+      SELECT l.id, l.user_id, l.credential_id, l.endpoint, l.method, l.request_id,
+             l.client_ref_num, l.status_code, l.result_code, l.latency_ms,
+             l.client_ip, l.cost, l.environment, l.created_at,
+             c.api_key, c.api_id, c.label as credential_label
+      FROM api_hit_logs l
+      LEFT JOIN api_credentials c ON l.credential_id = c.id
+      WHERE l.user_id = ?
     `;
     const params = [userId];
 
     if (statusCode) {
       if (statusCode === 200) {
-        query += ' AND status_code = 200';
+        query += ' AND l.status_code = 200';
       } else {
-        query += ' AND status_code != 200';
+        query += ' AND l.status_code != 200';
       }
     }
 
     if (search && search.trim()) {
-      query += ' AND (request_id LIKE ? OR endpoint LIKE ? OR client_ref_num LIKE ?)';
-      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
+      query += ' AND (l.request_id LIKE ? OR l.endpoint LIKE ? OR l.client_ref_num LIKE ? OR c.api_key LIKE ? OR c.api_id LIKE ?)';
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY l.created_at DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit, 10), parseInt(offset, 10));
 
     const [rows] = await dbPool.query(query, params);
@@ -133,6 +142,18 @@ export const walletService = {
       else if (row.endpoint.includes('prefill') || row.endpoint.includes('credit-report')) group = 'KYC';
       else if (row.endpoint.includes('pan') || row.endpoint.includes('aadhar')) group = 'KYC';
 
+      // Mask the assigned API key: e.g. 663e••••650d
+      const rawKey = row.api_key || userDefaultCred?.api_key || '';
+      let maskedKey = '••••••••';
+      if (rawKey) {
+        const clean = String(rawKey).trim();
+        maskedKey = clean.length > 8
+          ? `${clean.substring(0, 4)}••••${clean.substring(clean.length - 4)}`
+          : clean;
+      } else if (row.api_id || userDefaultCred?.api_id) {
+        maskedKey = String(row.api_id || userDefaultCred?.api_id);
+      }
+
       return {
         id: `log_hit_${row.id}`,
         request_id: row.request_id,
@@ -142,8 +163,8 @@ export const walletService = {
         status_code: row.status_code,
         response_time_ms: row.latency_ms,
         cost_deducted: parseFloat(row.cost || '0.00'),
-        api_key_used: `sk_live_••••${row.credential_id || 'main'}`,
-        key_label: 'Production Gateway Key',
+        api_key_used: maskedKey,
+        key_label: row.credential_label || userDefaultCred?.label || 'Default Sandbox Key',
         environment: row.environment || 'production',
         ip_address: row.client_ip || '127.0.0.1',
         client_ref_num: row.client_ref_num,

@@ -1,14 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Activity,
-  Search,
-  Eye,
-  X,
-  Copy,
-  Check,
-} from "lucide-react";
-import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { Search } from "lucide-react";
+import { useState } from "react";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import {
@@ -33,7 +25,6 @@ export const Route = createFileRoute("/_authenticated/dashboard/logs")({
 function LogsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedLog, setSelectedLog] = useState<ApiHitLogRow | null>(null);
 
   return (
     <DashboardLayout activeTab="logs">
@@ -137,7 +128,6 @@ function LogsPage() {
                       <th className="px-4 py-3 text-right">Latency</th>
                       <th className="px-4 py-3 text-right">Cost Deducted</th>
                       <th className="px-4 py-3">API Key</th>
-                      <th className="px-4 py-3 text-center">Payload</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -189,124 +179,15 @@ function LogsPage() {
                         <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] text-muted-foreground">
                           {log.api_key_used}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-center">
-                          <button
-                            onClick={() => setSelectedLog(log)}
-                            className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary/50 px-2.5 py-1 text-xs font-medium hover:bg-secondary transition-colors"
-                          >
-                            <Eye className="h-3 w-3" /> Inspect
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-
-            {/* Payload Inspector Modal */}
-            {selectedLog && (
-              <PayloadInspectorModal log={selectedLog} onClose={() => setSelectedLog(null)} />
-            )}
           </div>
         );
       }}
     </DashboardLayout>
-  );
-}
-
-function PayloadInspectorModal({
-  log,
-  onClose,
-}: {
-  log: ApiHitLogRow;
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  function copyAll() {
-    navigator.clipboard.writeText(
-      JSON.stringify(
-        {
-          request_id: log.request_id,
-          endpoint: log.endpoint,
-          status: log.status_code,
-          request_payload: log.request_payload,
-          response_payload: log.response_payload,
-        },
-        null,
-        2
-      )
-    );
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-    toast.success("Payload JSON copied to clipboard");
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-card p-6 shadow-2xl">
-        <div className="flex items-center justify-between pb-4 border-b border-border">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-bold text-primary">{log.method} {log.endpoint}</span>
-              <span
-                className={`rounded px-1.5 py-0.5 text-xs font-semibold ${
-                  log.status_code === 200 ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
-                }`}
-              >
-                {log.status_code}
-              </span>
-            </div>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
-              Request ID: {log.request_id} · Latency: {log.response_time_ms}ms · Deducted: ₹{log.cost_deducted.toFixed(2)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={copyAll}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copied" : "Copy JSON"}
-            </button>
-            <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1 text-xs">
-          <div>
-            <p className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">
-              Request Body Payload
-            </p>
-            <pre className="overflow-x-auto rounded-lg bg-terminal p-3 font-mono text-foreground border border-border">
-              {JSON.stringify(log.request_payload ?? {}, null, 2)}
-            </pre>
-          </div>
-
-          <div>
-            <p className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">
-              Response Body Payload
-            </p>
-            <pre className="overflow-x-auto rounded-lg bg-terminal p-3 font-mono text-foreground border border-border">
-              {JSON.stringify(log.response_payload ?? {}, null, 2)}
-            </pre>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 border-t border-border pt-3 font-mono text-[11px] text-muted-foreground">
-            <div>
-              <span>Caller IP: </span>
-              <span className="text-foreground">{log.ip_address}</span>
-            </div>
-            <div>
-              <span>Environment: </span>
-              <span className="text-foreground uppercase">{log.environment}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
