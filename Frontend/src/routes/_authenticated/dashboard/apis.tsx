@@ -264,6 +264,15 @@ function ApisPage() {
                         ⚡ Test In Console
                       </Link>
                     )}
+                    {ep.id === "mobile-to-upi" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "mobile_upi" }}
+                        className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     <Link
                       to="/docs"
                       search={{ endpoint: ep.id }}

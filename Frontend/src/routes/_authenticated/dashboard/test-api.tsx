@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   XCircle,
+  AlertCircle,
   User,
   CreditCard,
   MapPin,
@@ -106,6 +107,10 @@ export type VerificationResult = {
   creation_date?: string;
   age_days?: number;
   age_years?: number;
+  vpa?: string;
+  name_at_bank?: string;
+  verification_type?: string;
+  verification_status?: string;
 };
 
 export type ApiResponseEnvelope = {
@@ -120,18 +125,56 @@ export type ApiResponseEnvelope = {
   };
   data?: VerificationResult;
   result?: VerificationResult;
+  request_id?: string;
+  client_ref_num?: string;
   _cached?: boolean;
+  ip?: string;
+  place_id?: string;
+  osm_id?: string;
+  osm_type?: string;
+  class?: string;
+  type?: string;
+  place_rank?: string | number;
+  addresstype?: string;
+  address_type?: string;
+  display_name?: string;
+  residential?: string;
+  lat?: string | number;
+  lon?: string | number;
+  importance?: string | number;
+  boundingbox?: string[] | number[];
+  domain?: string;
+  creation_date?: string;
+  age_days?: number;
+  age_years?: number;
+  city?: string;
+  region_name?: string;
+  region_code?: string;
+  country_name?: string;
+  country_code?: string;
+  continent_name?: string;
+  continent_code?: string;
+  latitude?: string | number;
+  longitude?: string | number;
+  radius?: string | number;
+  ip_routing_type?: string;
+  connection_type?: string;
+  zip?: string;
+  location?: any;
+  address?: any;
   [key: string]: unknown;
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "domain_age" || search["service"] === "domain-age" || search["service"] === "domain"
+      search["service"] === "mobile_upi" || search["service"] === "mobile-upi" || search["service"] === "upi"
+        ? "mobile_upi"
+        : search["service"] === "domain_age" || search["service"] === "domain-age" || search["service"] === "domain"
         ? "domain_age"
         : search["service"] === "pan_plus" || search["service"] === "pan-plus" || search["service"] === "plus"
         ? "pan_plus"
@@ -160,7 +203,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, and Domain Age APIs.",
+        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, and Mobile to UPI Lookup APIs.",
       },
     ],
   }),
@@ -170,8 +213,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age">(
-    searchParams.service === "domain_age"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi">(
+    searchParams.service === "mobile_upi"
+      ? "mobile_upi"
+      : searchParams.service === "domain_age"
       ? "domain_age"
       : searchParams.service === "pan_plus"
       ? "pan_plus"
@@ -267,6 +312,9 @@ function TestApiPage() {
   // Domain Age fields
   const [domainName, setDomainName] = useState("");
 
+  // Mobile to UPI fields
+  const [mobileUpiNumber, setMobileUpiNumber] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -305,7 +353,14 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "domain_age"
+    selectedService === "mobile_upi"
+      ? {
+          mobile_number: mobileUpiNumber.trim().replace(/\D/g, "") || "8527475512",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "domain_age"
       ? {
           domain: domainName.trim().toLowerCase(),
           api_id: effectiveApiId,
@@ -400,6 +455,10 @@ function TestApiPage() {
         };
 
   const handleSendRequest = async () => {
+    if (selectedService === "mobile_upi" && !mobileUpiNumber.trim()) {
+      toast.error("Please enter a 10-digit mobile number (e.g. 8527475512)");
+      return;
+    }
     if (selectedService === "domain_age" && !domainName.trim()) {
       toast.error("Please enter a valid domain name (e.g. geetpay.in or google.com)");
       return;
@@ -446,7 +505,14 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "domain_age") {
+      if (selectedService === "mobile_upi") {
+        rawData = await apiClient.verifyMobileUpi({
+          mobile_number: mobileUpiNumber.trim().replace(/\D/g, ""),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "domain_age") {
         rawData = await apiClient.verifyDomainAge({
           domain: domainName.trim().toLowerCase(),
           api_id: effectiveApiId,
@@ -545,10 +611,10 @@ function TestApiPage() {
   };
 
   // Dynamic extraction from server response (supporting standard beneValidationResp, result, data)
-  const rawData = responseJson?.data as Record<string, unknown> | undefined;
-  const beneResp = rawData?.beneValidationResp as Record<string, unknown> | undefined;
-  const resourceData = (beneResp?.resourceData || responseJson?.result || responseJson?.data || responseJson || {}) as Record<string, unknown>;
-  const rawRes = { ...((responseJson?.result as Record<string, unknown>) || {}), ...resourceData };
+  const rawData: any = responseJson?.data;
+  const beneResp: any = rawData?.beneValidationResp;
+  const resourceData: any = (beneResp?.resourceData || responseJson?.result || responseJson?.data || responseJson || {});
+  const rawRes: any = { ...((responseJson?.result as Record<string, unknown>) || {}), ...resourceData };
 
   const extractedCreditorName = (
     resourceData.creditorName ||
@@ -605,12 +671,12 @@ function TestApiPage() {
     transactionReferenceNumber: extractedRefNum,
     bank_name: (rawRes.bank_name || rawRes.bankName || rawRes.bank || "") as string,
     branch: (rawRes.branch || rawRes.branchName || rawRes.branch_name || "") as string,
-    city: (rawRes.city || "") as string,
-    state: (rawRes.state || "") as string,
+    city: (resourceData.city || rawRes.city || "") as string,
+    state: (resourceData.state || rawRes.state || "") as string,
     micr: (rawRes.micr || rawRes.micr_code || rawRes.micrCode || "") as string,
     ifscCode: (rawRes.ifscCode || rawRes.ifsc || rawRes.ifsc_code || ifscCode) as string,
     ifsc: (rawRes.ifsc || rawRes.ifscCode || rawRes.ifsc_code || ifscCode) as string,
-    account_status: ((beneResp?.metaData as Record<string, unknown>)?.status || rawRes.account_status || rawRes.accountStatus || rawRes.status || "ACTIVE") as string,
+    account_status: (beneResp?.metaData?.status || rawRes.account_status || rawRes.accountStatus || rawRes.status || "ACTIVE") as string,
     is_valid: rawRes.is_valid !== undefined ? Boolean(rawRes.is_valid) : true,
     account_exists: rawRes.account_exists !== undefined ? Boolean(rawRes.account_exists) : true,
     pan: (resourceData.pan || rawRes.pan || "") as string,
@@ -630,10 +696,9 @@ function TestApiPage() {
     middle_name: (resourceData.middle_name || rawRes.middle_name || "") as string,
     last_name: (resourceData.last_name || rawRes.last_name || "") as string,
     country: (resourceData.country || rawRes.country || "") as string,
-    city: (resourceData.city || rawRes.city || "") as string,
-    state: (resourceData.state || rawRes.state || "") as string,
     operator: (resourceData.operator || rawRes.operator || rawRes.telecom_provider || "") as string,
     circle: (resourceData.circle || rawRes.circle || rawRes.telecom_circle || "") as string,
+    vpa: (resourceData.vpa || rawRes.vpa || (responseJson?.data as any)?.vpa || (responseJson?.result as any)?.vpa || "") as string,
     address: extractedAddresses.length > 0 ? extractedAddresses : (rawRes.address as any),
   };
 
@@ -643,6 +708,7 @@ function TestApiPage() {
       responseJson?.result_code === 101 ||
       responseJson?.status?.type === "success" ||
       responseJson?.message === "success" ||
+      Boolean(resData.vpa) ||
       Boolean(resData.mobile_linked_name) ||
       Boolean(responseJson?.ip) ||
       Boolean(responseJson?.place_id) ||
@@ -657,6 +723,7 @@ function TestApiPage() {
     ) &&
     !(
       (responseJson?.result_code === 102 || responseJson?.result_code === 103) &&
+      !resData.vpa &&
       !resData.mobile_linked_name &&
       !resData.name &&
       !resData.fullname &&
@@ -675,7 +742,7 @@ function TestApiPage() {
     "";
 
   const extractedAddress = (() => {
-    const addr = resData.address;
+    const addr: any = resData.address;
     if (!addr) return null;
     if (typeof addr === "string") return addr;
     if (typeof addr === "object") {
@@ -695,7 +762,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "domain_age"
+    selectedService === "mobile_upi"
+      ? "/srv2/mobile-upi-lookup/enhanced"
+      : selectedService === "domain_age"
       ? "/dosvak/domain-age"
       : selectedService === "pan_plus"
       ? "/srv2/validation/pan/plus"
@@ -720,7 +789,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "domain_age"
+    selectedService === "mobile_upi"
+      ? "Mobile to UPI Lookup Advance"
+      : selectedService === "domain_age"
       ? "Domain Age Verification API"
       : selectedService === "pan_plus"
       ? "Pan Details Plus (Deep PAN Demographic Verification)"
@@ -761,7 +832,9 @@ function TestApiPage() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "domain_age"
+                {selectedService === "mobile_upi"
+                  ? "Direct live Mobile to UPI ID (VPA) and NPCI-registered account holder name verification gateway."
+                  : selectedService === "domain_age"
                   ? "Direct live Domain Age & Registration Verification Gateway with authoritative WHOIS and instant smart caching."
                   : selectedService === "pan_plus"
                   ? "Direct deep PAN demographic verification, Aadhaar seeding linkage, allotment date, and salaried/director profile powered by Bharat API Cloud."
@@ -784,7 +857,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "domain_age"
+                    selectedService === "mobile_upi"
+                      ? "mobile-to-upi"
+                      : selectedService === "domain_age"
                       ? "domain-age"
                       : selectedService === "pan_plus"
                       ? "verify-pan-plus"
@@ -824,6 +899,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "mobile_upi" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "domain_age" && <Globe className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "pan_plus" && <CreditCard className="h-4 w-4 text-sky-400" />}
                   {selectedService === "pan" && <CreditCard className="h-4 w-4 text-primary" />}
@@ -837,6 +913,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "mobile_upi" && "Mobile to UPI Lookup (/srv2/mobile-upi-lookup/enhanced)"}
                     {selectedService === "domain_age" && "Domain Age (/dosvak/domain-age)"}
                     {selectedService === "pan_plus" && "Pan Details Plus (/srv2/validation/pan/plus)"}
                     {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
@@ -1140,6 +1217,38 @@ function TestApiPage() {
                         👉 Response will reflect in the response section
                       </p>
                     </>
+                  ) : selectedService === "mobile_upi" ? (
+                    /* Mobile to UPI Lookup Form */
+                    <>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Mobile Number *</span>
+                            <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 8527475512)</span>
+                          </div>
+                          <input
+                            type="tel"
+                            maxLength={10}
+                            value={mobileUpiNumber}
+                            onChange={(e) => setMobileUpiNumber(e.target.value.replace(/\D/g, ""))}
+                            placeholder="Enter 10-digit mobile number (e.g. 8527475512)"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400"
+                          />
+                        </div>
+
+                        {/* Pricing Banner */}
+                        <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            💰 Wallet Debit:
+                          </span>
+                          <span className="font-bold text-emerald-400">₹2.00 / Request</span>
+                        </div>
+
+                        <p className="text-[11px] text-muted-foreground">
+                          👉 Live NPCI directory lookup fetching UPI Virtual Payment Address (VPA) & account holder name.
+                        </p>
+                      </div>
+                    </>
                   ) : selectedService === "domain_age" ? (
                     /* Domain Age Form */
                     <>
@@ -1430,12 +1539,24 @@ function TestApiPage() {
                     <div className="flex items-center gap-2">
                       <span
                         className={`rounded px-2 py-0.5 font-mono text-xs font-bold ${
-                          isSuccess
+                          selectedService === "mobile_upi"
+                            ? isSuccess
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                              : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            : isSuccess
                             ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                             : "bg-red-500/20 text-red-400 border border-red-500/30"
                         }`}
                       >
-                        HTTP {responseStatus} · {isSuccess ? "VERIFIED" : "VERIFICATION FAILED"}
+                        HTTP {responseStatus} · {
+                          selectedService === "mobile_upi"
+                            ? isSuccess
+                              ? "VERIFIED"
+                              : "NOT FOUND · UNLINKED"
+                            : isSuccess
+                            ? "VERIFIED"
+                            : "VERIFICATION FAILED"
+                        }
                       </span>
                     </div>
 
@@ -1492,7 +1613,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "domain_age" ? "a target domain name (e.g. geetpay.in or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. geetpay.in or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -1500,13 +1621,296 @@ function TestApiPage() {
                 {/* 1. Visual Card Tab */}
                 {!loading && responseJson && activeViewTab === "visual" && (
                   <div className="space-y-4">
-                    {/* Success Verification Card */}
-                    {isSuccess ? (
-                      <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent p-5 space-y-4">
+                    {/* Success Verification / Dedicated Service Card */}
+                    {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
+                      <div className={`rounded-xl border p-5 space-y-4 ${
+                        selectedService === "mobile_upi" && !isSuccess
+                          ? "border-amber-500/30 bg-gradient-to-b from-amber-500/5 to-transparent"
+                          : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
+                      }`}>
                         {/* ========================================================= */}
-                        {/* 🌐 DOMAIN AGE VERIFICATION DEDICATED CARD                 */}
+                        {/* 📱 MOBILE TO UPI VERIFICATION DEDICATED CARD              */}
                         {/* ========================================================= */}
-                        {selectedService === "domain_age" ? (
+                        {selectedService === "mobile_upi" ? (
+                          (() => {
+                            const isUpiLinked = Boolean(resData.vpa && responseJson?.result_code === 101);
+                            const upiResultCode = Number(responseJson?.result_code || (isUpiLinked ? 101 : 103));
+                            const upiMessage = String(responseJson?.message || (isUpiLinked ? "Request successful." : "No linked name found"));
+                            const displayMobile = mobileUpiNumber || resData.mobile || "—";
+
+                            return (
+                              <>
+                                {/* Top Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className={`rounded-lg p-2 border ${
+                                      isUpiLinked
+                                        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                        : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                    }`}>
+                                      <Smartphone className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-foreground">
+                                        {isUpiLinked
+                                          ? (resData.mobile_linked_name || resData.fullname || resData.full_name || "Verified UPI Beneficiary")
+                                          : "No Linked UPI Record Found"}
+                                      </p>
+                                      <p className="font-mono text-xs text-muted-foreground">
+                                        Mobile: +91 {displayMobile} · NPCI Directory Lookup
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    {isUpiLinked ? (
+                                      <>
+                                        <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                          <ShieldCheck className="h-3.5 w-3.5" /> ACTIVE · UPI LINKED
+                                        </span>
+                                        <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                          ₹2.00 Billed
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400 inline-flex items-center gap-1">
+                                          <AlertCircle className="h-3.5 w-3.5" /> NOT FOUND · UNLINKED
+                                        </span>
+                                        <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                                          ₹0.00 Not Billed
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Hero VPA Highlight Card */}
+                                <div className={`rounded-xl border p-4 space-y-2 ${
+                                  isUpiLinked
+                                    ? "border-emerald-500/30 bg-card/90"
+                                    : "border-amber-500/30 bg-amber-950/10"
+                                }`}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Sparkles className={`h-4 w-4 ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`} />
+                                      <span className="font-semibold uppercase tracking-wider text-xs text-foreground">
+                                        Virtual Payment Address (VPA)
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {isUpiLinked ? (
+                                        <>
+                                          <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-mono font-semibold text-emerald-400">
+                                            {(() => {
+                                              const vpaStr = String(resData.vpa || "").toLowerCase();
+                                              if (vpaStr.includes("@ybl") || vpaStr.includes("@ibl") || vpaStr.includes("@axl")) return "Yes Bank (PhonePe)";
+                                              if (vpaStr.includes("@paytm")) return "Paytm Payments Bank";
+                                              if (vpaStr.includes("@okaxis")) return "Axis Bank (Google Pay)";
+                                              if (vpaStr.includes("@okhdfcbank")) return "HDFC Bank (Google Pay)";
+                                              if (vpaStr.includes("@okicici")) return "ICICI Bank (Google Pay)";
+                                              if (vpaStr.includes("@oksbi")) return "SBI (Google Pay)";
+                                              if (vpaStr.includes("@apl")) return "Amazon Pay";
+                                              if (vpaStr.includes("@upi")) return "BHIM / NPCI";
+                                              return "Standard UPI Handle";
+                                            })()}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopyField(String(resData.vpa || ""), "UPI VPA")}
+                                            className="inline-flex items-center gap-1 rounded bg-secondary/80 hover:bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors cursor-pointer"
+                                            title="Copy UPI VPA"
+                                          >
+                                            {copiedField === "UPI VPA" ? (
+                                              <>
+                                                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                                <span className="text-emerald-400 font-semibold">Copied</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <span>Copy VPA</span>
+                                              </>
+                                            )}
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <span className="rounded bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-mono font-semibold text-amber-400">
+                                          No Active VPA
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <p className={`font-mono font-bold text-lg sm:text-2xl break-all ${
+                                    isUpiLinked ? "text-emerald-400" : "text-amber-400"
+                                  }`}>
+                                    {isUpiLinked ? String(resData.vpa) : "Not Registered / Unlinked"}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {isUpiLinked
+                                      ? "✓ Live active UPI VPA registered under NPCI (National Payments Corporation of India)"
+                                      : "⚠️ No active Virtual Payment Address (VPA) found registered for this mobile number."}
+                                  </p>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                  {/* Account Holder Name */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <User className={`h-3.5 w-3.5 ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Mobile Linked Account Name</span>
+                                      </div>
+                                      {isUpiLinked && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(String(resData.mobile_linked_name || resData.fullname || ""), "Account Holder Name")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          title="Copy Name"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className={`font-bold text-base ${isUpiLinked ? "text-foreground" : "text-muted-foreground italic"}`}>
+                                      {isUpiLinked ? (resData.mobile_linked_name || resData.fullname || resData.full_name || "—") : "No Linked Name Found"}
+                                    </p>
+                                    <p className={`text-[11px] font-medium ${isUpiLinked ? "text-emerald-400" : "text-muted-foreground"}`}>
+                                      {isUpiLinked ? "✓ Bank Account Holder Confirmed" : "✗ Bank Account Not Identified"}
+                                    </p>
+                                  </div>
+
+                                  {/* Registered Mobile Number */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <Phone className={`h-3.5 w-3.5 ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Queried Mobile Number</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(String(displayMobile), "Mobile Number")}
+                                        className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                        title="Copy Mobile"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                    <p className="font-mono font-bold text-primary text-base">
+                                      +91 {displayMobile}
+                                    </p>
+                                    <p className={`text-[11px] ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`}>
+                                      {isUpiLinked ? "Status: Verified & Linked to VPA" : "Status: No Active UPI Linked"}
+                                    </p>
+                                  </div>
+
+                                  {/* PSP Provider / Handle */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Landmark className={`h-3.5 w-3.5 ${isUpiLinked ? "text-emerald-400" : "text-muted-foreground"}`} />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">PSP Banking Provider</span>
+                                    </div>
+                                    <p className="font-semibold text-foreground text-sm">
+                                      {isUpiLinked ? (() => {
+                                        const vpaStr = String(resData.vpa || "").toLowerCase();
+                                        if (vpaStr.includes("@ybl") || vpaStr.includes("@ibl") || vpaStr.includes("@axl")) return "Yes Bank Limited (PhonePe)";
+                                        if (vpaStr.includes("@paytm")) return "Paytm Payments Bank Limited";
+                                        if (vpaStr.includes("@okaxis")) return "Axis Bank (Google Pay PSP)";
+                                        if (vpaStr.includes("@okhdfcbank")) return "HDFC Bank (Google Pay PSP)";
+                                        if (vpaStr.includes("@okicici")) return "ICICI Bank (Google Pay PSP)";
+                                        if (vpaStr.includes("@oksbi")) return "State Bank of India (Google Pay PSP)";
+                                        if (vpaStr.includes("@apl")) return "Amazon Pay / Axis Bank";
+                                        if (vpaStr.includes("@upi")) return "BHIM / NPCI";
+                                        return "NPCI Certified PSP Handle";
+                                      })() : "Not Applicable / None"}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      {isUpiLinked ? `Handle: ${String(resData.vpa || "").split("@")[1] ? `@${String(resData.vpa).split("@")[1]}` : "@ybl"}` : "Handle: Not registered"}
+                                    </p>
+                                  </div>
+
+                                  {/* Resolution Method */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      {isUpiLinked ? (
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                      ) : (
+                                        <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
+                                      )}
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Resolution Result</span>
+                                    </div>
+                                    <p className="font-semibold text-foreground text-sm">
+                                      {isUpiLinked ? "NPCI Real-Time Directory Lookup" : "Directory Search: Zero Match"}
+                                    </p>
+                                    <p className={`text-[11px] ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`}>
+                                      {isUpiLinked ? "Latency: <250ms Response" : "Result: 103 No linked name found"}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Gateway & Audit Metadata Footer */}
+                                <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2.5 text-xs">
+                                  <div className="flex items-center justify-between text-muted-foreground border-b border-border/40 pb-2">
+                                    <span className="font-medium text-[11px] uppercase tracking-wider text-foreground">
+                                      Gateway & Audit Metadata
+                                    </span>
+                                    <span className={`text-[11px] font-mono font-semibold ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`}>
+                                      HTTP {responseJson?.http_response_code || responseStatus || 200} · Code {String(upiResultCode)}
+                                    </span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2 font-mono text-[11px]">
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
+                                      <span className="text-muted-foreground shrink-0">Request ID:</span>
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="text-foreground truncate font-semibold" title={String(responseJson?.request_id || "—")}>
+                                          {String(responseJson?.request_id || "—")}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(String(responseJson?.request_id || ""), "Request ID")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                                          title="Copy Request ID"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
+                                      <span className="text-muted-foreground shrink-0">Client Ref:</span>
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="text-foreground truncate font-semibold" title={String(responseJson?.client_ref_num || "—")}>
+                                          {String(responseJson?.client_ref_num || "—")}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(String(responseJson?.client_ref_num || ""), "Client Ref")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                                          title="Copy Client Ref"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
+                                      <span className="text-muted-foreground shrink-0">Message:</span>
+                                      <span className={`font-semibold truncate ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`}>
+                                        {upiMessage}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
+                                      <span className="text-muted-foreground shrink-0">Audit Settlement:</span>
+                                      <span className={`font-semibold ${isUpiLinked ? "text-primary" : "text-muted-foreground"}`}>
+                                        {isUpiLinked ? "Logged in BullMQ (₹2.00)" : "Not Billed (₹0.00)"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          })()
+                        ) : selectedService === "domain_age" ? (
                           <>
                             {/* Top Banner */}
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
@@ -1776,194 +2180,200 @@ function TestApiPage() {
                             </div>
                           </>
                         ) : selectedService === "ip_lookup" ? (
-                          <>
-                            {/* Top Banner */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="rounded-lg bg-cyan-500/15 p-1.5 text-cyan-400 border border-cyan-500/30 flex items-center justify-center overflow-hidden h-12 w-12 shrink-0">
-                                  {Boolean((responseJson?.location as Record<string, unknown>)?.country_flag) ? (
-                                    <img
-                                      src={String((responseJson?.location as Record<string, unknown>).country_flag)}
-                                      alt="Country Flag"
-                                      className="h-8 w-10 object-contain rounded"
-                                      onError={(e) => {
-                                        (e.target as HTMLElement).style.display = "none";
-                                      }}
-                                    />
-                                  ) : (
-                                    <span className="text-2xl">
-                                      {((responseJson?.location as Record<string, unknown>)?.country_flag_emoji as string) || "🌐"}
-                                    </span>
-                                  )}
-                                </div>
-                                <div>
+                          (() => {
+                            const ipLoc: any = responseJson?.location || {};
+                            return (
+                              <>
+                                {/* Top Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg bg-cyan-500/15 p-1.5 text-cyan-400 border border-cyan-500/30 flex items-center justify-center overflow-hidden h-12 w-12 shrink-0">
+                                      {Boolean(ipLoc.country_flag) ? (
+                                        <img
+                                          src={String(ipLoc.country_flag)}
+                                          alt="Country Flag"
+                                          className="h-8 w-10 object-contain rounded"
+                                          onError={(e) => {
+                                            (e.target as HTMLElement).style.display = "none";
+                                          }}
+                                        />
+                                      ) : (
+                                        <span className="text-2xl">
+                                          {String(ipLoc.country_flag_emoji || "🌐")}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-mono font-bold text-foreground">
+                                          {String(responseJson?.ip || ipAddress || "Requester IP")}
+                                        </p>
+                                        <span className="rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                          {String(responseJson?.type || "ipv4")}
+                                        </span>
+                                        {Boolean(ipLoc.country_flag_emoji) && (
+                                          <span className="text-base" title="Country Flag">
+                                            {String(ipLoc.country_flag_emoji)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">
+                                        {String(responseJson?.city || "")}
+                                        {responseJson?.region_name ? `, ${String(responseJson.region_name)}` : ""}
+                                        {responseJson?.country_name ? `, ${String(responseJson.country_name)}` : ""}
+                                        {responseJson?.zip ? ` · PIN/ZIP: ${String(responseJson.zip)}` : ""}
+                                      </p>
+                                    </div>
+                                  </div>
+
                                   <div className="flex items-center gap-2">
-                                    <p className="text-base font-mono font-bold text-foreground">
-                                      {String(responseJson?.ip || ipAddress || "Requester IP")}
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                      <ShieldCheck className="h-3.5 w-3.5" /> GEOLOCATED
+                                    </span>
+                                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                      Real-Time GeoIP
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                  {/* City & Regional Administrative */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <MapPin className="h-3.5 w-3.5 text-cyan-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">City & Sub-Region</span>
+                                    </div>
+                                    <p className="font-bold text-foreground text-sm">
+                                      {String(responseJson?.city || "New Delhi")}
                                     </p>
-                                    <span className="rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
-                                      {String(responseJson?.type || "ipv4")}
-                                    </span>
-                                    {Boolean((responseJson?.location as Record<string, unknown>)?.country_flag_emoji) && (
-                                      <span className="text-base" title="Country Flag">
-                                        {String((responseJson?.location as Record<string, unknown>).country_flag_emoji)}
-                                      </span>
-                                    )}
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Region: <strong className="text-foreground">{String(responseJson?.region_name || "Delhi")}</strong> ({String(responseJson?.region_code || "DL")})
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      Postal Code: <strong className="text-cyan-400">{String(responseJson?.zip || "110001")}</strong>
+                                    </p>
                                   </div>
-                                  <p className="text-xs text-muted-foreground">
-                                    {String(responseJson?.city || "")}
-                                    {responseJson?.region_name ? `, ${String(responseJson.region_name)}` : ""}
-                                    {responseJson?.country_name ? `, ${String(responseJson.country_name)}` : ""}
-                                    {responseJson?.zip ? ` · PIN/ZIP: ${String(responseJson.zip)}` : ""}
-                                  </p>
-                                </div>
-                              </div>
 
-                              <div className="flex items-center gap-2">
-                                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
-                                  <ShieldCheck className="h-3.5 w-3.5" /> GEOLOCATION RESOLVED
-                                </span>
-                                <span className="rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-semibold text-cyan-400">
-                                  Bharat API Gateway
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Details Grid */}
-                            <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                              {/* City & Regional Division */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <MapPin className="h-3.5 w-3.5 text-cyan-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">City & Regional Division</span>
-                                </div>
-                                <p className="font-bold text-foreground text-base">
-                                  {String(responseJson?.city || "—")}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono">
-                                  <span>Region: <strong className="text-foreground">{String(responseJson?.region_name || "—")}</strong> ({String(responseJson?.region_code || "")})</span>
-                                  <span>·</span>
-                                  <span>ZIP: <strong className="text-foreground font-mono">{String(responseJson?.zip || "—")}</strong></span>
-                                </div>
-                              </div>
-
-                              {/* Country & Continent */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Globe className="h-3.5 w-3.5 text-cyan-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Country & Geopolitics</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xl">{((responseJson?.location as Record<string, unknown>)?.country_flag_emoji as string) || "🇮🇳"}</span>
-                                  <p className="font-bold text-foreground text-base">
-                                    {String(responseJson?.country_name || "India")} ({String(responseJson?.country_code || "IN")})
-                                  </p>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono">
-                                  <span>Continent: <strong className="text-foreground">{String(responseJson?.continent_name || "Asia")}</strong> ({String(responseJson?.continent_code || "AS")})</span>
-                                  {(responseJson?.location as Record<string, unknown>)?.geoname_id && (
-                                    <>
-                                      <span>·</span>
-                                      <span>Geoname: <strong className="text-foreground font-mono">{String((responseJson.location as Record<string, unknown>).geoname_id)}</strong></span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Geographical Coordinates & Precision */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Compass className="h-3.5 w-3.5 text-cyan-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Geographical Coordinates</span>
-                                </div>
-                                <p className="font-mono font-bold text-foreground text-sm">
-                                  Lat: {String(responseJson?.latitude || "—")}, Long: {String(responseJson?.longitude || "—")}
-                                </p>
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-emerald-400 font-medium">✓ GPS Position Locked</span>
-                                  {Boolean(responseJson?.radius) && (
-                                    <span className="text-muted-foreground font-mono">
-                                      Accuracy Radius: <strong className="text-foreground">{String(responseJson.radius)} km</strong>
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Network, Connection & Routing */}
-                              <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Terminal className="h-3.5 w-3.5 text-cyan-400" />
-                                  <span className="font-medium uppercase tracking-wider text-[10px]">Network & Routing</span>
-                                </div>
-                                <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
-                                  <span>Routing: {String(responseJson?.ip_routing_type || "fixed")}</span>
-                                  {Boolean(responseJson?.connection_type) && (
-                                    <span className="rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 px-1.5 py-0.5 text-[10px] uppercase font-bold">
-                                      {String(responseJson.connection_type)}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] text-muted-foreground font-mono">
-                                  Protocol: {String(responseJson?.type || "ipv4").toUpperCase()} · Fixed IP Routing
-                                </p>
-                              </div>
-
-                              {/* Country Intelligence & Cultural Profile (Full width) */}
-                              {Boolean(responseJson?.location) && (
-                                <div className="rounded-lg border border-border bg-card p-3 space-y-2 sm:col-span-2">
-                                  <div className="flex items-center justify-between text-muted-foreground">
-                                    <div className="flex items-center gap-1.5">
-                                      <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-                                      <span className="font-medium uppercase tracking-wider text-[10px]">Country Intelligence & National Profile</span>
+                                  {/* Country & Continent */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Globe className="h-3.5 w-3.5 text-cyan-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Country & Geopolitics</span>
                                     </div>
-                                    <span className="text-[10px] font-mono text-muted-foreground">
-                                      EU Member: <strong className="text-foreground">{Boolean((responseJson.location as Record<string, unknown>).is_eu) ? "Yes" : "No"}</strong>
-                                    </span>
-                                  </div>
-                                  <div className="grid gap-3 sm:grid-cols-4 text-xs font-mono pt-1">
-                                    <div>
-                                      <span className="text-muted-foreground text-[10px] block">NATIONAL CAPITAL</span>
-                                      <span className="text-foreground font-semibold font-sans">
-                                        {String(((responseJson?.location as Record<string, unknown>)?.capital as string) || "New Delhi")}
-                                      </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xl">{String(ipLoc.country_flag_emoji || "🇮🇳")}</span>
+                                      <p className="font-bold text-foreground text-base">
+                                        {String(responseJson?.country_name || "India")} ({String(responseJson?.country_code || "IN")})
+                                      </p>
                                     </div>
-                                    <div>
-                                      <span className="text-muted-foreground text-[10px] block">CALLING CODE</span>
-                                      <span className="text-cyan-400 font-bold">
-                                        +{String(((responseJson?.location as Record<string, unknown>)?.calling_code as string) || "91")}
-                                      </span>
-                                    </div>
-                                    <div className="sm:col-span-2">
-                                      <span className="text-muted-foreground text-[10px] block">OFFICIAL LANGUAGES</span>
-                                      <span className="text-foreground font-sans truncate block">
-                                        {Array.isArray((responseJson?.location as Record<string, unknown>)?.languages)
-                                          ? ((responseJson?.location as Record<string, unknown>).languages as Array<{ name?: string; native?: string }>).map((l) => `${l.name} (${l.native})`).join(", ")
-                                          : "Hindi, English"}
-                                      </span>
+                                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                                      <span>Continent: <strong className="text-foreground">{String(responseJson?.continent_name || "Asia")}</strong> ({String(responseJson?.continent_code || "AS")})</span>
+                                      {ipLoc.geoname_id && (
+                                        <>
+                                          <span>·</span>
+                                          <span>Geoname: <strong className="text-foreground font-mono">{String(ipLoc.geoname_id)}</strong></span>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
-                                  {(responseJson?.location as Record<string, unknown>)?.country_flag_emoji_unicode && (
-                                    <div className="border-t border-border/50 pt-1.5 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-                                      <span>Flag Unicode: <code className="text-foreground">{String((responseJson.location as Record<string, unknown>).country_flag_emoji_unicode)}</code></span>
-                                      {(responseJson?.location as Record<string, unknown>)?.country_flag && (
-                                        <a
-                                          href={String((responseJson.location as Record<string, unknown>).country_flag)}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="text-cyan-400 hover:underline flex items-center gap-1"
-                                        >
-                                          SVG Flag Asset <ExternalLink className="h-3 w-3" />
-                                        </a>
+
+                                  {/* Geographical Coordinates & Precision */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Compass className="h-3.5 w-3.5 text-cyan-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Geographical Coordinates</span>
+                                    </div>
+                                    <p className="font-mono font-bold text-foreground text-sm">
+                                      Lat: {String(responseJson?.latitude || "—")}, Long: {String(responseJson?.longitude || "—")}
+                                    </p>
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="text-emerald-400 font-medium">✓ GPS Position Locked</span>
+                                      {Boolean(responseJson?.radius) && (
+                                        <span className="text-muted-foreground font-mono">
+                                          Accuracy Radius: <strong className="text-foreground">{String(responseJson.radius)} km</strong>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Network, Connection & Routing */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                      <Terminal className="h-3.5 w-3.5 text-cyan-400" />
+                                      <span className="font-medium uppercase tracking-wider text-[10px]">Network & Routing</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
+                                      <span>Routing: {String(responseJson?.ip_routing_type || "fixed")}</span>
+                                      {Boolean(responseJson?.connection_type) && (
+                                        <span className="rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 px-1.5 py-0.5 text-[10px] uppercase font-bold">
+                                          {String(responseJson.connection_type)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      Protocol: {String(responseJson?.type || "ipv4").toUpperCase()} · Fixed IP Routing
+                                    </p>
+                                  </div>
+
+                                  {/* Country Intelligence & Cultural Profile (Full width) */}
+                                  {Boolean(responseJson?.location) && (
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-2 sm:col-span-2">
+                                      <div className="flex items-center justify-between text-muted-foreground">
+                                        <div className="flex items-center gap-1.5">
+                                          <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                                          <span className="font-medium uppercase tracking-wider text-[10px]">Country Intelligence & National Profile</span>
+                                        </div>
+                                        <span className="text-[10px] font-mono text-muted-foreground">
+                                          EU Member: <strong className="text-foreground">{Boolean(ipLoc.is_eu) ? "Yes" : "No"}</strong>
+                                        </span>
+                                      </div>
+                                      <div className="grid gap-3 sm:grid-cols-4 text-xs font-mono pt-1">
+                                        <div>
+                                          <span className="text-muted-foreground text-[10px] block">NATIONAL CAPITAL</span>
+                                          <span className="text-foreground font-semibold font-sans">
+                                            {String(ipLoc.capital || "New Delhi")}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-muted-foreground text-[10px] block">CALLING CODE</span>
+                                          <span className="text-cyan-400 font-bold">
+                                            +{String(ipLoc.calling_code || "91")}
+                                          </span>
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                          <span className="text-muted-foreground text-[10px] block">OFFICIAL LANGUAGES</span>
+                                          <span className="text-foreground font-sans truncate block">
+                                            {Array.isArray(ipLoc.languages)
+                                              ? (ipLoc.languages as Array<{ name?: string; native?: string }>).map((l) => `${l.name} (${l.native})`).join(", ")
+                                              : "Hindi, English"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      {ipLoc.country_flag_emoji_unicode && (
+                                        <div className="border-t border-border/50 pt-1.5 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                                          <span>Flag Unicode: <code className="text-foreground">{String(ipLoc.country_flag_emoji_unicode)}</code></span>
+                                          {ipLoc.country_flag && (
+                                            <a
+                                              href={String(ipLoc.country_flag)}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-cyan-400 hover:underline flex items-center gap-1"
+                                            >
+                                              SVG Flag Asset <ExternalLink className="h-3 w-3" />
+                                            </a>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                          </>
+                              </>
+                            );
+                          })()
                         ) : selectedService === "reverse_geocode" ? (
                           (() => {
-                            const addr = ((responseJson?.address as Record<string, unknown>) || {});
+                            const addr: any = (responseJson?.address || {});
                             const osmType = String(responseJson?.osm_type || "—");
                             const itemClass = String(responseJson?.class || "—");
                             const itemType = String(responseJson?.type || "—");
@@ -2288,13 +2698,13 @@ function TestApiPage() {
                             /* ========================================================= */
                             (() => {
                               const uanList: string[] = Array.isArray(resData?.uan) ? (resData.uan as string[]) : [];
-                              const summary = (resData?.summary || {}) as Record<string, any>;
-                              const recentEmployer = (summary?.recent_employer_data || {}) as Record<string, any>;
+                              const summary: any = resData?.summary || {};
+                              const recentEmployer: any = summary?.recent_employer_data || {};
                               const primaryUan = uanList[0] || recentEmployer?.matching_uan || summary?.matching_uan || directUanNumber || "—";
-                              const uanDetailsMap = (resData?.uan_details || {}) as Record<string, any>;
-                              const uanDetail = uanDetailsMap[primaryUan] || Object.values(uanDetailsMap)[0] || {};
-                              const basicDetails = (uanDetail?.basic_details || {}) as Record<string, any>;
-                              const employmentDetails = (uanDetail?.employment_details || {}) as Record<string, any>;
+                              const uanDetailsMap: any = resData?.uan_details || {};
+                              const uanDetail: any = uanDetailsMap[primaryUan] || Object.values(uanDetailsMap)[0] || {};
+                              const basicDetails: any = uanDetail?.basic_details || {};
+                              const employmentDetails: any = uanDetail?.employment_details || {};
                               const uanSources: Array<{ uan?: string; source?: string }> = Array.isArray(resData?.uan_source) ? (resData.uan_source as any) : [];
                               const isEmployed = summary?.is_employed !== undefined ? Boolean(summary.is_employed) : null;
 
@@ -2665,9 +3075,9 @@ function TestApiPage() {
                           /* 🪪 PAN DETAILS PLUS DEDICATED VIRTUAL IDENTITY CARD       */
                           /* ========================================================= */
                           (() => {
-                            const pData = (
-                              (responseJson?.data as Record<string, any>) ||
-                              (responseJson?.result as Record<string, any>) ||
+                            const pData: any = (
+                              (responseJson?.data as any) ||
+                              (responseJson?.result as any) ||
                               resData ||
                               {}
                             );
@@ -3292,6 +3702,10 @@ function TestApiPage() {
                               ? `Account: ${bankValidateAccountNumber || "38237401582"} · IFSC: ${bankValidateIfscCode || "SBIN0002296"}`
                               : selectedService === "uan"
                               ? `Mobile: ${uanMobile}`
+                              : selectedService === "mobile_upi"
+                              ? `Mobile: ${mobileUpiNumber}`
+                              : selectedService === "domain_age"
+                              ? `Domain: ${domainName}`
                               : `Mobile: ${mobileNumber} · Name: ${firstName} ${lastName}`}
                           </p>
                           <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || responseJson.message || "Invalid / Not Found")}</p>

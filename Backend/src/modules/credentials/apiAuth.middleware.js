@@ -8,17 +8,53 @@ import { asyncHandler } from '../../core/utils/asyncHandler.js';
  * High-Speed Cached Middleware to authenticate public API requests (<0.5ms on Cache Hit)
  */
 export const verifyApiClientCredentials = asyncHandler(async (req, res, next) => {
-  // Extract credentials from custom headers, query parameters (for GET requests), or body (for POST requests)
-  const api_id = req.headers['x-api-id'] || req.query?.api_id || req.body?.api_id;
-  const api_key = req.headers['x-api-key'] || req.query?.api_key || req.body?.api_key;
-  const token_id = req.headers['x-token-id'] || req.query?.token_id || req.body?.token_id || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
+  // Extract credentials from custom headers, query parameters, flat body, or nested methods (IDSpay format)
+  const nestedMethodCreds =
+    req.body?.methods?.generateToken ||
+    req.body?.methods?.fetchDetails ||
+    req.body?.generateToken ||
+    req.body?.fetchDetails ||
+    null;
+
+  const client_ref_num =
+    req.body?.client_ref_num ||
+    nestedMethodCreds?.client_ref_num ||
+    null;
+
+  const api_id =
+    req.headers['x-api-id'] ||
+    req.headers['x_api_id'] ||
+    req.query?.api_id ||
+    req.body?.api_id ||
+    nestedMethodCreds?.api_id ||
+    req.body?.methods?.generateToken?.api_id ||
+    req.body?.methods?.fetchDetails?.api_id;
+
+  const api_key =
+    req.headers['x-api-key'] ||
+    req.headers['x_api_key'] ||
+    req.query?.api_key ||
+    req.body?.api_key ||
+    nestedMethodCreds?.api_key ||
+    req.body?.methods?.generateToken?.api_key ||
+    req.body?.methods?.fetchDetails?.api_key;
+
+  const token_id =
+    req.headers['x-token-id'] ||
+    req.headers['x_token_id'] ||
+    req.query?.token_id ||
+    req.body?.token_id ||
+    nestedMethodCreds?.token_id ||
+    req.body?.methods?.generateToken?.token_id ||
+    req.body?.methods?.fetchDetails?.token_id ||
+    (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
 
   if (!api_id || !api_key || !token_id) {
     return res.status(401).json({
       http_response_code: 401,
       result_code: 103,
       request_id: `req_${Date.now()}`,
-      client_ref_num: req.body.client_ref_num || null,
+      client_ref_num: client_ref_num,
       message: 'Unauthorized: Missing required API credentials (api_id, api_key, token_id).',
       status_message: 'Authentication failed',
       result: null

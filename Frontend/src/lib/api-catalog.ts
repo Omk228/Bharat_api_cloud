@@ -477,9 +477,9 @@ export const endpoints: ApiEndpoint[] = [
       { name: "lat", type: "number", required: true, desc: "Latitude coordinate (-90.0 to 90.0), e.g. 28.6139." },
       { name: "lon", type: "number", required: true, desc: "Longitude coordinate (-180.0 to 180.0), e.g. 77.2090." },
     ],
-    sampleRequest: {
-      lat: 28.6139,
-      lon: 77.2090,
+    sampleQuery: {
+      lat: "28.6139",
+      lon: "77.2090",
     },
     sampleResponse: {
       place_id: 244382395,
@@ -507,7 +507,7 @@ export const endpoints: ApiEndpoint[] = [
       },
       boundingbox: ["28.6137596", "28.6139270", "77.2087730", "77.2121071"],
     },
-    sampleError: {
+    sampleFailedResponse: {
       error: "Unable to geocode",
     },
     errorCodes: [
@@ -532,8 +532,7 @@ export const endpoints: ApiEndpoint[] = [
       { name: "bank_ifsc_code", type: "string", required: true, desc: "11 characters bank IFSC code, e.g. SBIN0002296." },
       { name: "nf_verification", type: "boolean", required: false, desc: "Non-financial verification flag (true for penny less)." },
     ],
-    price: "₹2.00",
-    sampleRequest: {
+    sampleBody: {
       api_id: "APIDC9272C",
       api_key: "fc62efa1-4aff-478d-9b1b-6589e6262cba",
       token_id: "1_jXBOXY4fBxo9XOw2t3kw7wBMTRVuO9",
@@ -565,7 +564,7 @@ export const endpoints: ApiEndpoint[] = [
         amount_deposited: "0",
       },
     },
-    sampleError: {
+    sampleFailedResponse: {
       http_response_code: 200,
       result_code: 102,
       message: "Bank Account Verification Failed / Not Found",
@@ -579,7 +578,7 @@ export const endpoints: ApiEndpoint[] = [
   },
   {
     id: "mobile-to-uan",
-    group: "Verification",
+    group: "KYC",
     method: "POST",
     path: "/api/v1/srv3/uan-mobile",
     title: "Mobile to UAN V2",
@@ -655,7 +654,7 @@ export const endpoints: ApiEndpoint[] = [
       request_id: "REQ_775d1eef-3a03-4556-a1ee-23a16126cf57",
       client_ref_num: "BHARAT_20B86528",
     },
-    sampleError: {
+    sampleFailedResponse: {
       status: {
         code: 400,
         type: "failed",
@@ -673,7 +672,7 @@ export const endpoints: ApiEndpoint[] = [
   },
   {
     id: "uan-to-employment",
-    group: "Verification",
+    group: "KYC",
     method: "POST",
     path: "/api/v1/srv3/uan-direct",
     title: "UAN to Employment History V2",
@@ -750,7 +749,7 @@ export const endpoints: ApiEndpoint[] = [
       request_id: "REQ_9b83cf10-2415-460d-a0bb-26478951ac8d",
       client_ref_num: "BHARAT_8F41A9B2",
     },
-    sampleError: {
+    sampleFailedResponse: {
       status: {
         code: 400,
         type: "failed",
@@ -1314,6 +1313,38 @@ export const endpoints: ApiEndpoint[] = [
       creation_date: "2026-05-04T15:10:34+00:00",
       age_days: 123,
       age_years: 0.3,
+    },
+  },
+  {
+    id: "mobile-to-upi",
+    group: "KYC",
+    method: "POST",
+    path: "/srv2/mobile-upi-lookup/enhanced",
+    title: "Mobile to UPI Lookup Advance",
+    desc: "Real-time Mobile to UPI ID (VPA) and bank-registered account holder name verification powered by NPCI gateway.",
+    tags: ["upi", "vpa", "mobile to upi", "npci", "payments", "identity"],
+    latency: "~250ms",
+    params: [
+      { name: "mobile_number", type: "string", required: true, desc: "10-digit Indian mobile number (e.g. 8527475512)." },
+    ],
+    sampleBody: { mobile_number: "8527475512" },
+    sampleResponse: {
+      http_response_code: 200,
+      client_ref_num: "testapis-2phx7",
+      request_id: "1df7d07c-9861-4e28-8cf4-8257d59b1800",
+      result_code: 101,
+      result: {
+        mobile_linked_name: "OM KUMAR  JHA",
+        vpa: "8527475512@ybl",
+      },
+    },
+    sampleFailedResponse: {
+      http_response_code: 200,
+      client_ref_num: "testapis-2phx7",
+      request_id: "1df7d07c-9861-4e28-8cf4-8257d59b1800",
+      result_code: 103,
+      message: "No linked name found",
+      result: null,
     },
   },
 ];

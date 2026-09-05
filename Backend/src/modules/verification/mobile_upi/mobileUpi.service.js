@@ -40,15 +40,19 @@ export class MobileUpiVerificationService {
     // 1. Check Smart Result Cache first (<2ms)
     if (cleanMobile) {
       const cachedResult = await CacheService.getVerification('mobile_upi', cacheKeyIdentifier);
-      if (cachedResult) {
+      if (cachedResult && cachedResult.result_code === 101 && cachedResult.result?.vpa) {
         const durationMs = Date.now() - startTime;
         console.log(`⚡ [MOBILE UPI CACHE HIT] Returned from Cache in ${durationMs}ms: Mobile=${cleanMobile.slice(0, 3)}XXXX${cleanMobile.slice(-3)}`);
 
         const cachedResponse = {
-          ...cachedResult,
-          request_id: cachedResult.request_id || requestId,
+          http_response_code: 200,
           client_ref_num: clientRef,
-          _cached: true,
+          request_id: requestId,
+          result_code: 101,
+          result: {
+            mobile_linked_name: cachedResult.result.mobile_linked_name,
+            vpa: cachedResult.result.vpa,
+          },
         };
 
         if (apiClient?.user_id) {
@@ -59,8 +63,8 @@ export class MobileUpiVerificationService {
             method: 'POST',
             requestId: cachedResponse.request_id,
             clientRefNum: clientRef,
-            statusCode: cachedResponse.http_response_code || 200,
-            resultCode: cachedResponse.result_code || 101,
+            statusCode: 200,
+            resultCode: 101,
             durationMs,
             clientIp: apiClient.client_ip,
             cost: hitCost,
@@ -102,6 +106,7 @@ export class MobileUpiVerificationService {
             api_key: masterApiKey,
             token_id: masterTokenId,
             mobile_number: cleanMobile,
+            mobile: cleanMobile,
           }),
         });
 
@@ -110,26 +115,48 @@ export class MobileUpiVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [MOBILE UPI UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = {
-          http_response_code: upstreamData.http_response_code || (upstreamRes.ok ? 200 : upstreamRes.status),
-          client_ref_num: upstreamData.client_ref_num || clientRef,
-          request_id: upstreamData.request_id || requestId,
-          result_code: upstreamData.result_code !== undefined ? upstreamData.result_code : (upstreamRes.ok ? 101 : 102),
-          result: upstreamData.result !== undefined ? upstreamData.result : null,
-          ...(upstreamData.message ? { message: upstreamData.message } : {}),
-        };
+        const rawData = upstreamData.data || upstreamData.result || {};
+        const innerResultCode = rawData.result_code !== undefined ? Number(rawData.result_code) : undefined;
+        const outerResultCode = upstreamData.result_code !== undefined ? Number(upstreamData.result_code) : undefined;
 
-        resultCode = finalResponse.result_code;
-        isSuccess = upstreamRes.ok && resultCode === 101 && Boolean(finalResponse.result?.vpa || finalResponse.result?.mobile_linked_name);
+        const vpa = rawData.vpa || upstreamData.vpa || null;
+        const mobileLinkedName = rawData.mobile_linked_name || rawData.name || upstreamData.mobile_linked_name || null;
+        const hasVpaOrName = Boolean(vpa || mobileLinkedName);
+
+        if (hasVpaOrName && innerResultCode !== 103 && outerResultCode !== 103) {
+          resultCode = 101;
+          isSuccess = true;
+          finalResponse = {
+            http_response_code: 200,
+            client_ref_num: clientRef,
+            request_id: requestId,
+            result_code: 101,
+            result: {
+              mobile_linked_name: mobileLinkedName,
+              vpa: vpa,
+            },
+          };
+        } else {
+          resultCode = innerResultCode || outerResultCode || 103;
+          isSuccess = false;
+          finalResponse = {
+            http_response_code: 200,
+            client_ref_num: clientRef,
+            request_id: requestId,
+            result_code: resultCode,
+            message: rawData.message || upstreamData.message || 'No linked name found',
+            result: null,
+          };
+        }
       } catch (err) {
         console.error('⚠️ Mobile To UPI upstream provider call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
         finalResponse = {
           http_response_code: 502,
-          result_code: 102,
-          request_id: requestId,
           client_ref_num: clientRef,
+          request_id: requestId,
+          result_code: 102,
           message: 'Upstream verification service temporarily unavailable. Please try again.',
           result: null,
         };
@@ -138,17 +165,19 @@ export class MobileUpiVerificationService {
       console.log('ℹ️ No IDSPay master keys found in .env, using gateway simulated sandbox.');
     }
 
+    let isSimulated = false;
     // Fallback sandbox simulation if upstream was not called (e.g. Missing master keys in local dev)
     if (!finalResponse) {
+      isSimulated = true;
       if (!isValidMobile || cleanMobile.startsWith('0000')) {
-        resultCode = 102;
+        resultCode = 103;
         isSuccess = false;
         finalResponse = {
           http_response_code: 200,
           client_ref_num: clientRef,
           request_id: requestId,
-          result_code: 102,
-          message: 'Invalid Mobile Number',
+          result_code: 103,
+          message: 'No linked name found',
           result: null,
         };
       } else {
@@ -163,7 +192,6 @@ export class MobileUpiVerificationService {
             mobile_linked_name: 'ROHIT SHARMA',
             vpa: `${cleanMobile}@paytm`,
           },
-          _simulated: true,
         };
       }
     }
@@ -171,7 +199,7 @@ export class MobileUpiVerificationService {
     const durationMs = Date.now() - startTime;
 
     // 3. Store result in Cache (24 Hours for valid lookups, never cache simulation)
-    if (cleanMobile && finalResponse && isSuccess && !finalResponse._simulated) {
+    if (cleanMobile && finalResponse && isSuccess && !isSimulated) {
       await CacheService.setVerification('mobile_upi', cacheKeyIdentifier, finalResponse, 86400);
       console.log(`💾 [MOBILE UPI CACHED] Key verify:mobile_upi:${cacheKeyIdentifier} stored for 24h`);
     }

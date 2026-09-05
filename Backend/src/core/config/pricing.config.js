@@ -21,6 +21,10 @@ export const API_PRICING = {
   '/validate_bank_account': 2.00,
   '/dosvak/domain-age': 2.00,
   '/domain-age': 2.00,
+  '/srv2/digital-kyc/aadhar/auto-verificationspecial': 2.00,
+  '/srv2/digital-kyc/aadhar/auto-verification': 2.00,
+  '/digital-kyc/aadhar/auto-verificationspecial': 2.00,
+  '/digital-kyc/aadhar/auto-verification': 2.00,
   default: 2.00,
 };
 

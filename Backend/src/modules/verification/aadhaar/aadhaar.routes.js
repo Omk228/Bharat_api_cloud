@@ -11,4 +11,12 @@ router.post('/verify/aadhaar/direct', verifyApiClientCredentials, AadhaarVerific
 router.post('/verify/aadhaar', verifyApiClientCredentials, AadhaarVerificationController.verifyAadhaar);
 router.post('/aadhaar/direct', verifyApiClientCredentials, AadhaarVerificationController.verifyAadhaar);
 
+// Aadhaar Auto Verification Advance (Digital KYC Auto Verification with OTP)
+router.post('/srv2/digital-kyc/aadhar/auto-verificationSpecial', verifyApiClientCredentials, AadhaarVerificationController.autoVerificationSpecial);
+router.post('/srv2/digital-kyc/aadhar/auto-verificationspecial', verifyApiClientCredentials, AadhaarVerificationController.autoVerificationSpecial);
+router.post('/srv2/digital-kyc/aadhar/auto-verification', verifyApiClientCredentials, AadhaarVerificationController.autoVerificationSpecial);
+router.post('/digital-kyc/aadhar/auto-verificationSpecial', verifyApiClientCredentials, AadhaarVerificationController.autoVerificationSpecial);
+router.post('/digital-kyc/aadhar/auto-verificationspecial', verifyApiClientCredentials, AadhaarVerificationController.autoVerificationSpecial);
+router.post('/digital-kyc/aadhar/auto-verification', verifyApiClientCredentials, AadhaarVerificationController.autoVerificationSpecial);
+
 export default router;
