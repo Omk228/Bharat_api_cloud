@@ -166,13 +166,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "mobile_upi" || search["service"] === "mobile-upi" || search["service"] === "upi"
+      search["service"] === "ifsc" || search["service"] === "ifsc-lookup" || search["service"] === "bank_ifsc" || search["service"] === "bank-ifsc"
+        ? "ifsc"
+        : search["service"] === "mobile_upi" || search["service"] === "mobile-upi" || search["service"] === "upi"
         ? "mobile_upi"
         : search["service"] === "domain_age" || search["service"] === "domain-age" || search["service"] === "domain"
         ? "domain_age"
@@ -203,7 +205,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, and Mobile to UPI Lookup APIs.",
+        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
       },
     ],
   }),
@@ -213,8 +215,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi">(
-    searchParams.service === "mobile_upi"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc">(
+    searchParams.service === "ifsc"
+      ? "ifsc"
+      : searchParams.service === "mobile_upi"
       ? "mobile_upi"
       : searchParams.service === "domain_age"
       ? "domain_age"
@@ -315,6 +319,9 @@ function TestApiPage() {
   // Mobile to UPI fields
   const [mobileUpiNumber, setMobileUpiNumber] = useState("");
 
+  // IFSC Lookup fields
+  const [ifscCodeInput, setIfscCodeInput] = useState("KKBK0004587");
+
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -353,7 +360,14 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "mobile_upi"
+    selectedService === "ifsc"
+      ? {
+          ifsc: ifscCodeInput.trim().toUpperCase() || "KKBK0004587",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "mobile_upi"
       ? {
           mobile_number: mobileUpiNumber.trim().replace(/\D/g, "") || "8527475512",
           api_id: effectiveApiId,
@@ -505,7 +519,14 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "mobile_upi") {
+      if (selectedService === "ifsc") {
+        rawData = await apiClient.verifyIfsc({
+          ifsc: ifscCodeInput.trim().toUpperCase() || "KKBK0004587",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "mobile_upi") {
         rawData = await apiClient.verifyMobileUpi({
           mobile_number: mobileUpiNumber.trim().replace(/\D/g, ""),
           api_id: effectiveApiId,
@@ -705,6 +726,9 @@ function TestApiPage() {
   const isSuccess =
     responseStatus === 200 &&
     (
+      Boolean((responseJson as any)?.IFSC) ||
+      Boolean((responseJson as any)?.BANK) ||
+      Boolean((responseJson as any)?.bank) ||
       responseJson?.result_code === 101 ||
       responseJson?.status?.type === "success" ||
       responseJson?.message === "success" ||
@@ -730,7 +754,8 @@ function TestApiPage() {
       !resData.full_name &&
       !resData.pan &&
       !resData.aadhaar &&
-      !resData.creditorAccountId
+      !resData.creditorAccountId &&
+      !(responseJson as any)?.IFSC
     );
 
   const extractedFullName =
@@ -762,7 +787,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "mobile_upi"
+    selectedService === "ifsc"
+      ? "/bank/ifsc/:ifsc"
+      : selectedService === "mobile_upi"
       ? "/srv2/mobile-upi-lookup/enhanced"
       : selectedService === "domain_age"
       ? "/dosvak/domain-age"
@@ -789,7 +816,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "mobile_upi"
+    selectedService === "ifsc"
+      ? "IFSC lookup (Bank Branch & Payment Rails)"
+      : selectedService === "mobile_upi"
       ? "Mobile to UPI Lookup Advance"
       : selectedService === "domain_age"
       ? "Domain Age Verification API"
@@ -828,11 +857,13 @@ function TestApiPage() {
                   Bharat API Production Gateway
                 </span>
                 <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  {selectedService === "name_finder" || selectedService === "uan" || selectedService === "uan_direct" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
+                  {selectedService === "ifsc" ? "₹1.00 / Request" : selectedService === "name_finder" || selectedService === "uan" || selectedService === "uan_direct" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "mobile_upi"
+                {selectedService === "ifsc"
+                  ? "Direct Bank Branch details, contact, and payment rails (RTGS, NEFT, IMPS, UPI) verification powered by Bharat API Cloud."
+                  : selectedService === "mobile_upi"
                   ? "Direct live Mobile to UPI ID (VPA) and NPCI-registered account holder name verification gateway."
                   : selectedService === "domain_age"
                   ? "Direct live Domain Age & Registration Verification Gateway with authoritative WHOIS and instant smart caching."
@@ -857,7 +888,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "mobile_upi"
+                    selectedService === "ifsc"
+                      ? "ifsc-lookup"
+                      : selectedService === "mobile_upi"
                       ? "mobile-to-upi"
                       : selectedService === "domain_age"
                       ? "domain-age"
@@ -899,6 +932,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "ifsc" && <Landmark className="h-4 w-4 text-blue-400" />}
                   {selectedService === "mobile_upi" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "domain_age" && <Globe className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "pan_plus" && <CreditCard className="h-4 w-4 text-sky-400" />}
@@ -913,6 +947,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "ifsc" && "IFSC lookup (/bank/ifsc/{ifsc})"}
                     {selectedService === "mobile_upi" && "Mobile to UPI Lookup (/srv2/mobile-upi-lookup/enhanced)"}
                     {selectedService === "domain_age" && "Domain Age (/dosvak/domain-age)"}
                     {selectedService === "pan_plus" && "Pan Details Plus (/srv2/validation/pan/plus)"}
@@ -1052,7 +1087,42 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "pan_plus" ? (
+                  {selectedService === "ifsc" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Bank IFSC Code *</span>
+                          <span className="text-[11px] text-muted-foreground">11 Alphanumeric</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            value={ifscCodeInput}
+                            maxLength={11}
+                            onChange={(e) => setIfscCodeInput(e.target.value.toUpperCase().trim())}
+                            placeholder="e.g. KKBK0004587"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-blue-400 uppercase"
+                          />
+                          {ifscCodeInput.length > 0 && (
+                            <span className="absolute right-3 top-3 font-mono text-[10px] text-muted-foreground">
+                              {ifscCodeInput.length} / 11
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5 text-xs text-blue-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-blue-400">₹1.00 / Hit</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Resolves live branch details, contact, and payment rails (RTGS, NEFT, IMPS, UPI) for any RBI-registered bank IFSC.
+                      </p>
+                    </>
+                  ) : selectedService === "pan_plus" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -1629,9 +1699,170 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 📱 MOBILE TO UPI VERIFICATION DEDICATED CARD              */}
+                        {/* 🏛️ IFSC LOOKUP DEDICATED VISUAL CARD                      */}
                         {/* ========================================================= */}
-                        {selectedService === "mobile_upi" ? (
+                        {selectedService === "ifsc" ? (
+                          (() => {
+                            const data: any = responseJson || {};
+                            const bankName = data.BANK || data.bank || "Kotak Mahindra Bank";
+                            const bankCode = data.BANKCODE || data.bankcode || "KKBK";
+                            const ifscVal = data.IFSC || data.ifsc || ifscCodeInput;
+                            const branchName = data.BRANCH || data.branch || "—";
+                            const addressVal = data.ADDRESS || data.address || "—";
+                            const cityVal = data.CITY || data.city || "—";
+                            const districtVal = data.DISTRICT || data.district || "—";
+                            const stateVal = data.STATE || data.state || "—";
+                            const centreVal = data.CENTRE || data.centre || "—";
+                            const contactVal = data.CONTACT || data.contact || "—";
+                            const micrVal = data.MICR || data.micr || "—";
+                            const swiftVal = data.SWIFT || data.swift || "null";
+                            const isoVal = data.ISO3166 || data.iso3166 || "IN-DL";
+
+                            const isRtgs = Boolean(data.RTGS);
+                            const isNeft = Boolean(data.NEFT);
+                            const isImps = Boolean(data.IMPS);
+                            const isUpi = Boolean(data.UPI);
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg p-2 border bg-blue-500/15 text-blue-400 border-blue-500/30">
+                                      <Landmark className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-bold text-foreground">
+                                          {bankName}
+                                        </p>
+                                        <span className="rounded bg-secondary px-2 py-0.5 font-mono text-[11px] font-bold text-muted-foreground">
+                                          {bankCode}
+                                        </span>
+                                      </div>
+                                      <p className="font-mono text-xs text-muted-foreground">
+                                        IFSC: {ifscVal} · Razorpay IFSC / RBI NFS
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                      <ShieldCheck className="h-3.5 w-3.5" /> VERIFIED BRANCH
+                                    </span>
+                                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                      ₹1.00 Billed
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Hero IFSC Code Card */}
+                                <div className="rounded-xl border border-blue-500/30 bg-card/90 p-4 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Sparkles className="h-4 w-4 text-blue-400" />
+                                      <span className="font-semibold uppercase tracking-wider text-xs text-foreground">
+                                        Indian Financial System Code (IFSC)
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyField(String(ifscVal), "IFSC Code")}
+                                      className="inline-flex items-center gap-1 rounded bg-secondary/80 hover:bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors cursor-pointer"
+                                      title="Copy IFSC"
+                                    >
+                                      {copiedField === "IFSC Code" ? (
+                                        <>
+                                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                          <span className="text-emerald-400 font-semibold">Copied</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                          <span>Copy IFSC</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <p className="font-mono font-bold text-2xl text-blue-400 tracking-wider">
+                                    {ifscVal}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    ✓ Validated against RBI National Financial Switch & Razorpay IFSC dataset.
+                                  </p>
+                                </div>
+
+                                {/* Supported Payment Rails Grid */}
+                                <div className="space-y-2">
+                                  <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                    Supported Payment Rails
+                                  </span>
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                    <div className={`rounded-lg border p-3 text-center space-y-1 ${isRtgs ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-secondary/20"}`}>
+                                      <span className="font-mono text-xs font-bold text-foreground block">RTGS</span>
+                                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${isRtgs ? "text-emerald-400" : "text-muted-foreground"}`}>
+                                        {isRtgs ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                        {isRtgs ? "Enabled" : "Disabled"}
+                                      </span>
+                                    </div>
+
+                                    <div className={`rounded-lg border p-3 text-center space-y-1 ${isNeft ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-secondary/20"}`}>
+                                      <span className="font-mono text-xs font-bold text-foreground block">NEFT</span>
+                                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${isNeft ? "text-emerald-400" : "text-muted-foreground"}`}>
+                                        {isNeft ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                        {isNeft ? "Enabled" : "Disabled"}
+                                      </span>
+                                    </div>
+
+                                    <div className={`rounded-lg border p-3 text-center space-y-1 ${isImps ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-secondary/20"}`}>
+                                      <span className="font-mono text-xs font-bold text-foreground block">IMPS</span>
+                                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${isImps ? "text-emerald-400" : "text-muted-foreground"}`}>
+                                        {isImps ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                        {isImps ? "Enabled" : "Disabled"}
+                                      </span>
+                                    </div>
+
+                                    <div className={`rounded-lg border p-3 text-center space-y-1 ${isUpi ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-secondary/20"}`}>
+                                      <span className="font-mono text-xs font-bold text-foreground block">UPI</span>
+                                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold ${isUpi ? "text-emerald-400" : "text-muted-foreground"}`}>
+                                        {isUpi ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                        {isUpi ? "Enabled" : "Disabled"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Branch & Address Details */}
+                                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <span className="font-medium text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                      <Building2 className="h-3 w-3 text-primary" /> Branch Name
+                                    </span>
+                                    <p className="font-semibold text-foreground text-sm">{branchName}</p>
+                                    <p className="text-[11px] text-muted-foreground">Centre: {centreVal} · District: {districtVal}</p>
+                                  </div>
+
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <span className="font-medium text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                      <Phone className="h-3 w-3 text-primary" /> Branch Contact
+                                    </span>
+                                    <p className="font-mono font-semibold text-foreground text-sm">{contactVal}</p>
+                                    <p className="text-[11px] text-muted-foreground">MICR: {micrVal} · ISO: {isoVal} · SWIFT: {swiftVal}</p>
+                                  </div>
+
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1 sm:col-span-2">
+                                    <span className="font-medium text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                      <MapPin className="h-3 w-3 text-primary" /> Branch Address
+                                    </span>
+                                    <p className="text-foreground leading-relaxed font-medium">{addressVal}</p>
+                                    <p className="text-[11px] text-muted-foreground">State: {stateVal} · City: {cityVal}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "mobile_upi" ? (
                           (() => {
                             const isUpiLinked = Boolean(resData.vpa && responseJson?.result_code === 101);
                             const upiResultCode = Number(responseJson?.result_code || (isUpiLinked ? 101 : 103));

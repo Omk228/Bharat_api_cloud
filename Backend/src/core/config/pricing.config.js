@@ -25,6 +25,9 @@ export const API_PRICING = {
   '/srv2/digital-kyc/aadhar/auto-verification': 2.00,
   '/digital-kyc/aadhar/auto-verificationspecial': 2.00,
   '/digital-kyc/aadhar/auto-verification': 2.00,
+  '/ifsc': 1.00,
+  '/:ifsc': 1.00,
+  '/bank/ifsc': 1.00,
   default: 2.00,
 };
 

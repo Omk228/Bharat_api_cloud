@@ -649,6 +649,33 @@ export const apiClient = {
     if (!res.ok) throw new Error(json.message || 'Failed to top-up wallet');
     return json.data;
   },
+
+  async verifyIfsc(data: {
+    api_id: string;
+    api_key: string;
+    token_id: string;
+    ifsc: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const cleanIfsc = (data.ifsc || '').trim().toUpperCase();
+    const res = await fetch(`${host}/bank/ifsc/${encodeURIComponent(cleanIfsc)}`, {
+      method: 'GET',
+      headers: {
+        'x-api-id': data.api_id,
+        'x-api-key': data.api_key,
+        'x-token-id': data.token_id,
+      },
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      try {
+        return JSON.parse(errText);
+      } catch {
+        return { error: errText, status_code: res.status, message: errText || 'IFSC Not Found' };
+      }
+    }
+    return res.json();
+  },
 };
 
 export default apiClient;

@@ -18,6 +18,7 @@ import idfyRoutes from './modules/idfy/idfy.routes.js';
 import uanRoutes from './modules/verification/uan/uan.routes.js';
 import mobileUpiRoutes from './modules/verification/mobile_upi/mobileUpi.routes.js';
 import domainRoutes from './modules/domain/domain.routes.js';
+import ifscRoutes from './modules/ifsc/ifsc.routes.js';
 
 const app = express();
 
@@ -69,9 +70,13 @@ app.use('/idfy', idfyRoutes);
 app.use('/reverse-geocode', geocodingRoutes);
 app.use('/reverse', geocodingRoutes);
 app.use('/', domainRoutes);
+app.use('/ifsc', ifscRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);
+
+// Mount Direct Root Route for IFSC (e.g. /YESB0DNB002 matching Razorpay root API)
+app.use('/', ifscRoutes);
 
 // 404 Route Not Found Handler
 app.use(notFoundHandler);

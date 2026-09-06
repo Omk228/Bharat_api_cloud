@@ -60,6 +60,10 @@ export const ENV = {
     BASE_URL: process.env.APYHUB_BASE_URL || 'https://api.eu.apyhub.com',
     API_TOKEN: process.env.APYHUB_API_TOKEN || 'c9a47496f3070e07e1d4370329bf9b93e876eeb05f4cc492101a1cd4512e24e0',
   },
+
+  RAZORPAY_IFSC: {
+    BASE_URL: process.env.RAZORPAY_IFSC_BASE_URL || 'https://ifsc.razorpay.com',
+  },
 };
 
 export default ENV;

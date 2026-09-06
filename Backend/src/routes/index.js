@@ -14,6 +14,7 @@ import idfyRoutes from '../modules/idfy/idfy.routes.js';
 import uanRoutes from '../modules/verification/uan/uan.routes.js';
 import mobileUpiRoutes from '../modules/verification/mobile_upi/mobileUpi.routes.js';
 import domainRoutes from '../modules/domain/domain.routes.js';
+import ifscRoutes from '../modules/ifsc/ifsc.routes.js';
 
 const apiRouter = Router();
 
@@ -44,5 +45,7 @@ apiRouter.use('/reverse', geocodingRoutes);
 apiRouter.use('/geocode', geocodingRoutes);
 apiRouter.use('/', geocodingRoutes);
 apiRouter.use('/', domainRoutes);
+apiRouter.use('/ifsc', ifscRoutes);
+apiRouter.use('/', ifscRoutes);
 
 export default apiRouter;
