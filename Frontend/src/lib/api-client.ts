@@ -52,6 +52,8 @@ export type UserPricingData = {
   userId?: number | null;
   is_customized: boolean;
   pricing: Record<string, number>;
+  assigned?: Record<string, boolean>;
+  revoked?: string[];
   catalog: CatalogPricingItem[];
 };
 

@@ -211,10 +211,120 @@ export class PricingService {
   }
 
   /**
-   * Fetches full pricing map and catalog with effective prices for a user
+   * Checks whether a user is allowed to access and execute an API endpoint.
+   * - If an Admin set `user_api_pricing.is_assigned = 0`, access is REVOKED for this user.
+   * - If `catalog.status = 'Disabled'`, access is BLOCKED globally.
+   *
+   * @param {string} endpoint - API route path or service key (e.g. '/srv2/validation/pan')
+   * @param {number|null} [userId=null] - Authenticated user ID
+   * @returns {Promise<{ isAllowed: boolean, reason?: string, catalogId?: string }>}
+   */
+  static async checkApiAccess(endpoint, userId = null) {
+    if (!endpoint) return { isAllowed: true };
+
+    const cleanEndpoint = endpoint.trim().toLowerCase().split('?')[0];
+
+    // Determine lookup identifiers
+    const lookupIdentifiers = [cleanEndpoint];
+    const strippedEndpoint = cleanEndpoint.replace(/^\/api\/v1/, '');
+    if (strippedEndpoint && strippedEndpoint !== cleanEndpoint) {
+      lookupIdentifiers.push(strippedEndpoint);
+    }
+    const aliases = ENDPOINT_CATALOG_MAP[cleanEndpoint] || ENDPOINT_CATALOG_MAP[strippedEndpoint];
+    if (aliases) {
+      lookupIdentifiers.push(...aliases);
+    }
+
+    // 1. Try cache if user is authenticated
+    const cacheKey = userId ? `access:user:${userId}:${cleanEndpoint}` : `access:default:${cleanEndpoint}`;
+    try {
+      const cached = await CacheService.get(cacheKey);
+      if (cached !== null && cached !== undefined) {
+        return typeof cached === 'string' ? JSON.parse(cached) : cached;
+      }
+    } catch (err) {}
+
+    try {
+      const placeholders = lookupIdentifiers.map(() => '?').join(', ');
+
+      let query;
+      let params;
+
+      if (userId) {
+        query = `
+          SELECT 
+            c.id AS catalog_id,
+            c.service_name,
+            c.status AS catalog_status,
+            p.is_assigned
+          FROM catalog c
+          LEFT JOIN user_api_pricing p 
+            ON p.catalog_id = c.id 
+            AND p.user_id = ?
+          WHERE c.id IN (${placeholders}) 
+             OR c.endpoint_path IN (${placeholders})
+          ORDER BY p.id DESC
+          LIMIT 1;
+        `;
+        params = [userId, ...lookupIdentifiers, ...lookupIdentifiers];
+      } else {
+        query = `
+          SELECT 
+            c.id AS catalog_id,
+            c.service_name,
+            c.status AS catalog_status,
+            1 AS is_assigned
+          FROM catalog c
+          WHERE c.id IN (${placeholders}) 
+             OR c.endpoint_path IN (${placeholders})
+          LIMIT 1;
+        `;
+        params = [...lookupIdentifiers, ...lookupIdentifiers];
+      }
+
+      const [rows] = await dbPool.query(query, params);
+
+      let result = { isAllowed: true };
+
+      if (rows && rows.length > 0) {
+        const row = rows[0];
+        if (row.catalog_status === 'Disabled') {
+          result = {
+            isAllowed: false,
+            reason: `The service '${row.service_name || cleanEndpoint}' is currently disabled for maintenance.`,
+            catalogId: row.catalog_id
+          };
+        } else if (userId && row.is_assigned === 0) {
+          result = {
+            isAllowed: false,
+            reason: `Access to '${row.service_name || cleanEndpoint}' has been revoked by Administrator for your account.`,
+            catalogId: row.catalog_id
+          };
+        } else {
+          result = {
+            isAllowed: true,
+            catalogId: row.catalog_id
+          };
+        }
+      }
+
+      // Cache for 60 seconds
+      try {
+        await CacheService.set(cacheKey, JSON.stringify(result), 60);
+      } catch (err) {}
+
+      return result;
+    } catch (error) {
+      console.error('⚠️ [PricingService.checkApiAccess] DB error, allowing request:', error.message);
+      return { isAllowed: true };
+    }
+  }
+
+  /**
+   * Fetches full pricing map and catalog with effective prices and assignment status for a user
    *
    * @param {number|null} [userId=null] - User ID
-   * @returns {Promise<{ pricing: Record<string, number>, catalog: Array<object> }>}
+   * @returns {Promise<{ pricing: Record<string, number>, assigned: Record<string, boolean>, revoked: string[], catalog: Array<object> }>}
    */
   static async getUserPricingMap(userId = null) {
     try {
@@ -229,6 +339,7 @@ export class PricingService {
             c.category,
             c.method,
             c.endpoint_path,
+            c.status AS catalog_status,
             c.current_price AS default_price,
             p.custom_price,
             p.is_assigned,
@@ -240,7 +351,6 @@ export class PricingService {
           LEFT JOIN user_api_pricing p 
             ON p.catalog_id = c.id 
             AND p.user_id = ?
-            AND p.is_assigned = 1
           ORDER BY c.service_name ASC;
         `;
         params = [userId];
@@ -252,9 +362,10 @@ export class PricingService {
             c.category,
             c.method,
             c.endpoint_path,
+            c.status AS catalog_status,
             c.current_price AS default_price,
             NULL AS custom_price,
-            0 AS is_assigned,
+            1 AS is_assigned,
             c.current_price AS effective_price
           FROM catalog c
           ORDER BY c.service_name ASC;
@@ -266,45 +377,60 @@ export class PricingService {
       // Build a catalog lookup by ID and endpoint_path
       const catalogMapById = new Map();
       const catalogList = catalogRows.map((row) => {
+        // If row.is_assigned is explicitly 0, it is revoked. If null or 1, it is allowed.
+        const isAssigned = row.is_assigned === null || row.is_assigned === undefined ? true : Boolean(row.is_assigned);
         const item = {
           id: row.id,
           service_name: row.service_name,
           category: row.category,
           method: row.method,
           endpoint_path: row.endpoint_path,
+          catalog_status: row.catalog_status,
           default_price: parseFloat(row.default_price || 0),
           custom_price: row.custom_price != null ? parseFloat(row.custom_price) : null,
-          is_assigned: Boolean(row.is_assigned),
+          is_assigned: isAssigned && row.catalog_status !== 'Disabled',
           effective_price: parseFloat(row.effective_price || row.default_price || 0),
-          is_custom: Boolean(row.is_assigned && row.custom_price != null),
+          is_custom: Boolean(row.is_assigned === 1 && row.custom_price != null),
         };
         catalogMapById.set(row.id, item);
         return item;
       });
 
-      // Build service key pricing map for Frontend test-api console
+      // Build service key pricing & access maps for Frontend console
       const pricing = {};
+      const assigned = {};
+      const revoked = [];
+
       for (const [serviceKey, catalogId] of Object.entries(SERVICE_KEY_TO_CATALOG_ID)) {
         const item = catalogMapById.get(catalogId);
         if (item) {
           pricing[serviceKey] = item.effective_price;
+          assigned[serviceKey] = item.is_assigned;
+          if (!item.is_assigned) {
+            revoked.push(serviceKey);
+          }
         } else {
           pricing[serviceKey] = API_PRICING[serviceKey] ?? 2.00;
+          assigned[serviceKey] = true;
         }
       }
 
       return {
         pricing,
+        assigned,
+        revoked,
         catalog: catalogList,
       };
     } catch (error) {
       console.error('❌ [PricingService.getUserPricingMap] Error:', error);
       // Fallback
       const pricing = {};
+      const assigned = {};
       for (const key of Object.keys(SERVICE_KEY_TO_CATALOG_ID)) {
         pricing[key] = API_PRICING[key] ?? 2.00;
+        assigned[key] = true;
       }
-      return { pricing, catalog: [] };
+      return { pricing, assigned, revoked: [], catalog: [] };
     }
   }
 }

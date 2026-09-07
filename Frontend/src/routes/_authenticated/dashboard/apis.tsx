@@ -49,19 +49,24 @@ function ApisPage() {
     staleTime: 30_000,
   });
 
-  const getEndpointPrice = (ep: ApiEndpoint): { price: number; isCustom: boolean } => {
+  const getEndpointPrice = (ep: ApiEndpoint): { price: number; isCustom: boolean; isAssigned: boolean } => {
     // Check catalog items
     const catalogItem = pricingData?.catalog?.find(
       (c) => c.endpoint_path === ep.path || ep.path.includes(c.endpoint_path) || c.endpoint_path.includes(ep.path)
     );
     if (catalogItem) {
-      return { price: catalogItem.effective_price, isCustom: catalogItem.is_custom };
+      return {
+        price: catalogItem.effective_price,
+        isCustom: catalogItem.is_custom,
+        isAssigned: catalogItem.is_assigned !== false,
+      };
     }
     // Fallback by ID
     if (ep.id === "verify-pan" && pricingData?.pricing?.pan) {
-      return { price: pricingData.pricing.pan, isCustom: pricingData.pricing.pan !== 1.1 };
+      const isAssigned = pricingData?.assigned?.pan !== false;
+      return { price: pricingData.pricing.pan, isCustom: pricingData.pricing.pan !== 1.1, isAssigned };
     }
-    return { price: 2.0, isCustom: false };
+    return { price: 2.0, isCustom: false, isAssigned: true };
   };
 
   return (
@@ -154,7 +159,14 @@ function ApisPage() {
 
                     <div className="flex items-center gap-1.5">
                       {(() => {
-                        const { price, isCustom } = getEndpointPrice(ep);
+                        const { price, isCustom, isAssigned } = getEndpointPrice(ep);
+                        if (!isAssigned) {
+                          return (
+                            <span className="rounded px-2 py-0.5 font-mono text-[11px] font-semibold bg-red-500/15 text-red-400 border border-red-500/30">
+                              Access Revoked
+                            </span>
+                          );
+                        }
                         return (
                           <span
                             className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold ${

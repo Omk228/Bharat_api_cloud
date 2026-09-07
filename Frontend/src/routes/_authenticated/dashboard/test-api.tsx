@@ -298,6 +298,11 @@ function TestApiPage() {
     return 2.0;
   };
 
+  const isServiceRevoked = Boolean(
+    pricingData?.assigned?.[selectedService] === false ||
+    pricingData?.revoked?.includes(selectedService)
+  );
+
   
   // PAN fields
   const [pan, setPan] = useState("");
@@ -493,6 +498,10 @@ function TestApiPage() {
         };
 
   const handleSendRequest = async () => {
+    if (isServiceRevoked) {
+      toast.error("Access to this API endpoint has been revoked by your administrator.");
+      return;
+    }
     if (selectedService === "mobile_upi" && !mobileUpiNumber.trim()) {
       toast.error("Please enter a 10-digit mobile number (e.g. 8527475512)");
       return;
@@ -877,15 +886,23 @@ function TestApiPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold tracking-tight">{currentServiceName}</h1>
-                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
-                  Bharat API Production Gateway
-                </span>
-                <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  {selectedService === "ip_lookup" || selectedService === "reverse_geocode"
-                    ? "Live Gateway"
-                    : `₹${getServicePrice(selectedService).toFixed(2)} / Request`}
-                </span>
-                {pricingData?.is_customized && (
+                {isServiceRevoked ? (
+                  <span className="rounded-full bg-red-500/15 border border-red-500/30 px-2.5 py-0.5 text-xs font-semibold text-red-400 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" /> Access Revoked
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+                    Bharat API Production Gateway
+                  </span>
+                )}
+                {!isServiceRevoked && (
+                  <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
+                    {selectedService === "ip_lookup" || selectedService === "reverse_geocode"
+                      ? "Live Gateway"
+                      : `₹${getServicePrice(selectedService).toFixed(2)} / Request`}
+                  </span>
+                )}
+                {pricingData?.is_customized && !isServiceRevoked && (
                   <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
                     Custom Admin Pricing
                   </span>
@@ -998,9 +1015,15 @@ function TestApiPage() {
 
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Gateway Status:</span>
-                <span className="rounded px-2 py-0.5 font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  ONLINE · LIVE
-                </span>
+                {isServiceRevoked ? (
+                  <span className="rounded px-2 py-0.5 font-bold uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" /> ACCESS REVOKED
+                  </span>
+                ) : (
+                  <span className="rounded px-2 py-0.5 font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    ONLINE · LIVE
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1030,6 +1053,19 @@ function TestApiPage() {
                     {selectedService === "reverse_geocode" ? "GET" : selectedService === "ip_lookup" ? "GET / POST" : "POST"}
                   </span>
                 </div>
+
+                {/* Revoked Notice Banner */}
+                {isServiceRevoked && (
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300 flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-red-200">API Access Revoked by Admin</p>
+                      <p className="mt-0.5 text-[11px] text-red-300/85 leading-relaxed">
+                        Your account does not have permission to execute this API endpoint. Please contact your administrator.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* API Credentials */}
                 <div className="space-y-3">
@@ -1602,12 +1638,20 @@ function TestApiPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleSendRequest}
-                    disabled={loading}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-all disabled:opacity-60 shadow-md hover:shadow-lg active:scale-[0.99]"
+                    disabled={loading || isServiceRevoked}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all shadow-md active:scale-[0.99] ${
+                      isServiceRevoked
+                        ? "bg-red-500/15 border border-red-500/30 text-red-400 cursor-not-allowed hover:bg-red-500/15"
+                        : "bg-emerald-600 text-white hover:bg-emerald-500 hover:shadow-lg disabled:opacity-60"
+                    }`}
                   >
                     {loading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" /> Verifying with Bharat API Cloud Gateway...
+                      </>
+                    ) : isServiceRevoked ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-red-400" /> Access Revoked by Admin
                       </>
                     ) : (
                       <>

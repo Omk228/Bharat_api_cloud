@@ -73,6 +73,8 @@ export class PricingController {
         userId,
         is_customized: Object.values(data.pricing).some((p) => p !== 2.0 && p !== 1.1),
         pricing: data.pricing,
+        assigned: data.assigned,
+        revoked: data.revoked,
         catalog: data.catalog,
       },
       'Pricing catalog retrieved successfully'

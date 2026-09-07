@@ -3,6 +3,7 @@ import CredentialService from './credential.service.js';
 import CacheService from '../../core/cache/cache.service.js';
 import { dbPool } from '../../core/config/db.config.js';
 import { asyncHandler } from '../../core/utils/asyncHandler.js';
+import PricingService from '../pricing/pricing.service.js';
 
 /**
  * High-Speed Cached Middleware to authenticate public API requests (<0.5ms on Cache Hit)
@@ -99,6 +100,22 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
           wallet_balance: currentBalance,
           client_ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
         };
+
+        // Check Admin API Revocation / Access Control for this user & endpoint
+        const endpointPath = req.originalUrl || req.path || req.baseUrl;
+        const access = await PricingService.checkApiAccess(endpointPath, req.apiClient.user_id);
+        if (!access.isAllowed) {
+          return res.status(403).json({
+            http_response_code: 403,
+            result_code: 103,
+            request_id: `req_${Date.now()}`,
+            client_ref_num: req.body?.client_ref_num || null,
+            message: access.reason || 'Access Denied: Access to this API has been revoked by Administrator for your account.',
+            status_message: 'Access Revoked',
+            result: null
+          });
+        }
+
         return next();
       }
     }
@@ -126,6 +143,21 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
 
     // Attach client & credential details to request
     req.apiClient = clientPayload;
+
+    // Check Admin API Revocation / Access Control for this user & endpoint
+    const endpointPath = req.originalUrl || req.path || req.baseUrl;
+    const access = await PricingService.checkApiAccess(endpointPath, req.apiClient.user_id);
+    if (!access.isAllowed) {
+      return res.status(403).json({
+        http_response_code: 403,
+        result_code: 103,
+        request_id: `req_${Date.now()}`,
+        client_ref_num: req.body?.client_ref_num || null,
+        message: access.reason || 'Access Denied: Access to this API has been revoked by Administrator for your account.',
+        status_message: 'Access Revoked',
+        result: null
+      });
+    }
 
     next();
   } catch (error) {
