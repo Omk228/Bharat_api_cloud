@@ -55,7 +55,7 @@ npm install
 ### 2. Configure Environment Variables
 Edit `.env` to match your local MySQL credentials:
 ```env
-PORT=5000
+PORT=5002
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root

@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] || 'http://localhost:5000/api/v1';
+const API_BASE = (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] || 'http://localhost:5002/api/v1';
 
 export type UserPayload = {
   id: number;
@@ -33,6 +33,26 @@ export type AuthResponse = {
     user: UserPayload;
     token: string;
   };
+};
+
+export type CatalogPricingItem = {
+  id: string;
+  service_name: string;
+  category?: string;
+  method: string;
+  endpoint_path: string;
+  default_price: number;
+  custom_price: number | null;
+  is_assigned: boolean;
+  effective_price: number;
+  is_custom: boolean;
+};
+
+export type UserPricingData = {
+  userId?: number | null;
+  is_customized: boolean;
+  pricing: Record<string, number>;
+  catalog: CatalogPricingItem[];
 };
 
 const DEFAULT_API_ID = 'APIDC9272C';
@@ -122,20 +142,103 @@ export const apiClient = {
     return result.data;
   },
 
-  async getCredentials(): Promise<ApiCredential[]> {
+  async getUserPricing(apiCreds?: { api_id?: string; api_key?: string; email?: string }): Promise<UserPricingData> {
     const token = this.getToken();
-    if (!token) throw new Error('Not authenticated');
-
-    const res = await fetch(`${API_BASE}/credentials`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.message || 'Failed to fetch credentials');
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    return result.data || [];
+    if (apiCreds?.api_id && apiCreds?.api_key) {
+      headers['x-api-id'] = apiCreds.api_id;
+      headers['x-api-key'] = apiCreds.api_key;
+    }
+
+    let email = apiCreds?.email;
+    if (!email && typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem('bharat_api_demo_state');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          email = parsed.session?.email || parsed.profile?.contact_email;
+        }
+      } catch {}
+    }
+    if (email) {
+      headers['x-user-email'] = email;
+    }
+
+    try {
+      const url = email 
+        ? `${API_BASE}/pricing?email=${encodeURIComponent(email)}`
+        : `${API_BASE}/pricing`;
+      const res = await fetch(url, { headers });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || 'Failed to fetch user pricing');
+      }
+      return result.data;
+    } catch {
+      return {
+        is_customized: false,
+        pricing: {
+          pan: 2.0,
+          pan_plus: 2.0,
+          aadhaar: 2.0,
+          bank: 2.0,
+          bank_validation: 2.0,
+          prefill: 2.0,
+          name_finder: 5.0,
+          mobile_upi: 2.0,
+          domain_age: 2.0,
+          ifsc: 1.0,
+          uan: 5.0,
+          uan_direct: 5.0,
+          ip_lookup: 0.15,
+          reverse_geocode: 0.2,
+        },
+        catalog: [],
+      };
+    }
+  },
+
+  async getCredentials(emailParam?: string): Promise<ApiCredential[]> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    let email = emailParam;
+    if (!email && typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem('bharat_api_demo_state');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          email = parsed.session?.email || parsed.profile?.contact_email;
+        }
+      } catch {}
+    }
+    if (email) {
+      headers['x-user-email'] = email;
+    }
+
+    if (!token && !email) {
+      return [];
+    }
+
+    try {
+      const url = email
+        ? `${API_BASE}/credentials?email=${encodeURIComponent(email)}`
+        : `${API_BASE}/credentials`;
+      const res = await fetch(url, { headers });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        return [];
+      }
+      return result.data || [];
+    } catch {
+      return [];
+    }
   },
 
   async generateCredentials(data: { environment?: 'sandbox' | 'production'; label?: string }): Promise<ApiCredential> {

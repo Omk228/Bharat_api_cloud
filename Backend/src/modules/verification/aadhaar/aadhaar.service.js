@@ -3,7 +3,7 @@ import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
-import { getApiPrice } from '../../../core/config/pricing.config.js';
+import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
 
 export class AadhaarVerificationService {
@@ -33,7 +33,7 @@ export class AadhaarVerificationService {
     const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const endpoint = '/srv3/verification/aadhar';
-    const hitCost = getApiPrice(endpoint);
+    const hitCost = await getEffectiveApiPrice(endpoint, apiClient?.user_id);
 
     // Pre-flight wallet balance check
     if (apiClient?.user_id && apiClient.wallet_balance < hitCost) {
@@ -204,7 +204,7 @@ export class AadhaarVerificationService {
   static async autoVerificationSpecial({ body, apiClient }) {
     const startTime = Date.now();
     const endpoint = '/srv2/digital-kyc/aadhar/auto-verificationSpecial';
-    const hitCost = getApiPrice(endpoint);
+    const hitCost = await getEffectiveApiPrice(endpoint, apiClient?.user_id);
 
     // Pre-flight wallet balance check
     if (apiClient?.user_id && apiClient.wallet_balance < hitCost) {

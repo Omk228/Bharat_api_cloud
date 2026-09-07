@@ -36,6 +36,7 @@ import { toast } from "sonner";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiClient } from "@/lib/api-client";
+import { getStoredUserEmail } from "@/lib/demo-store";
 
 export type VerificationResult = {
   pan?: string;
@@ -245,11 +246,13 @@ function TestApiPage() {
       : "pan"
   );
 
+  const userEmail = getStoredUserEmail();
+
   const { data: creds, isLoading: credsLoading } = useQuery({
-    queryKey: ["credentials"],
+    queryKey: ["credentials", userEmail],
     queryFn: async () => {
       try {
-        return await apiClient.getCredentials();
+        return await apiClient.getCredentials(userEmail);
       } catch {
         return [];
       }
@@ -274,6 +277,27 @@ function TestApiPage() {
       if (activeCred.token_id) setTokenId(activeCred.token_id);
     }
   }, [activeCred]);
+
+  // Dynamic User API Pricing query from backend (fetches Admin custom prices)
+  const { data: pricingData } = useQuery({
+    queryKey: ["user-pricing", apiId, apiKey, userEmail],
+    queryFn: async () => {
+      return await apiClient.getUserPricing({ api_id: apiId, api_key: apiKey, email: userEmail });
+    },
+    staleTime: 15_000,
+  });
+
+  const getServicePrice = (serviceKey: string): number => {
+    if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
+      return pricingData.pricing[serviceKey];
+    }
+    if (serviceKey === "ifsc") return 1.0;
+    if (serviceKey === "name_finder" || serviceKey === "uan" || serviceKey === "uan_direct") return 5.0;
+    if (serviceKey === "ip_lookup") return 0.15;
+    if (serviceKey === "reverse_geocode") return 0.2;
+    return 2.0;
+  };
+
   
   // PAN fields
   const [pan, setPan] = useState("");
@@ -857,8 +881,15 @@ function TestApiPage() {
                   Bharat API Production Gateway
                 </span>
                 <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  {selectedService === "ifsc" ? "₹1.00 / Request" : selectedService === "name_finder" || selectedService === "uan" || selectedService === "uan_direct" ? "₹5.00 / Request" : selectedService === "ip_lookup" || selectedService === "reverse_geocode" ? "Live Gateway" : "₹2.00 / Request"}
+                  {selectedService === "ip_lookup" || selectedService === "reverse_geocode"
+                    ? "Live Gateway"
+                    : `₹${getServicePrice(selectedService).toFixed(2)} / Request`}
                 </span>
+                {pricingData?.is_customized && (
+                  <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                    Custom Admin Pricing
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {selectedService === "ifsc"
@@ -879,7 +910,7 @@ function TestApiPage() {
                   ? "Direct Mobile to Universal Account Number (UAN) & EPFO Employment Verification powered by Bharat API Cloud."
                   : selectedService === "uan_direct"
                   ? "Direct 12-digit UAN EPFO Employment History & Establishment Verification powered by Bharat API Cloud."
-                  : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (${selectedService === "name_finder" ? "₹5.00" : "₹2.00"}) & refunds.`}
+                  : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (₹${getServicePrice(selectedService).toFixed(2)}) & refunds.`}
               </p>
             </div>
 
@@ -977,7 +1008,7 @@ function TestApiPage() {
             <div className="grid gap-2 sm:grid-cols-2 text-muted-foreground">
               <div>
                 <span className="font-medium text-foreground">Base Gateway URL:</span>{" "}
-                <code className="font-mono text-primary">http://localhost:5000</code>
+                <code className="font-mono text-primary">http://localhost:5002</code>
               </div>
               <div>
                 <span className="font-medium text-foreground">Endpoint:</span>{" "}
@@ -1115,7 +1146,7 @@ function TestApiPage() {
                         <span className="flex items-center gap-1.5 font-medium">
                           💰 Wallet Debit:
                         </span>
-                        <span className="font-bold text-blue-400">₹1.00 / Hit</span>
+                        <span className="font-bold text-blue-400">₹{getServicePrice("ifsc").toFixed(2)} / Hit</span>
                       </div>
 
                       <p className="text-[11px] text-muted-foreground">
@@ -1143,7 +1174,7 @@ function TestApiPage() {
                         <span className="flex items-center gap-1.5 font-medium">
                           💰 Wallet Debit:
                         </span>
-                        <span className="font-bold text-sky-400">₹2.00 / Hit</span>
+                        <span className="font-bold text-sky-400">₹{getServicePrice("pan_plus").toFixed(2)} / Hit</span>
                       </div>
 
                       <p className="text-[11px] text-muted-foreground">
@@ -1201,6 +1232,14 @@ function TestApiPage() {
                           </select>
                         </label>
                       </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-amber-400">₹{getServicePrice("pan").toFixed(2)} / Request</span>
+                      </div>
                     </>
                   ) : selectedService === "aadhaar" ? (
                     <>
@@ -1227,6 +1266,14 @@ function TestApiPage() {
                           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
                         />
                       </label>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-emerald-400">₹{getServicePrice("aadhaar").toFixed(2)} / Request</span>
+                      </div>
                     </>
                   ) : selectedService === "bank" ? (
                     /* Bank Penny Less Form */
@@ -1257,6 +1304,14 @@ function TestApiPage() {
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-primary"
                         />
                       </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5 text-xs text-blue-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-blue-400">₹{getServicePrice("bank").toFixed(2)} / Request</span>
+                      </div>
                     </>
                   ) : selectedService === "name_finder" ? (
                     /* Mobile To Name Finder Form */
@@ -1280,7 +1335,7 @@ function TestApiPage() {
                         <span className="flex items-center gap-1.5 font-medium">
                           💰 Wallet Debit:
                         </span>
-                        <span className="font-bold text-amber-400">₹5.00 / Hit</span>
+                        <span className="font-bold text-amber-400">₹{getServicePrice("name_finder").toFixed(2)} / Hit</span>
                       </div>
 
                       <p className="text-[11px] text-muted-foreground">
@@ -1311,7 +1366,7 @@ function TestApiPage() {
                           <span className="flex items-center gap-1.5 font-medium">
                             💰 Wallet Debit:
                           </span>
-                          <span className="font-bold text-emerald-400">₹2.00 / Request</span>
+                          <span className="font-bold text-emerald-400">₹{getServicePrice("mobile_upi").toFixed(2)} / Request</span>
                         </div>
 
                         <p className="text-[11px] text-muted-foreground">
@@ -1341,7 +1396,7 @@ function TestApiPage() {
                           <span className="flex items-center gap-1.5 font-medium">
                             💰 Wallet Debit:
                           </span>
-                          <span className="font-bold text-indigo-400">₹2.00 / Request</span>
+                          <span className="font-bold text-indigo-400">₹{getServicePrice("domain_age").toFixed(2)} / Request</span>
                         </div>
 
                         <p className="text-[11px] text-muted-foreground">
@@ -1426,6 +1481,14 @@ function TestApiPage() {
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400 uppercase"
                           />
                         </div>
+
+                        {/* Pricing Banner */}
+                        <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            💰 Wallet Debit:
+                          </span>
+                          <span className="font-bold text-emerald-400">₹{getServicePrice("bank_validation").toFixed(2)} / Request</span>
+                        </div>
                       </div>
                     </>
                   ) : selectedService === "uan" ? (
@@ -1450,7 +1513,7 @@ function TestApiPage() {
                         <span className="flex items-center gap-1.5 font-medium">
                           💰 Wallet Debit:
                         </span>
-                        <span className="font-bold text-indigo-400">₹5.00 / Hit</span>
+                        <span className="font-bold text-indigo-400">₹{getServicePrice("uan").toFixed(2)} / Hit</span>
                       </div>
                     </>
                   ) : selectedService === "uan_direct" ? (
@@ -1482,7 +1545,7 @@ function TestApiPage() {
                         <span className="flex items-center gap-1.5 font-medium">
                           💰 Wallet Debit:
                         </span>
-                        <span className="font-bold text-purple-400">₹5.00 / Hit (Auto-refund on failure)</span>
+                        <span className="font-bold text-purple-400">₹{getServicePrice("uan_direct").toFixed(2)} / Hit</span>
                       </div>
                     </>
                   ) : (
@@ -1522,6 +1585,14 @@ function TestApiPage() {
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
                           />
                         </label>
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-emerald-400">₹{getServicePrice("prefill").toFixed(2)} / Request</span>
                       </div>
                     </>
                   )}
@@ -1660,7 +1731,7 @@ function TestApiPage() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">Querying Bharat API Cloud Gateway...</p>
                       <p className="mt-1 text-xs text-muted-foreground font-mono">
-                        POST http://localhost:5000{currentEndpoint}
+                        POST http://localhost:5002{currentEndpoint}
                       </p>
                     </div>
                   </div>

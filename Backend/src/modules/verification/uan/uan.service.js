@@ -3,7 +3,7 @@ import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
-import { getApiPrice } from '../../../core/config/pricing.config.js';
+import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
 
 export class UanService {
@@ -34,7 +34,7 @@ export class UanService {
     const requestId = 'REQ_' + crypto.randomUUID();
     const clientRef = client_ref_num || 'BHARAT_' + crypto.randomBytes(4).toString('hex').toUpperCase();
     const endpoint = '/srv3/uan-mobile';
-    const hitCost = getApiPrice(endpoint) || 5.00;
+    const hitCost = (await getEffectiveApiPrice(endpoint, apiClient?.user_id)) || 5.00;
 
     const cleanMobile = mobile ? String(mobile).trim().replace(/\D/g, '') : '';
 
@@ -255,7 +255,7 @@ export class UanService {
     const requestId = 'REQ_' + crypto.randomUUID();
     const clientRef = client_ref_num || 'BHARAT_' + crypto.randomBytes(4).toString('hex').toUpperCase();
     const endpoint = '/srv3/uan-direct';
-    const hitCost = getApiPrice(endpoint) || 5.00;
+    const hitCost = (await getEffectiveApiPrice(endpoint, apiClient?.user_id)) || 5.00;
 
     const cleanUan = uan ? String(uan).trim().replace(/\D/g, '') : '';
 

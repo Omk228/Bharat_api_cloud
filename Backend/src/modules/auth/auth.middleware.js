@@ -34,4 +34,41 @@ export const verifyJwt = asyncHandler(async (req, res, next) => {
   }
 });
 
+/**
+ * Optional JWT / Email middleware - attaches user if token or x-user-email is valid, but does not block
+ */
+export const optionalJwt = asyncHandler(async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, ENV.JWT.SECRET);
+      if (decoded?.id) {
+        const user = await userModel.findById(decoded.id);
+        if (user) {
+          req.user = user;
+        }
+      }
+    } catch (error) {
+      // ignore invalid token for optional auth
+    }
+  }
+
+  if (!req.user) {
+    const userEmail = req.headers['x-user-email'] || req.query.email;
+    if (userEmail) {
+      try {
+        const user = await userModel.findByEmail(String(userEmail).trim().toLowerCase());
+        if (user) {
+          req.user = user;
+        }
+      } catch (err) {}
+    }
+  }
+
+  next();
+});
+
 export default verifyJwt;
+

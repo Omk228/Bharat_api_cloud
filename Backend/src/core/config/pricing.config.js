@@ -32,7 +32,7 @@ export const API_PRICING = {
 };
 
 /**
- * Returns the configured price for a given endpoint
+ * Returns the configured price for a given endpoint (synchronous legacy fallback)
  * @param {string} endpoint - API route path
  * @returns {number} Price in INR
  */
@@ -42,7 +42,24 @@ export const getApiPrice = (endpoint) => {
   return API_PRICING[cleanEndpoint] ?? API_PRICING.default;
 };
 
+/**
+ * Returns dynamic effective price for an endpoint and user (checks MySQL catalog & user_api_pricing)
+ * @param {string} endpoint - API route path or service key
+ * @param {number|null} [userId=null] - User ID
+ * @returns {Promise<number>} Price in INR
+ */
+export const getEffectiveApiPrice = async (endpoint, userId = null) => {
+  try {
+    const { PricingService } = await import('../../modules/pricing/pricing.service.js');
+    return await PricingService.getEffectivePrice(endpoint, userId);
+  } catch (err) {
+    return getApiPrice(endpoint);
+  }
+};
+
 export default {
   API_PRICING,
   getApiPrice,
+  getEffectiveApiPrice,
 };
+

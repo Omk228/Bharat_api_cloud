@@ -2,7 +2,7 @@ import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
-import { getApiPrice } from '../../../core/config/pricing.config.js';
+import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
 import crypto from 'node:crypto';
 
@@ -26,7 +26,7 @@ export class PanVerificationService {
     const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `ITV1_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const endpoint = '/srv2/validation/pan';
-    const hitCost = getApiPrice(endpoint);
+    const hitCost = await getEffectiveApiPrice(endpoint, apiClient?.user_id);
 
     // Pre-flight wallet balance check
     if (apiClient?.user_id && apiClient.wallet_balance < hitCost) {
@@ -248,7 +248,7 @@ export class PanVerificationService {
     const requestId = 'REQ_' + crypto.randomUUID();
     const clientRef = client_ref_num || `BHARAT_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
     const endpoint = '/srv2/validation/pan/plus';
-    const hitCost = getApiPrice(endpoint) || 2.00;
+    const hitCost = (await getEffectiveApiPrice(endpoint, apiClient?.user_id)) || 2.00;
 
     // Pre-flight wallet balance check
     if (apiClient?.user_id) {

@@ -3,7 +3,7 @@ import { ENV } from '../../core/config/env.config.js';
 import { upstreamFetch } from '../../core/utils/httpAgent.js';
 import CacheService from '../../core/cache/cache.service.js';
 import QueueService from '../../core/queue/queue.service.js';
-import { getApiPrice } from '../../core/config/pricing.config.js';
+import { getEffectiveApiPrice } from '../../core/config/pricing.config.js';
 import { ApiError } from '../../core/utils/apiError.js';
 
 export class IfscService {
@@ -34,7 +34,7 @@ export class IfscService {
     const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `IFSC_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const endpoint = '/ifsc';
-    const hitCost = getApiPrice(endpoint);
+    const hitCost = await getEffectiveApiPrice(endpoint, apiClient?.user_id);
 
     // Fast-fail if IFSC code is missing or format is completely invalid
     if (!clean || !this.isValidIfsc(clean)) {

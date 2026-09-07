@@ -8,8 +8,11 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { endpoints, API_GROUPS, type ApiGroup } from "@/lib/api-catalog";
+import { endpoints, API_GROUPS, type ApiGroup, type ApiEndpoint } from "@/lib/api-catalog";
+import { apiClient } from "@/lib/api-client";
+import { getStoredUserEmail } from "@/lib/demo-store";
 
 export const Route = createFileRoute("/_authenticated/dashboard/apis")({
   head: () => ({
@@ -37,6 +40,29 @@ function ApisPage() {
       return haystack.includes(q);
     });
   }, [selectedGroup, query]);
+
+  const userEmail = getStoredUserEmail();
+
+  const { data: pricingData } = useQuery({
+    queryKey: ["user-pricing", userEmail],
+    queryFn: () => apiClient.getUserPricing({ email: userEmail }),
+    staleTime: 30_000,
+  });
+
+  const getEndpointPrice = (ep: ApiEndpoint): { price: number; isCustom: boolean } => {
+    // Check catalog items
+    const catalogItem = pricingData?.catalog?.find(
+      (c) => c.endpoint_path === ep.path || ep.path.includes(c.endpoint_path) || c.endpoint_path.includes(ep.path)
+    );
+    if (catalogItem) {
+      return { price: catalogItem.effective_price, isCustom: catalogItem.is_custom };
+    }
+    // Fallback by ID
+    if (ep.id === "verify-pan" && pricingData?.pricing?.pan) {
+      return { price: pricingData.pricing.pan, isCustom: pricingData.pricing.pan !== 1.1 };
+    }
+    return { price: 2.0, isCustom: false };
+  };
 
   return (
     <DashboardLayout activeTab="apis">
@@ -126,9 +152,25 @@ function ApisPage() {
                       {ep.method}
                     </span>
 
-                    <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      {ep.group}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {(() => {
+                        const { price, isCustom } = getEndpointPrice(ep);
+                        return (
+                          <span
+                            className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold ${
+                              isCustom
+                                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                : "bg-secondary text-foreground"
+                            }`}
+                          >
+                            ₹{price.toFixed(2)}
+                          </span>
+                        );
+                      })()}
+                      <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        {ep.group}
+                      </span>
+                    </div>
                   </div>
 
                   <h3 className="mt-3 text-base font-semibold text-foreground group-hover:text-primary transition-colors">

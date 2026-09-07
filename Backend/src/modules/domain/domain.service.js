@@ -3,7 +3,7 @@ import net from 'node:net';
 import { ENV } from '../../core/config/env.config.js';
 import CacheService from '../../core/cache/cache.service.js';
 import QueueService from '../../core/queue/queue.service.js';
-import { getApiPrice } from '../../core/config/pricing.config.js';
+import { getEffectiveApiPrice } from '../../core/config/pricing.config.js';
 import { ApiError } from '../../core/utils/apiError.js';
 
 const KNOWN_WHOIS_SERVERS = {
@@ -181,7 +181,7 @@ export class DomainService {
     const requestId = crypto.randomUUID();
     const clientRef = client_ref_num || `DOM_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const endpoint = '/dosvak/domain-age';
-    const hitCost = getApiPrice(endpoint);
+    const hitCost = await getEffectiveApiPrice(endpoint, apiClient?.user_id);
 
     if (!clean) {
       throw ApiError.badRequest('Missing required parameter: domain is mandatory (e.g. example.com)');

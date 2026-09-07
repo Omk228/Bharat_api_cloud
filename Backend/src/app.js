@@ -29,10 +29,23 @@ app.use(
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Id', 'X-Api-Key', 'X-Token-Id', 'x-api-id', 'x-api-key', 'x-token-id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Api-Id',
+      'X-Api-Key',
+      'X-Token-Id',
+      'x-api-id',
+      'x-api-key',
+      'x-token-id',
+      'x-user-email',
+      'X-User-Email',
+      '*'
+    ],
     maxAge: 86400, // 24 hours browser preflight caching
   })
 );
+app.options('*', cors());
 
 // Logging Middleware
 if (ENV.NODE_ENV !== 'test') {

@@ -1,13 +1,31 @@
 import CredentialService from './credential.service.js';
 import { ApiResponse } from '../../core/utils/apiResponse.js';
 import { asyncHandler } from '../../core/utils/asyncHandler.js';
+import { userModel } from '../auth/user.model.js';
 
 export class CredentialController {
   /**
    * Get user's credentials
    */
   static getCredentials = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
+    let userId = req.user?.id;
+
+    if (!userId) {
+      const userEmail = req.headers['x-user-email'] || req.query.email;
+      if (userEmail) {
+        try {
+          const user = await userModel.findByEmail(String(userEmail).trim().toLowerCase());
+          if (user?.id) {
+            userId = user.id;
+          }
+        } catch (err) {}
+      }
+    }
+
+    if (!userId) {
+      return ApiResponse.success(res, [], 'No active credentials');
+    }
+
     const creds = await CredentialService.getUserCredentials(userId);
     return ApiResponse.success(res, creds, 'Credentials retrieved successfully');
   });

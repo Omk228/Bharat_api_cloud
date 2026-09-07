@@ -443,6 +443,12 @@ export function getSession(): Session | null {
   return read().session;
 }
 
+export function getStoredUserEmail(): string {
+  if (typeof window === "undefined") return "";
+  const s = read();
+  return (s.session?.email || s.profile?.contact_email || "").trim().toLowerCase();
+}
+
 export function setSessionFromBackend(user: { id: number; name: string; email: string; company_name?: string | null; plan?: PlanId; onboarded?: boolean }) {
   const session: Session = {
     email: user.email,
