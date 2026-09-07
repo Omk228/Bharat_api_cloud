@@ -902,11 +902,6 @@ function TestApiPage() {
                       : `₹${getServicePrice(selectedService).toFixed(2)} / Request`}
                   </span>
                 )}
-                {pricingData?.is_customized && !isServiceRevoked && (
-                  <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                    Custom Admin Pricing
-                  </span>
-                )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {selectedService === "ifsc"
