@@ -55,6 +55,42 @@ export const DEFAULT_ERROR_CODES: ApiErrorCode[] = [
 export const endpoints: ApiEndpoint[] = [
   /* ---------------- KYC ---------------- */
   {
+    id: "digilocker-digital-kyc",
+    group: "KYC",
+    method: "POST",
+    path: "/srv2/validation/digilocker-digital-kyc",
+    title: "Digi Locker Digital KYC",
+    desc: "Generate instant DigiLocker Digital KYC OAuth token and consent session URL for paperless user identity verification.",
+    tags: ["digilocker", "kyc", "aadhaar", "oauth", "government"],
+    latency: "~800ms",
+    params: [
+      { name: "redirect_url", type: "string", required: true, desc: "Callback URL where the user is redirected after completing DigiLocker consent." },
+      { name: "logo_url", type: "string", desc: "Company logo URL to display on the DigiLocker consent authorization screen." },
+      { name: "aadhaar_number", type: "string", desc: "Optional 12-digit Aadhaar number for pre-filling DigiLocker login." },
+      { name: "client_ref_num", type: "string", desc: "Unique client reference transaction identifier." },
+    ],
+    sampleBody: {
+      redirect_url: "https://yourdomain.com/kyc/callback",
+      logo_url: "https://yourdomain.com/logo.png",
+      aadhaar_number: "983077780137",
+    },
+    sampleResponse: {
+      http_response_code: 200,
+      status_code: 200,
+      status_message: "SUCCESS",
+      result_code: 101,
+      message: "Digilocker Digital KYC Token generated successfully.",
+      client_ref_num: "DLK_A1B2C3",
+      request_id: "90bb2953-d2d1-4a9d-07a1-e9a88adc78d2",
+      data: {
+        client_id: "ee20c92e-6ca4-4217-a969-3f8dd6f2a199",
+        token: "90bb2953d2d1a9d07a1e9a88adc78d21",
+        url: "https://api.bharatapicloud.io/srv2/v1/digilocker/start/4a42a4b6-ffd5-4b4c-aea6-f71aead9b78d",
+        expiry_seconds: 1800,
+      },
+    },
+  },
+  {
     id: "verify-pan",
     group: "KYC",
     method: "POST",

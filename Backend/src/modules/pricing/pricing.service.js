@@ -78,6 +78,13 @@ const ENDPOINT_CATALOG_MAP = {
   '/api/v1/srv3/uan-direct': ['api_uan_to_employment', '/api/v1/srv3/uan-direct'],
   'uan_direct': ['api_uan_to_employment', '/api/v1/srv3/uan-direct'],
 
+  // DigiLocker Digital KYC
+  '/srv2/validation/digilocker-digital-kyc': ['api_digilocker_digital_kyc', '/srv2/validation/digilocker-digital-kyc'],
+  '/digilocker-digital-kyc': ['api_digilocker_digital_kyc', '/srv2/validation/digilocker-digital-kyc'],
+  '/digilocker/generate-token': ['api_digilocker_digital_kyc', '/srv2/validation/digilocker-digital-kyc'],
+  'digilocker': ['api_digilocker_digital_kyc', '/srv2/validation/digilocker-digital-kyc'],
+  'digilocker_digital_kyc': ['api_digilocker_digital_kyc', '/srv2/validation/digilocker-digital-kyc'],
+
   // IP Lookup
   '/check': ['api_requester_ip_lookup', '/check'],
   '/ip': ['api_requester_ip_lookup', '/check'],

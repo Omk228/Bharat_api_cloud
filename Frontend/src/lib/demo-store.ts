@@ -523,9 +523,9 @@ export async function getDashboard(): Promise<DashboardData> {
   const limits = PLAN_LIMITS.find((l) => l.plan === state.profile.plan) ?? PLAN_LIMITS[0]!;
   const since = monthStart();
 
-  let liveBalance = typeof state.wallet_balance === "number" ? state.wallet_balance : 5000.00;
-  let liveTransactions: WalletTransactionRow[] = state.wallet_transactions?.length ? state.wallet_transactions : getDefaultWalletTransactions();
-  let liveHitLogs: ApiHitLogRow[] = state.api_hit_logs?.length ? state.api_hit_logs : getDefaultApiHitLogs();
+  let liveBalance = typeof state.wallet_balance === "number" ? state.wallet_balance : 0.00;
+  let liveTransactions: WalletTransactionRow[] = state.wallet_transactions?.length ? state.wallet_transactions : [];
+  let liveHitLogs: ApiHitLogRow[] = state.api_hit_logs?.length ? state.api_hit_logs : [];
 
   if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
     try {
@@ -631,7 +631,7 @@ export function setIpEnforcementMode(enabled: boolean) {
 
 export async function topupWallet(input: { amount: number; paymentMethod: string; note?: string }) {
   const state = read();
-  const current = typeof state.wallet_balance === "number" ? state.wallet_balance : 5000.00;
+  const current = typeof state.wallet_balance === "number" ? state.wallet_balance : 0.00;
   let newBalance = Number((current + input.amount).toFixed(2));
   const txnId = `txn_w_${randomHex(8)}`;
   const row: WalletTransactionRow = {

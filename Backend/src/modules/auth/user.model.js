@@ -33,19 +33,12 @@ export const userModel = {
    * @returns {Promise<object>}
    */
   async create({ name, company_name = null, email, password, plan = 'free', role = 'client' }) {
-    const initialBalance = 5000.00;
+    const initialBalance = 0.00;
     const [result] = await dbPool.query(
       'INSERT INTO users (name, company_name, email, password, plan, role, wallet_balance, onboarded) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)',
       [name, company_name, email, password, plan, role, initialBalance]
     );
     const userId = result.insertId;
-
-    // Record welcome bonus transaction
-    await dbPool.query(
-      `INSERT INTO wallet_transactions (user_id, type, amount, balance_after, category, description, reference_id)
-       VALUES (?, 'credit', ?, ?, 'bonus', 'Welcome Sign-up Bonus', ?)`,
-      [userId, initialBalance, initialBalance, `bonus_${userId}_${Date.now()}`]
-    );
 
     return {
       id: userId,

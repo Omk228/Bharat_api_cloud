@@ -19,6 +19,7 @@ import uanRoutes from './modules/verification/uan/uan.routes.js';
 import mobileUpiRoutes from './modules/verification/mobile_upi/mobileUpi.routes.js';
 import domainRoutes from './modules/domain/domain.routes.js';
 import ifscRoutes from './modules/ifsc/ifsc.routes.js';
+import digilockerRoutes from './modules/verification/digilocker/digilocker.routes.js';
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use('/reverse-geocode', geocodingRoutes);
 app.use('/reverse', geocodingRoutes);
 app.use('/', domainRoutes);
 app.use('/ifsc', ifscRoutes);
+app.use('/', digilockerRoutes);
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);
