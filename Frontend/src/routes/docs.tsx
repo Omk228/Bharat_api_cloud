@@ -30,6 +30,7 @@ import {
   verifyWebhookSignature,
 } from "@/lib/demo-store";
 import { generateSnippet, INSTALL_COMMANDS, LANGUAGES, type LanguageId } from "@/lib/sdk-snippets";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export type DocsSearch = {
   endpoint?: string | undefined;
@@ -133,6 +134,7 @@ function DocsPage() {
           </Link>
           <span className="hidden text-sm text-muted-foreground sm:inline">Developer docs</span>
           <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
             {signedIn ? (
               <Link
                 to="/dashboard"

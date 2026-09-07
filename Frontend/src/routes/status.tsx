@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
 import { useMemo } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 import {
   INCIDENTS,
@@ -63,12 +64,15 @@ function StatusPage() {
             <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
           </Link>
           <span className="hidden text-sm text-muted-foreground sm:inline">Status</span>
-          <Link
-            to="/docs"
-            className="ml-auto text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Docs
-          </Link>
+          <div className="ml-auto flex items-center gap-3">
+            <Link
+              to="/docs"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Docs
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getSession } from "@/lib/demo-store";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -193,6 +194,7 @@ function Index() {
 
           </nav>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             {signedIn ? (
               <Link
                 to="/dashboard"

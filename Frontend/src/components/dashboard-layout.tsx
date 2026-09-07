@@ -17,6 +17,7 @@ import React from "react";
 
 import { endpoints } from "@/lib/api-catalog";
 import { getDashboard, signOut, type DashboardData } from "@/lib/demo-store";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function DashboardLayout({
   children,
@@ -84,6 +85,7 @@ export function DashboardLayout({
             >
               <BookOpen className="h-4 w-4" /> Docs
             </Link>
+            <ThemeToggle />
             <button
               onClick={handleSignOut}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
