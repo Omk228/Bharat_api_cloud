@@ -11,35 +11,43 @@ const frontendDist = path.resolve(frontendDir, 'dist');
 const rootDist = path.resolve(rootDir, 'dist');
 const publicDir = path.resolve(frontendDir, 'public');
 
-const targetDirs = [frontendDist, rootDist, outputPublic];
-
 try {
-  // Ensure all target directories exist
-  for (const dir of targetDirs) {
-    fs.mkdirSync(dir, { recursive: true });
+  // 1. Clean previous dist folders to avoid stale hashed files
+  for (const target of [frontendDist, rootDist]) {
+    if (fs.existsSync(target)) {
+      fs.rmSync(target, { recursive: true, force: true });
+    }
+    fs.mkdirSync(target, { recursive: true });
   }
 
-  // 1. Copy .output/public contents to frontendDist and rootDist if present
+  // 2. Copy fresh .output/public contents to frontendDist and rootDist
   if (fs.existsSync(outputPublic)) {
     for (const target of [frontendDist, rootDist]) {
       fs.cpSync(outputPublic, target, { recursive: true });
     }
-    console.log(`✓ Copied .output/public -> Frontend/dist and root/dist`);
+    console.log(`✓ Copied fresh .output/public -> Frontend/dist and root/dist`);
   }
 
-  // 2. Ensure public folder assets (favicon.ico, robots.txt) are copied
+  // 3. Ensure public folder assets (favicon.ico, robots.txt) are copied
   if (fs.existsSync(publicDir)) {
-    for (const target of targetDirs) {
+    for (const target of [frontendDist, rootDist, outputPublic]) {
       fs.cpSync(publicDir, target, { recursive: true });
     }
   }
 
-  // 3. Find latest CSS and JS assets in assets folder
+  // 4. Locate the exact, freshest CSS and JS entries from the build
   const assetsDir = path.join(frontendDist, 'assets');
   if (fs.existsSync(assetsDir)) {
     const files = fs.readdirSync(assetsDir);
     const cssFile = files.find(f => f.endsWith('.css'));
-    const jsFile = files.find(f => f.startsWith('index-') && f.endsWith('.js')) || files.find(f => f.endsWith('.js'));
+    
+    // Sort index-*.js files by modification time so the freshest chunk is always chosen
+    const indexJsFiles = files.filter(f => f.startsWith('index-') && f.endsWith('.js'));
+    const jsFile = indexJsFiles.sort((a, b) => {
+      return fs.statSync(path.join(assetsDir, b)).mtimeMs - fs.statSync(path.join(assetsDir, a)).mtimeMs;
+    })[0] || files.find(f => f.endsWith('.js'));
+
+    console.log(`✓ Active entry bundle: ${jsFile} | stylesheet: ${cssFile}`);
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="en" class="dark">
@@ -60,35 +68,46 @@ try {
   </head>
   <body>
     <div id="root"></div>
-    ${jsFile ? `<script type="module" src="/assets/${jsFile}"></script>` : ''}
+    ${jsFile ? `<script type="module" crossorigin src="/assets/${jsFile}"></script>` : ''}
   </body>
 </html>
 `;
 
-    for (const dir of targetDirs) {
+    for (const dir of [frontendDist, rootDist, outputPublic]) {
       fs.writeFileSync(path.join(dir, 'index.html'), htmlContent, 'utf-8');
     }
     console.log('✓ Generated production index.html in all output dirs');
   }
 
-  // 4. Create .htaccess for SPA routing on Hostinger (Apache/LiteSpeed)
-  const htaccessContent = `<IfModule mod_rewrite.c>
+  // 5. Create robust .htaccess with MIME types and SPA rewrite rules
+  const htaccessContent = `<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType application/javascript .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType image/x-icon .ico
+  AddType application/json .json
+</IfModule>
+
+<IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  RewriteRule ^index\\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+
+  # Serve existing files and directories directly without rewrite
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Route all other URLs to index.html for Single Page App routing
+  RewriteRule ^ index.html [L]
 </IfModule>
 `;
 
-  for (const dir of targetDirs) {
+  for (const dir of [frontendDist, rootDist, outputPublic]) {
     fs.writeFileSync(path.join(dir, '.htaccess'), htaccessContent, 'utf-8');
   }
-  console.log('✓ Created .htaccess in all output dirs');
+  console.log('✓ Created .htaccess with mod_mime and SPA routing in all output dirs');
   console.log(`✓ Frontend/dist items: ${fs.readdirSync(frontendDist).length}, root/dist items: ${fs.readdirSync(rootDist).length}`);
 } catch (err) {
   console.error('Error syncing dist directory:', err.message);
-  fs.mkdirSync(frontendDist, { recursive: true });
-  fs.mkdirSync(rootDist, { recursive: true });
 }
