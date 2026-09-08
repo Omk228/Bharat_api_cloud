@@ -1,4 +1,7 @@
-const API_BASE = (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] || 'http://localhost:5002/api/v1';
+const API_BASE = 
+  (typeof window !== 'undefined' && (window as unknown as { __API_URL__?: string }).__API_URL__) ||
+  (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] ||
+  'http://localhost:5002/api/v1';
 
 export type UserPayload = {
   id: number;
