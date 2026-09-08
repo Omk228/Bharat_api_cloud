@@ -79,7 +79,7 @@ try {
     console.log('✓ Generated production index.html in all output dirs');
   }
 
-  // 5. Create robust .htaccess with MIME types and SPA rewrite rules
+  // 5. Create robust .htaccess with MIME types and standard SPA rewrite rules
   const htaccessContent = `<IfModule mod_mime.c>
   AddType application/javascript .js
   AddType application/javascript .mjs
@@ -92,14 +92,10 @@ try {
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-
-  # Serve existing files and directories directly without rewrite
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
-
-  # Route all other URLs to index.html for Single Page App routing
-  RewriteRule ^ index.html [L]
+  RewriteRule ^index\\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
 </IfModule>
 `;
 
