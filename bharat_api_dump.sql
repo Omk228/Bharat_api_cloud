@@ -1,0 +1,455 @@
+-- ========================================================
+-- Bharat API Cloud Complete MySQL Database Dump
+-- Generated on: 2026-09-08T12:04:14.759Z
+-- Compatible with: MySQL 5.7+, MySQL 8.0+, MariaDB, TiDB, Aiven, phpMyAdmin, Hostinger
+-- ========================================================
+
+CREATE DATABASE IF NOT EXISTS `bharat_api`;
+USE `bharat_api`;
+
+SET FOREIGN_KEY_CHECKS = 0;
+SET NAMES utf8mb4;
+
+-- --------------------------------------------------------
+-- Table structure for `api_credentials`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `api_credentials`;
+CREATE TABLE `api_credentials` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `api_id` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `api_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token_id` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token_id_preview` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `environment` enum('sandbox','production') COLLATE utf8mb4_unicode_ci DEFAULT 'sandbox',
+  `label` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'Default Key',
+  `status` enum('active','inactive','revoked') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+  `rate_limit_per_min` int DEFAULT '120',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `last_used_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `api_id` (`api_id`),
+  UNIQUE KEY `api_key` (`api_key`),
+  KEY `user_id` (`user_id`),
+  KEY `idx_cred_lookup` (`api_id`,`api_key`,`status`),
+  CONSTRAINT `api_credentials_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table `api_credentials` (1 rows)
+INSERT INTO `api_credentials` (`id`, `user_id`, `api_id`, `api_key`, `token_id`, `token_id_preview`, `environment`, `label`, `status`, `rate_limit_per_min`, `created_at`, `updated_at`, `last_used_at`) VALUES (16, 18, 'APID099268', '663e05b0-603a-45d8-b2b4-07a7ea6a650d', 'OMWTdrz2jroQy4C7Gtf96HNu6VNoQFo3', 'OMWT...QFo3', 'sandbox', 'Default Sandbox Key', 'active', 120, '2026-09-05 05:44:51', '2026-09-08 05:30:52', '2026-09-08 05:30:52');
+
+-- --------------------------------------------------------
+-- Table structure for `api_hit_logs`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `api_hit_logs`;
+CREATE TABLE `api_hit_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int DEFAULT NULL,
+  `credential_id` int DEFAULT NULL,
+  `endpoint` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `method` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `request_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `client_ref_num` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status_code` int NOT NULL,
+  `result_code` int NOT NULL,
+  `latency_ms` int NOT NULL,
+  `client_ip` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cost` decimal(8,2) DEFAULT '0.00',
+  `environment` enum('sandbox','production') COLLATE utf8mb4_unicode_ci DEFAULT 'sandbox',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_hit_user` (`user_id`,`created_at`),
+  KEY `idx_hit_req` (`request_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=263 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table `api_hit_logs` (104 rows)
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (143, 18, 16, '/srv2/validation/pan', 'POST', '5f762148-3e33-4a54-a78e-c05f339ef7c8', 'ITV1_676820', 200, 101, 10879, '::1', '2.00', 'sandbox', '2026-09-05 05:52:48');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (144, 18, 16, '/srv2/validation/pan', 'POST', 'b32f005f-337e-40a7-92ad-ee8d016d595d', 'ITV1_9C9A0D', 200, 101, 11048, '::1', '2.00', 'sandbox', '2026-09-05 05:56:14');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (145, 18, 16, '/dosvak/domain-age', 'GET', 'f971b305-300b-4cd8-a551-51bfdda8555a', 'DOM_46F7DF', 200, 101, 2, '::1', '2.00', 'sandbox', '2026-09-05 06:29:37');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (146, 18, 16, '/dosvak/domain-age', 'GET', 'f971b305-300b-4cd8-a551-51bfdda8555a', 'DOM_A528D4', 200, 101, 1, '::1', '2.00', 'sandbox', '2026-09-05 06:30:48');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (147, 18, 16, '/dosvak/domain-age', 'GET', 'febf8587-b34f-40dd-ba6f-570980fd9d56', 'DOM_D4EE77', 200, 101, 2428, '::ffff:127.0.0.1', '2.00', 'sandbox', '2026-09-05 06:36:19');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (148, 18, 16, '/dosvak/domain-age', 'GET', '1059f62b-9485-4bbc-b1e7-53282422860c', 'DOM_95068E', 200, 101, 4122, '::ffff:127.0.0.1', '2.00', 'sandbox', '2026-09-05 06:36:30');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (149, 18, 16, '/dosvak/domain-age', 'GET', '26dc0ff7-71ae-4641-8078-0978de3cf41b', 'DOM_591FE8', 200, 101, 1816, '::ffff:127.0.0.1', '2.00', 'sandbox', '2026-09-05 06:36:32');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (150, 18, 16, '/dosvak/domain-age', 'GET', 'febf8587-b34f-40dd-ba6f-570980fd9d56', 'DOM_6EEB13', 200, 101, 0, '::ffff:127.0.0.1', '2.00', 'sandbox', '2026-09-05 06:36:35');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (151, 18, 16, '/dosvak/domain-age', 'GET', 'febf8587-b34f-40dd-ba6f-570980fd9d56', 'DOM_F73E11', 200, 101, 1, '::1', '2.00', 'sandbox', '2026-09-05 06:37:58');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (152, 18, 16, '/dosvak/domain-age', 'GET', 'f4ab8bd9-8a84-4b5d-99ec-d4e6b38bcafb', 'DOM_976F4D', 200, 101, 1669, '::1', '2.00', 'sandbox', '2026-09-05 06:38:24');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (153, 18, 16, '/dosvak/domain-age', 'GET', 'febf8587-b34f-40dd-ba6f-570980fd9d56', 'DOM_2B20C6', 200, 101, 2, '::ffff:127.0.0.1', '2.00', 'sandbox', '2026-09-05 06:41:37');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (154, 18, 16, '/dosvak/domain-age', 'GET', 'febf8587-b34f-40dd-ba6f-570980fd9d56', 'DOM_AA2109', 200, 101, 2, '::ffff:127.0.0.1', '2.00', 'sandbox', '2026-09-05 06:41:55');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (155, 18, 16, '/dosvak/domain-age', 'GET', 'f4ab8bd9-8a84-4b5d-99ec-d4e6b38bcafb', 'DOM_533644', 200, 101, 0, '::1', '2.00', 'sandbox', '2026-09-05 06:42:27');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (156, 18, 16, '/dosvak/domain-age', 'GET', '1059f62b-9485-4bbc-b1e7-53282422860c', 'DOM_7BC0FB', 200, 101, 1, '::1', '2.00', 'sandbox', '2026-09-05 06:44:45');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (157, 18, 16, '/dosvak/domain-age', 'GET', 'f4ab8bd9-8a84-4b5d-99ec-d4e6b38bcafb', 'DOM_726D26', 200, 101, 3, '::ffff:127.0.0.1', '2.00', 'sandbox', '2026-09-05 06:59:36');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (158, 18, 16, '/dosvak/domain-age', 'GET', '1059f62b-9485-4bbc-b1e7-53282422860c', 'DOM_6F9210', 200, 101, 1, '::1', '2.00', 'sandbox', '2026-09-05 07:00:01');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (160, 18, 16, '/dosvak/domain-age', 'GET', '93dd252b-700d-40b8-8730-1213e322646b', 'DOM_FF341C', 200, 101, 2613, '::1', '2.00', 'sandbox', '2026-09-05 07:06:16');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (161, 18, 16, '/dosvak/domain-age', 'GET', '1059f62b-9485-4bbc-b1e7-53282422860c', 'DOM_FAC80B', 200, 101, 1, '::1', '2.00', 'sandbox', '2026-09-05 07:06:25');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (162, 18, 16, '/srv2/digital-kyc/aadhar/auto-verificationSpecial', 'POST', 'req_1788601360822', NULL, 422, 102, 830, '::1', '0.00', 'sandbox', '2026-09-05 09:42:40');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (164, 18, 16, '/srv2/mobile-upi-lookup/enhanced', 'POST', '2cd264af-750d-4081-9310-fe2f09367b03', 'UPI_7B6CDE', 200, 101, 10177, '::1', '0.00', 'sandbox', '2026-09-05 09:50:26');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (166, 18, 16, '/srv2/mobile-upi-lookup/enhanced', 'POST', 'cfe2c145-6226-4f24-9853-5e4cff244727', 'UPI_67AED8', 200, 101, 10171, '::1', '2.00', 'sandbox', '2026-09-05 10:16:36');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (173, 18, 16, '/srv2/mobile-upi-lookup/enhanced', 'POST', '8f6e45be-87c7-4518-b5d5-1107b8dc2e26', 'UPI_639A2B', 200, 103, 8912, '::1', '0.00', 'sandbox', '2026-09-05 10:35:30');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (174, 18, 16, '/srv2/mobile-upi-lookup/enhanced', 'POST', '71085111-f011-44b0-9753-ea2214f7838f', 'UPI_B79763', 200, 103, 9584, '::1', '0.00', 'sandbox', '2026-09-05 10:36:13');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (175, 18, 16, '/srv2/mobile-upi-lookup/enhanced', 'POST', '311f67e6-43c2-463d-a82c-a8569efe33b6', 'UPI_C8580E', 200, 101, 1, '::1', '2.00', 'sandbox', '2026-09-05 10:36:41');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (176, 18, 16, '/srv2/mobile-upi-lookup/enhanced', 'POST', '90175e7c-8702-448a-a712-1aa9e84b1a65', 'UPI_F03F2D', 200, 103, 10216, '::1', '0.00', 'sandbox', '2026-09-05 10:37:05');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (177, 18, 16, '/dosvak/domain-age', 'GET', '7b9d68dc-30f2-4fda-8a54-c23c7a1c41bb', 'DOM_39C31A', 200, 101, 3280, '::1', '2.00', 'sandbox', '2026-09-05 10:40:46');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (182, 18, 16, '/ifsc', 'GET', 'ca430c1d-5d28-4c29-9c0d-c284f157b470', 'IFSC_077C06', 200, 101, 331, '::1', '1.00', 'sandbox', '2026-09-06 07:28:16');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (183, 18, 16, '/ifsc', 'GET', '898992af-fbb0-4df6-89da-0a133a20114e', 'IFSC_68AE6A', 200, 101, 137, '::1', '1.00', 'sandbox', '2026-09-06 07:28:49');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (185, 18, 16, '/ifsc', 'GET', 'fbf22971-038a-410c-8f29-8fb8707bb76f', 'IFSC_A33138', 200, 101, 453, '::1', '1.00', 'sandbox', '2026-09-06 07:43:03');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (186, 18, 16, '/srv2/validation/pan', 'POST', '0c2a7ed0-f099-496b-8fdc-38348215ded0', 'ITV1_190F52', 200, 102, 8725, '::ffff:127.0.0.1', '10.00', 'sandbox', '2026-09-07 06:12:13');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (187, 18, 16, '/ifsc', 'GET', '159f24b0-7f20-4e24-8568-649cd8429004', 'IFSC_803C57', 200, 101, 184, '::ffff:127.0.0.1', '0.25', 'sandbox', '2026-09-07 06:12:41');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (190, 18, 16, '/dosvak/domain-age', 'GET', '9452b12e-16a1-4f0b-9347-717aa482e7eb', 'DOM_BA4ED7', 200, 101, 3083, '::1', '0.40', 'sandbox', '2026-09-07 06:31:12');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (191, 18, 16, '/dosvak/domain-age', 'GET', '2515e619-6aa9-4965-888e-44618d04d61a', 'DOM_C7A29B', 200, 101, 1159, '::1', '0.40', 'sandbox', '2026-09-07 06:31:54');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (192, 18, 16, '/dosvak/domain-age', 'GET', '1b9e0ab8-475a-4eaa-84fa-0cb1f39e02a5', 'DOM_73562A', 200, 101, 1457, '::1', '0.40', 'sandbox', '2026-09-07 06:32:15');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (193, 18, 16, '/srv2/validation/pan', 'POST', '129189ea-7233-4096-9bfe-25411fcdfbb6', 'ITV1_7FBBEE', 200, 101, 6178, '::1', '10.00', 'sandbox', '2026-09-07 06:34:03');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (194, 18, 16, '/srv2/validation/digilocker-digital-kyc', 'POST', 'b41c98d0-e0be-4bf1-b76d-1ced77321821', 'DLK_19E4F9', 422, 102, 645, '::1', '2.00', 'sandbox', '2026-09-07 09:04:35');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (195, 18, 16, '/srv2/validation/digilocker-digital-kyc', 'POST', '9e0ad886-6045-4114-8a13-f355a4220ec6', 'DLK_47A19B', 422, 102, 409, '::1', '2.00', 'sandbox', '2026-09-07 09:05:28');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (196, 18, 16, '/srv2/validation/digilocker-digital-kyc', 'POST', '36d0ffa2-22c1-46c5-a76e-a2d740591466', 'DLK_82FC6D', 200, 101, 6064, '::1', '2.00', 'sandbox', '2026-09-07 09:10:13');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (197, 18, 16, '/srv2/validation/digilocker-digital-kyc', 'POST', '43e686c6-6e6c-41cf-b782-3e3966bb5eb7', 'DLK_54177E', 200, 101, 6249, '::1', '2.00', 'sandbox', '2026-09-07 09:20:30');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (198, 18, 16, '/srv2/statement-upload', 'POST', '6c971e01-f201-42f4-9526-4fd254b7e347', 'STA_8F86B2', 200, 101, 1177, '::1', '5.00', 'sandbox', '2026-09-07 11:06:38');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (199, 18, 16, '/srv2/statement-upload', 'POST', '89577637', 'STA_455B53', 422, 102, 2073, '::1', '5.00', 'sandbox', '2026-09-07 11:06:40');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (200, 18, 16, '/srv2/statement-upload', 'POST', '89577637', 'STA_AE2FC8', 500, 102, 617, '::1', '5.00', 'sandbox', '2026-09-07 11:06:41');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (201, 18, 16, '/srv2/statement-upload', 'POST', '89577637', 'STA_1D104C', 500, 102, 862, '::1', '5.00', 'sandbox', '2026-09-07 11:06:43');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (202, 18, 16, '/srv2/statement-upload', 'POST', 'b5eb7249-329a-4ce0-89a5-1a09a7d6eb46', 'STA_A9E761', 404, 102, 726, '::1', '5.00', 'sandbox', '2026-09-07 11:06:44');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (203, 18, 16, '/srv2/statement-upload', 'POST', 'be658a30-9f9b-41fc-b04f-21bd26f1c8c4', 'STA_B9834C', 200, 101, 781, '::1', '5.00', 'sandbox', '2026-09-07 11:09:26');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (204, 18, 16, '/srv2/statement-upload', 'POST', '89578124', 'STA_815A41', 422, 102, 832, '::1', '5.00', 'sandbox', '2026-09-07 11:09:27');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (205, 18, 16, '/srv2/statement-upload', 'POST', '54bfcdb1-920f-4e64-bcd3-85eb2c804781', 'STA_C73A66', 200, 101, 746, '::1', '5.00', 'sandbox', '2026-09-07 11:12:10');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (206, 18, 16, '/srv2/statement-upload', 'POST', '89578634', 'STA_B259AB', 200, 101, 1036, '::1', '5.00', 'sandbox', '2026-09-07 11:12:11');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (207, 18, 16, '/srv2/statement-upload', 'POST', '89578634', 'STA_83E543', 500, 102, 606, '::1', '5.00', 'sandbox', '2026-09-07 11:12:12');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (208, 18, 16, '/srv2/statement-upload', 'POST', '709a4836-149c-44ea-9f0d-e21e8fb1842f', 'STA_33710C', 200, 101, 639, '::1', '5.00', 'sandbox', '2026-09-07 11:14:17');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (209, 18, 16, '/srv2/statement-upload', 'POST', '89578979', 'STA_6868D1', 200, 101, 899, '::1', '5.00', 'sandbox', '2026-09-07 11:14:18');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (210, 18, 16, '/srv2/statement-upload', 'POST', '89578979', 'STA_7261DC', 500, 102, 596, '::1', '5.00', 'sandbox', '2026-09-07 11:14:18');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (211, 18, 16, '/srv2/statement-upload', 'POST', '0917147a-ea89-40eb-bcb7-4443bb9d2079', 'STA_E89384', 502, 102, 6, '::1', '5.00', 'sandbox', '2026-09-07 11:16:25');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (212, 18, 16, '/srv2/statement-upload', 'POST', 'e2e3acaf-2b8b-467b-8ce0-bd9f1c575724', 'STA_E5AC5F', 200, 101, 551, '::1', '5.00', 'sandbox', '2026-09-07 11:18:04');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (213, 18, 16, '/srv2/statement-upload', 'POST', '89579623', 'STA_6A81C8', 400, 102, 352, '::1', '5.00', 'sandbox', '2026-09-07 11:18:04');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (214, 18, 16, '/srv2/statement-upload', 'POST', '08722c04-addf-4c5a-9043-a61b90031bb1', 'STA_4C1D92', 200, 101, 506, '::1', '5.00', 'sandbox', '2026-09-07 11:19:17');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (215, 18, 16, '/srv2/statement-upload', 'POST', '89579809', 'STA_74F1BD', 403, 102, 343, '::1', '5.00', 'sandbox', '2026-09-07 11:19:17');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (216, 18, 16, '/srv2/statement-upload', 'POST', '135f81b9-2ab9-4048-9268-636d886a65c5', 'STA_D2F825', 200, 101, 594, '::1', '5.00', 'sandbox', '2026-09-07 11:20:40');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (217, 18, 16, '/srv2/statement-upload', 'POST', '89580021', 'STA_20EB1D', 200, 101, 11441, '::1', '5.00', 'sandbox', '2026-09-07 11:20:51');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (218, 18, 16, '/srv2/statement-upload', 'POST', '89580021', 'STA_732F7C', 200, 101, 1205, '::1', '5.00', 'sandbox', '2026-09-07 11:20:52');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (219, 18, 16, '/srv2/statement-upload', 'POST', '89580021', 'STA_C4D6DD', 500, 102, 739, '::1', '5.00', 'sandbox', '2026-09-07 11:20:56');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (220, 18, 16, '/srv2/statement-upload', 'POST', '2b77852a-c7d7-461f-ab02-87fe09bd28ab', 'STA_2C0026', 200, 101, 570, '::1', '5.00', 'sandbox', '2026-09-07 11:22:08');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (221, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_18955B', 200, 101, 11714, '::1', '5.00', 'sandbox', '2026-09-07 11:22:20');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (222, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_7DA39B', 200, 101, 902, '::1', '5.00', 'sandbox', '2026-09-07 11:22:21');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (223, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_82699B', 500, 102, 792, '::1', '5.00', 'sandbox', '2026-09-07 11:22:25');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (224, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_967977', 500, 102, 770, '::1', '5.00', 'sandbox', '2026-09-07 11:22:29');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (225, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_01E9B3', 500, 102, 862, '::1', '5.00', 'sandbox', '2026-09-07 11:22:32');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (226, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_C65CA7', 500, 102, 776, '::1', '5.00', 'sandbox', '2026-09-07 11:22:36');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (227, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_29BD20', 500, 102, 861, '::1', '5.00', 'sandbox', '2026-09-07 11:22:40');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (228, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_A6D8D8', 500, 102, 767, '::1', '5.00', 'sandbox', '2026-09-07 11:22:44');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (229, 18, 16, '/srv2/statement-upload', 'POST', '89580287', 'STA_93EE6E', 404, 102, 697, '::1', '5.00', 'sandbox', '2026-09-07 11:22:45');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (230, 18, 16, '/srv2/statement-upload', 'POST', '105893b4-b5f2-4f36-9bc3-05d957d17a72', 'STA_30A7A4', 200, 101, 519, '::1', '5.00', 'sandbox', '2026-09-07 11:24:18');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (231, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_F8DBDB', 200, 101, 10736, '::1', '5.00', 'sandbox', '2026-09-07 11:24:29');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (232, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_D03C4F', 200, 101, 701, '::1', '5.00', 'sandbox', '2026-09-07 11:24:30');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (233, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_21891A', 500, 102, 617, '::1', '5.00', 'sandbox', '2026-09-07 11:24:33');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (234, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_E74ECD', 500, 102, 644, '::1', '5.00', 'sandbox', '2026-09-07 11:24:37');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (235, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_03D4A9', 500, 102, 589, '::1', '5.00', 'sandbox', '2026-09-07 11:24:41');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (236, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_AA4D73', 500, 102, 578, '::1', '5.00', 'sandbox', '2026-09-07 11:24:44');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (237, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_917C04', 500, 102, 592, '::1', '5.00', 'sandbox', '2026-09-07 11:24:48');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (238, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_DE176C', 500, 102, 608, '::1', '5.00', 'sandbox', '2026-09-07 11:24:51');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (239, 18, 16, '/srv2/statement-upload', 'POST', '89580697', 'STA_E67070', 500, 102, 5584, '::1', '5.00', 'sandbox', '2026-09-07 11:24:57');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (240, 18, 16, '/srv2/statement-upload', 'POST', '40258e72-3d4e-4730-8b10-640dd72cc014', 'STA_384032', 200, 101, 591, '::1', '5.00', 'sandbox', '2026-09-07 11:26:23');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (241, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_92228A', 200, 101, 10962, '::1', '5.00', 'sandbox', '2026-09-07 11:26:34');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (242, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_38515D', 200, 101, 769, '::1', '5.00', 'sandbox', '2026-09-07 11:26:35');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (243, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_35B6C4', 500, 102, 731, '::1', '5.00', 'sandbox', '2026-09-07 11:26:39');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (244, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_C94A60', 500, 102, 806, '::1', '5.00', 'sandbox', '2026-09-07 11:26:43');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (245, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_0A6102', 500, 102, 657, '::1', '5.00', 'sandbox', '2026-09-07 11:26:47');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (246, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_9A4BC6', 500, 102, 859, '::1', '5.00', 'sandbox', '2026-09-07 11:26:50');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (247, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_648B02', 500, 102, 848, '::1', '5.00', 'sandbox', '2026-09-07 11:26:54');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (248, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_E743AE', 500, 102, 768, '::1', '5.00', 'sandbox', '2026-09-07 11:26:58');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (249, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_AEDDC9', 500, 102, 6740, '::1', '5.00', 'sandbox', '2026-09-07 11:27:05');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (250, 18, 16, '/srv2/statement-upload', 'POST', '89581029', 'STA_FFCB7D', 200, 101, 10593, '::1', '5.00', 'sandbox', '2026-09-07 11:27:21');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (251, 18, 16, '/srv2/statement-upload', 'POST', '5d14c961-d3e2-406b-9e1e-ffb963d0eab8', 'STA_3BAEBE', 422, 102, 1452, '::1', '5.00', 'sandbox', '2026-09-07 12:11:56');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (252, 18, 16, '/srv2/statement-upload', 'POST', '110b065a-2282-44e8-a25b-f96fe0d8a4d4', 'STA_883938', 422, 102, 22390, '::1', '5.00', 'sandbox', '2026-09-07 12:13:24');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (253, 18, 16, '/srv2/statement-upload', 'POST', 'cdb81e01-7a7a-451a-bf54-fd44dfe55057', 'STA_780816', 200, 101, 587, '::1', '5.00', 'sandbox', '2026-09-07 12:16:31');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (254, 18, 16, '/srv2/statement-upload', 'POST', '89589521', 'STA_3835B9', 200, 101, 1159, '::1', '5.00', 'sandbox', '2026-09-07 12:16:36');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (255, 18, 16, '/srv2/statement-upload', 'POST', '89589533', 'STA_26A061', 500, 102, 637, '::1', '5.00', 'sandbox', '2026-09-07 12:16:39');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (256, 18, 16, '/srv2/statement-upload', 'POST', '9e4a915a-fb81-4f77-b50e-1f20a75eee3c', 'STA_B66EB9', 502, 102, 1752, '::1', '5.00', 'sandbox', '2026-09-07 12:21:54');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (257, 18, 16, '/srv2/statement-upload', 'POST', '28b2fc46-8eab-4ec2-9ee3-986526b6a71d', 'STA_B1B2DE', 200, 101, 23458, '::1', '5.00', 'sandbox', '2026-09-07 12:26:10');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (258, 18, 16, '/srv2/statement-upload', 'POST', '05fb8eac-34de-4b7b-9135-7daceafd7fb1', 'STA_2AD40C', 200, 101, 23696, '::1', '5.00', 'sandbox', '2026-09-07 12:36:12');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (259, 18, 16, '/srv2/statement-upload', 'POST', '515d69f1-44d6-4264-af8b-308e2ca9756e', 'STA_98F5BD', 200, 101, 39237, '::1', '5.00', 'sandbox', '2026-09-07 12:40:18');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (260, 18, 16, '/srv2/statement-upload', 'POST', '89593995', 'STA_139D03', 200, 101, 610, '::1', '5.00', 'sandbox', '2026-09-07 12:40:59');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (261, 18, 16, '/srv3/mobile-to-bank/advance', 'POST', '154cb5f2-02a5-4ee2-9f52-771fd049b458', 'M2B_5807AA', 200, 101, 20289, '::1', '2.00', 'sandbox', '2026-09-08 05:19:04');
+INSERT INTO `api_hit_logs` (`id`, `user_id`, `credential_id`, `endpoint`, `method`, `request_id`, `client_ref_num`, `status_code`, `result_code`, `latency_ms`, `client_ip`, `cost`, `environment`, `created_at`) VALUES (262, 18, 16, '/srv3/mobile-to-bank/advance', 'POST', '9fe28939-cbc4-4b56-b7fd-31da4238975d', 'M2B_D25BB4', 200, 101, 16780, '::1', '2.00', 'sandbox', '2026-09-08 05:31:09');
+
+-- --------------------------------------------------------
+-- Table structure for `audit_trail`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `audit_trail`;
+CREATE TABLE `audit_trail` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `company_name` varchar(255) NOT NULL,
+  `type` enum('credit','debit') NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `previous_balance` decimal(15,2) NOT NULL,
+  `new_balance` decimal(15,2) NOT NULL,
+  `reason` text NOT NULL,
+  `authorized_by` varchar(128) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `catalog`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `catalog`;
+CREATE TABLE `catalog` (
+  `id` varchar(64) NOT NULL,
+  `service_name` varchar(255) NOT NULL,
+  `category` varchar(128) NOT NULL,
+  `method` varchar(10) NOT NULL DEFAULT 'GET',
+  `endpoint_path` varchar(255) NOT NULL,
+  `upstream_provider` varchar(128) NOT NULL,
+  `current_price` decimal(10,2) NOT NULL DEFAULT '0.15',
+  `status` enum('Active','Maintenance','Disabled') NOT NULL DEFAULT 'Active',
+  `latency_p95` int NOT NULL DEFAULT '50',
+  `uptime_24h` decimal(5,2) NOT NULL DEFAULT '99.90',
+  `description` text,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_endpoint` (`endpoint_path`,`method`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Dumping data for table `catalog` (41 rows)
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_aa_consent', 'Create consent request', 'Account Aggregator', 'POST', '/aa/consent', 'RBI Account Aggregator', '4.00', 'Active', 62, '99.93', 'Creates an RBI Account Aggregator consent request and returns the redirect URL for the user journey.', '2026-09-06 10:06:36', '2026-09-07 07:53:18');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_aa_consent_status', 'Consent status', 'Account Aggregator', 'GET', '/aa/consent/{consent_handle}', 'RBI AA Hub', '0.50', 'Active', 41, '99.90', 'Returns the current state of a consent handle and the linked accounts once approved.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_aa_fetch_fi', 'Fetch financial data', 'Account Aggregator', 'POST', '/aa/fi/fetch', 'Financial Info Provider', '6.00', 'Active', 36, '99.94', 'Requests a financial information session for an active consent and returns decrypted transaction data.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_aadhaar_otp', 'Aadhaar OTP (DigiLocker)', 'KYC & Verification', 'POST', '/verify/aadhaar/otp', 'UIDAI', '2.20', 'Active', 75, '99.85', 'Step 1 of consent-based Aadhaar verification: sends an OTP to the Aadhaar-linked mobile number and returns a transaction id.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_aadhaar_otp_confirm', 'Confirm Aadhaar OTP', 'KYC & Verification', 'POST', '/verify/aadhaar/otp/confirm', 'Bharat API Gateway', '1.00', 'Active', 62, '99.96', 'Step 2 of Aadhaar verification: exchanges the OTP for the verified demographic KYC record and photo.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_aadhaar_without_otp', 'Aadhar Fetch (Without OTP)', 'KYC & Verification', 'POST', '/srv3/verification/aadhar', 'Bharat API Gateway', '1.00', 'Active', 64, '99.99', 'Instant Aadhaar number validation and demographic verification without requiring mobile OTP. Returns Aadhaar validity, age band, gender, state and masked mobile digits.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_aml_screening', 'AML / PEP screening', 'KYC & Verification', 'POST', '/kyc/aml-screen', 'Global AML Watchlist', '4.50', 'Active', 40, '99.97', 'Screens a name against global sanctions, PEP and adverse-media watchlists with fuzzy matching.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_bank_penny_drop', 'Bank verification (penny drop)', 'Banking & IFSC', 'POST', '/bank/verify', 'NPCI IMPS', '1.80', 'Active', 47, '99.95', 'Credits ₹1 to the account to confirm it is live and returns the beneficiary name registered with the bank.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_bank_penny_less', 'Bank Verification Penny Less V2', 'Banking & IFSC', 'POST', '/bank/verify/penny-less', 'IDFC Bank API', '1.10', 'Active', 61, '99.89', 'Instant bank account validation and beneficiary name verification without performing a financial penny deposit. Validates bank account status, registered name, and IFSC details directly.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_bank_reverse_penny', 'Reverse penny drop', 'Banking & IFSC', 'POST', '/bank/reverse-penny-drop', 'NPCI UPI Collect', '0.75', 'Active', 71, '99.92', 'Creates a collect request the user pays ₹1 against, verifying account ownership without a name match.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_bank_statement', 'Bank statement analysis', 'Banking & IFSC', 'POST', '/bank/statement/analyse', 'Perfios Engine', '5.00', 'Active', 62, '99.86', 'Parses a PDF bank statement and returns income, obligations, bounce count and a cash-flow summary.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_bank_validation', 'Bank Account Validation', 'KYC & Verification', 'POST', '/api/v1/validate_bank_account', 'NPCI IMPS', '1.50', 'Active', 47, '99.87', 'Validates Indian bank account number and IFSC code using asynchronous penny-less bank verification engine.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_cat_01', 'Razorpay Bank IFSC Code Lookup', 'Banking & IFSC', 'GET', '/bank/ifsc/:code', 'Razorpay', '0.25', 'Active', 42, '99.99', 'Instant RTGS/NEFT/IMPS bank branch lookup via Razorpay public IFSC gateway with full bank address.', '2026-09-06 08:30:50', '2026-09-06 10:00:37');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_cat_02', 'Bank Account Penny Drop Verification', 'Banking & IFSC', 'POST', '/bank/account/penny-drop', 'IDFY', '1.80', 'Active', 320, '99.85', 'Validates bank account number and IFSC by crediting ₹1 and retrieving the registered account holder name via NPCI IMPS.', '2026-09-06 08:30:50', '2026-09-06 08:30:50');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_cat_03', 'PAN Instant 360 Verification', 'KYC & Verification', 'POST', '/srv2/validation/pan', 'IDFY', '1.10', 'Active', 88, '99.95', 'Instant NSDL/ITD PAN status check returning full name, Aadhaar seeding status, and category.', '2026-09-06 08:30:50', '2026-09-06 08:30:50');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_cat_04', 'UPI VPA Virtual ID Validation', 'Payments & UPI', 'POST', '/pay/upi/validate', 'Razorpay', '0.25', 'Active', 65, '99.98', 'Validates if a UPI handle exists and extracts verified payee name via NPCI.', '2026-09-06 08:30:50', '2026-09-06 08:30:50');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_cat_05', 'Account Aggregator Consent Initializer', 'Account Aggregator', 'POST', '/aa/consent/create', 'ApyHub', '4.00', 'Active', 140, '99.60', 'Generates RBI Account Aggregator consent handle for multi-bank financial information sharing.', '2026-09-06 08:30:50', '2026-09-06 08:30:50');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_create_payout', 'Create payout', 'Payments & UPI', 'POST', '/payouts', 'RazorpayX / Cashfree', '2.50', 'Active', 74, '99.91', 'Sends money to a bank account or UPI handle over IMPS, NEFT, RTGS or UPI with idempotency support.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_create_va', 'Create virtual account', 'Payments & UPI', 'POST', '/virtual-accounts', 'Yes Bank SmartCollect', '1.50', 'Active', 67, '99.91', 'Issues a dedicated virtual account and UPI handle so inbound collections auto-reconcile to one customer.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_document_ocr', 'Document OCR', 'KYC & Verification', 'POST', '/kyc/ocr', 'IDFY Vision', '1.80', 'Active', 47, '99.86', 'Extracts structured fields from an ID document image or PDF and flags tampering signals.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_domain_age', 'Domain Age Verification API', 'KYC & Verification', 'POST', '/dosvak/domain-age', 'WHOIS Registry', '0.40', 'Active', 64, '99.90', 'Calculates the exact domain registration age, creation date, and lifespan in days and years using authoritative registries and smart caching.', '2026-09-06 10:06:37', '2026-09-06 10:06:37');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_face_liveness', 'Face match & liveness', 'KYC & Verification', 'POST', '/kyc/face-match', 'IDFY Biometric', '2.00', 'Active', 73, '99.90', 'Compares a selfie against an ID photo and returns a passive liveness score to block spoof attempts.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_ifsc_lookup', 'IFSC lookup', 'Banking & IFSC', 'GET', '/bank/ifsc/{ifsc}', 'Razorpay Public IFSC', '0.25', 'Active', 51, '99.97', 'Returns branch details and supported payment rails for an IFSC code.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_mobile_name_finder', 'Mobile To Name Finder', 'KYC & Verification', 'POST', '/srv2/mobile-name-finder', 'Telecom Gateway', '1.25', 'Active', 70, '99.93', 'Instant name lookup and telecom subscriber verification. Fetch the registered subscriber legal name and telecom circle details directly from a 10-digit mobile number.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_mobile_to_prefill', 'Mobile to Prefill', 'KYC & Verification', 'POST', '/kyc/mobile-prefill', 'Bharat API Gateway', '1.00', 'Active', 54, '99.91', 'Fetch verified identity profile, PAN, Date of Birth, age, gender, email, and registered addresses pre-filled directly from user\'s registered mobile number and name.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_mobile_to_uan', 'Mobile to UAN V2', 'KYC & Verification', 'POST', '/api/v1/srv3/uan-mobile', 'EPFO Gateway', '2.80', 'Active', 71, '99.93', 'Resolve Universal Account Number (UAN), active EPFO membership, establishment details, and employment history from mobile number.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_mobile_to_upi', 'Mobile to UPI Lookup Advance', 'KYC & Verification', 'POST', '/srv2/mobile-upi-lookup/enhanced', 'NPCI Resolver', '0.35', 'Active', 52, '99.93', 'Real-time Mobile to UPI ID (VPA) and bank-registered account holder name verification powered by NPCI gateway.', '2026-09-06 10:06:37', '2026-09-06 10:06:37');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_payout_status', 'Payout status', 'Payments & UPI', 'GET', '/payouts/{payout_id}', 'Banking Rails IMPS', '0.10', 'Active', 46, '99.89', 'Returns the current state of a payout including the bank UTR once settled.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_refund_payout', 'Reverse a payout', 'Payments & UPI', 'POST', '/payouts/{payout_id}/reverse', 'Bank Reversal Rail', '1.00', 'Active', 60, '99.89', 'Requests reversal of a payout that failed at the beneficiary bank and returns the reversal reference.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_requester_ip_lookup', 'Requester IP Lookup', 'KYC & Verification', 'GET', '/check', 'APILayer', '0.15', 'Active', 60, '99.93', 'Instant geolocation and network intelligence for incoming or specified IP addresses. Returns city, region, coordinates, country flag, calling code, and connection profile via Bharat API Cloud.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_reverse_geocoding', 'Reverse Geocoding', 'KYC & Verification', 'GET', '/reverse', 'Bharat Geocoder', '0.20', 'Active', 58, '99.93', 'Resolve GPS coordinates (latitude & longitude) into full geographic address, road, landmark, city, state, postal code, and administrative boundaries using Bharat API Geocoding Engine.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_uan_to_employment', 'UAN to Employment History V2', 'KYC & Verification', 'POST', '/api/v1/srv3/uan-direct', 'EPFO Direct', '3.20', 'Active', 77, '99.86', 'Directly verify EPFO Universal Account Number (UAN) to fetch complete employment history, establishment details, joining/exit dates, and employee identity profile without requiring OTP.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_upi_vpa', 'Validate UPI VPA', 'Banking & IFSC', 'POST', '/bank/upi/validate', 'NPCI UPI', '0.25', 'Active', 62, '99.97', 'Checks whether a UPI ID is active and returns the registered payee name.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_va_transactions', 'VA transactions', 'Payments & UPI', 'GET', '/virtual-accounts/{va_id}/transactions', 'Virtual Account Rail', '0.15', 'Active', 61, '99.92', 'Lists credits received on a virtual account with payer details for reconciliation.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_verify_cin', 'Verify CIN (MCA)', 'KYC & Verification', 'POST', '/verify/cin', 'MCA 21', '1.20', 'Active', 63, '99.98', 'Looks up company master data from the MCA registry, including directors, status and paid-up capital.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_verify_dl', 'Verify Driving Licence', 'KYC & Verification', 'POST', '/verify/driving-licence', 'Parivahan Sarathi', '0.90', 'Active', 75, '99.91', 'Validates a driving licence number against the Sarathi/Parivahan database with vehicle class details.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_verify_gstin', 'Verify GSTIN', 'KYC & Verification', 'POST', '/verify/gstin', 'GSTN Portal', '0.95', 'Active', 61, '99.87', 'Fetches GST registration details, filing status and the registered business address for a GSTIN.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_verify_pan', 'Verify PAN', 'KYC & Verification', 'POST', '/verify/pan', 'NSDL / ITD', '1.10', 'Active', 78, '99.88', 'Validates a Permanent Account Number against the Income Tax Department database, with optional name and date-of-birth matching.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_verify_pan_plus', 'Pan Details Plus', 'KYC & Verification', 'POST', '/srv2/validation/pan/plus', 'Bharat API Gateway', '1.00', 'Active', 57, '99.96', 'Comprehensive Permanent Account Number verification with demographic details, Aadhaar seeding status, allotment date, and corporate/salaried profile.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_verify_passport', 'Verify Passport', 'KYC & Verification', 'POST', '/verify/passport', 'Passport Seva', '1.40', 'Active', 49, '99.98', 'Validates a passport file number and date of birth against the Passport Seva records.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+INSERT INTO `catalog` (`id`, `service_name`, `category`, `method`, `endpoint_path`, `upstream_provider`, `current_price`, `status`, `latency_p95`, `uptime_24h`, `description`, `created_at`, `updated_at`) VALUES ('api_verify_voter_id', 'Verify Voter ID', 'KYC & Verification', 'POST', '/verify/voter-id', 'ECI Portal', '0.85', 'Active', 44, '99.92', 'Validates an EPIC number against the Election Commission roll and returns the elector record.', '2026-09-06 10:06:36', '2026-09-06 10:06:36');
+
+-- --------------------------------------------------------
+-- Table structure for `credentials`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `credentials`;
+CREATE TABLE `credentials` (
+  `id` varchar(64) NOT NULL,
+  `client_ref` varchar(64) NOT NULL,
+  `company_name` varchar(255) NOT NULL,
+  `user_name` varchar(255) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `api_id` varchar(128) NOT NULL,
+  `api_key` varchar(255) NOT NULL,
+  `token_id` varchar(128) NOT NULL,
+  `environment` enum('Production','Sandbox') NOT NULL DEFAULT 'Production',
+  `status` enum('Active','Revoked') NOT NULL DEFAULT 'Active',
+  `last_used_at` varchar(128) DEFAULT NULL,
+  `rate_limit_per_min` int NOT NULL DEFAULT '600',
+  `ip_whitelist` json DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `api_id` (`api_id`),
+  KEY `idx_api_id` (`api_id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `gateway_logs`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `gateway_logs`;
+CREATE TABLE `gateway_logs` (
+  `id` varchar(64) NOT NULL,
+  `timestamp` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `company_name` varchar(255) NOT NULL,
+  `method` varchar(10) NOT NULL,
+  `endpoint` varchar(255) NOT NULL,
+  `status_code` int NOT NULL,
+  `latency_ms` int NOT NULL,
+  `cost_deducted` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `client_ip` varchar(64) NOT NULL,
+  `upstream_provider` varchar(128) NOT NULL,
+  `request_headers` json DEFAULT NULL,
+  `request_payload` json DEFAULT NULL,
+  `response_payload` json DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `ip_whitelist`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `ip_whitelist`;
+CREATE TABLE `ip_whitelist` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `label` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'Client Server',
+  `environment` enum('sandbox','production','all') COLLATE utf8mb4_unicode_ci DEFAULT 'all',
+  `status` enum('active','disabled') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_used_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `ip_whitelist_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Table structure for `user_api_pricing`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `user_api_pricing`;
+CREATE TABLE `user_api_pricing` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `catalog_id` varchar(64) NOT NULL,
+  `custom_price` decimal(10,2) DEFAULT NULL,
+  `is_assigned` tinyint(1) DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_catalog` (`user_id`,`catalog_id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Dumping data for table `user_api_pricing` (3 rows)
+INSERT INTO `user_api_pricing` (`id`, `user_id`, `catalog_id`, `custom_price`, `is_assigned`, `created_at`, `updated_at`) VALUES (2, 18, 'api_cat_03', '10.00', 1, '2026-09-07 05:56:01', '2026-09-07 05:56:28');
+INSERT INTO `user_api_pricing` (`id`, `user_id`, `catalog_id`, `custom_price`, `is_assigned`, `created_at`, `updated_at`) VALUES (4, 18, 'api_verify_pan', '10.00', 1, '2026-09-07 06:13:49', '2026-09-07 06:13:49');
+INSERT INTO `user_api_pricing` (`id`, `user_id`, `catalog_id`, `custom_price`, `is_assigned`, `created_at`, `updated_at`) VALUES (5, 18, 'api_bank_penny_less', NULL, 1, '2026-09-07 06:59:44', '2026-09-07 07:10:20');
+
+-- --------------------------------------------------------
+-- Table structure for `users`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `company_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `plan` enum('free','growth','scale') COLLATE utf8mb4_unicode_ci DEFAULT 'free',
+  `role` enum('client','admin') COLLATE utf8mb4_unicode_ci DEFAULT 'client',
+  `wallet_balance` decimal(12,2) DEFAULT '0.00',
+  `onboarded` tinyint(1) DEFAULT '0',
+  `is_active` tinyint(1) DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  KEY `idx_users_email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table `users` (1 rows)
+INSERT INTO `users` (`id`, `name`, `company_name`, `email`, `password`, `plan`, `role`, `wallet_balance`, `onboarded`, `is_active`, `created_at`, `updated_at`) VALUES (18, 'Fund_lelo', 'Aman@fundlelo.in', 'aman@fundlelo.in', '$2b$10$uPWbWBzqPDdarnryGrKePOipqbzcYZHkpGjos6rGDQYSjN7OaTil6', 'free', 'client', '4800.55', 1, 1, '2026-09-05 05:42:56', '2026-09-08 05:31:09');
+
+-- --------------------------------------------------------
+-- Table structure for `wallet_transactions`
+-- --------------------------------------------------------
+DROP TABLE IF EXISTS `wallet_transactions`;
+CREATE TABLE `wallet_transactions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `type` enum('credit','debit') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `balance_after` decimal(12,2) NOT NULL,
+  `category` enum('topup','api_usage','refund','bonus') COLLATE utf8mb4_unicode_ci DEFAULT 'api_usage',
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reference_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `wallet_transactions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=139 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dumping data for table `wallet_transactions` (61 rows)
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (60, 18, 'credit', '5000.00', '5000.00', 'bonus', 'Welcome Sign-up Bonus', 'bonus_18_1788586976079', '2026-09-05 05:42:56');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (61, 18, 'debit', '2.00', '4998.00', 'api_usage', 'API Usage: /srv2/validation/pan', '5f762148-3e33-4a54-a78e-c05f339ef7c8', '2026-09-05 05:52:48');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (62, 18, 'debit', '2.00', '4996.00', 'api_usage', 'API Usage: /srv2/validation/pan', 'b32f005f-337e-40a7-92ad-ee8d016d595d', '2026-09-05 05:56:14');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (63, 18, 'debit', '2.00', '4994.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'f971b305-300b-4cd8-a551-51bfdda8555a', '2026-09-05 06:29:37');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (64, 18, 'debit', '2.00', '4992.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'f971b305-300b-4cd8-a551-51bfdda8555a', '2026-09-05 06:30:48');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (65, 18, 'debit', '2.00', '4990.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'febf8587-b34f-40dd-ba6f-570980fd9d56', '2026-09-05 06:36:19');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (66, 18, 'debit', '2.00', '4988.00', 'api_usage', 'API Usage: /dosvak/domain-age', '1059f62b-9485-4bbc-b1e7-53282422860c', '2026-09-05 06:36:30');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (67, 18, 'debit', '2.00', '4986.00', 'api_usage', 'API Usage: /dosvak/domain-age', '26dc0ff7-71ae-4641-8078-0978de3cf41b', '2026-09-05 06:36:32');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (68, 18, 'debit', '2.00', '4984.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'febf8587-b34f-40dd-ba6f-570980fd9d56', '2026-09-05 06:36:35');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (69, 18, 'debit', '2.00', '4982.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'febf8587-b34f-40dd-ba6f-570980fd9d56', '2026-09-05 06:37:58');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (70, 18, 'debit', '2.00', '4980.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'f4ab8bd9-8a84-4b5d-99ec-d4e6b38bcafb', '2026-09-05 06:38:24');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (71, 18, 'debit', '2.00', '4978.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'febf8587-b34f-40dd-ba6f-570980fd9d56', '2026-09-05 06:41:37');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (72, 18, 'debit', '2.00', '4976.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'febf8587-b34f-40dd-ba6f-570980fd9d56', '2026-09-05 06:41:55');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (73, 18, 'debit', '2.00', '4974.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'f4ab8bd9-8a84-4b5d-99ec-d4e6b38bcafb', '2026-09-05 06:42:27');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (74, 18, 'debit', '2.00', '4972.00', 'api_usage', 'API Usage: /dosvak/domain-age', '1059f62b-9485-4bbc-b1e7-53282422860c', '2026-09-05 06:44:45');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (76, 18, 'debit', '2.00', '4970.00', 'api_usage', 'API Usage: /dosvak/domain-age', 'f4ab8bd9-8a84-4b5d-99ec-d4e6b38bcafb', '2026-09-05 06:59:36');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (77, 18, 'debit', '2.00', '4968.00', 'api_usage', 'API Usage: /dosvak/domain-age', '1059f62b-9485-4bbc-b1e7-53282422860c', '2026-09-05 07:00:01');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (79, 18, 'debit', '2.00', '4966.00', 'api_usage', 'API Usage: /dosvak/domain-age', '93dd252b-700d-40b8-8730-1213e322646b', '2026-09-05 07:06:16');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (80, 18, 'debit', '2.00', '4964.00', 'api_usage', 'API Usage: /dosvak/domain-age', '1059f62b-9485-4bbc-b1e7-53282422860c', '2026-09-05 07:06:25');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (82, 18, 'debit', '2.00', '4962.00', 'api_usage', 'API Usage: /srv2/mobile-upi-lookup/enhanced', 'cfe2c145-6226-4f24-9853-5e4cff244727', '2026-09-05 10:16:36');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (87, 18, 'debit', '2.00', '4960.00', 'api_usage', 'API Usage: /srv2/mobile-upi-lookup/enhanced', '311f67e6-43c2-463d-a82c-a8569efe33b6', '2026-09-05 10:36:41');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (88, 18, 'debit', '2.00', '4958.00', 'api_usage', 'API Usage: /dosvak/domain-age', '7b9d68dc-30f2-4fda-8a54-c23c7a1c41bb', '2026-09-05 10:40:46');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (94, 18, 'debit', '1.00', '4957.00', 'api_usage', 'API Usage: /ifsc', 'ca430c1d-5d28-4c29-9c0d-c284f157b470', '2026-09-06 07:28:16');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (95, 18, 'debit', '1.00', '4956.00', 'api_usage', 'API Usage: /ifsc', '898992af-fbb0-4df6-89da-0a133a20114e', '2026-09-06 07:28:49');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (97, 18, 'debit', '1.00', '4955.00', 'api_usage', 'API Usage: /ifsc', 'fbf22971-038a-410c-8f29-8fb8707bb76f', '2026-09-06 07:43:03');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (101, 18, 'debit', '0.25', '4954.75', 'api_usage', 'API Usage: /ifsc', '159f24b0-7f20-4e24-8568-649cd8429004', '2026-09-07 06:12:41');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (104, 18, 'debit', '0.40', '4954.35', 'api_usage', 'API Usage: /dosvak/domain-age', '9452b12e-16a1-4f0b-9347-717aa482e7eb', '2026-09-07 06:31:12');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (105, 18, 'debit', '0.40', '4953.95', 'api_usage', 'API Usage: /dosvak/domain-age', '2515e619-6aa9-4965-888e-44618d04d61a', '2026-09-07 06:31:54');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (106, 18, 'debit', '0.40', '4953.55', 'api_usage', 'API Usage: /dosvak/domain-age', '1b9e0ab8-475a-4eaa-84fa-0cb1f39e02a5', '2026-09-07 06:32:15');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (107, 18, 'debit', '10.00', '4943.55', 'api_usage', 'API Usage: /srv2/validation/pan', '129189ea-7233-4096-9bfe-25411fcdfbb6', '2026-09-07 06:34:03');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (108, 18, 'debit', '2.00', '4941.55', 'api_usage', 'API Usage: /srv2/validation/digilocker-digital-kyc', '36d0ffa2-22c1-46c5-a76e-a2d740591466', '2026-09-07 09:10:13');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (109, 18, 'debit', '2.00', '4939.55', 'api_usage', 'API Usage: /srv2/validation/digilocker-digital-kyc', '43e686c6-6e6c-41cf-b782-3e3966bb5eb7', '2026-09-07 09:20:30');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (110, 18, 'debit', '5.00', '4934.55', 'api_usage', 'API Usage: /srv2/statement-upload', '6c971e01-f201-42f4-9526-4fd254b7e347', '2026-09-07 11:06:38');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (111, 18, 'debit', '5.00', '4929.55', 'api_usage', 'API Usage: /srv2/statement-upload', 'be658a30-9f9b-41fc-b04f-21bd26f1c8c4', '2026-09-07 11:09:26');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (112, 18, 'debit', '5.00', '4924.55', 'api_usage', 'API Usage: /srv2/statement-upload', '54bfcdb1-920f-4e64-bcd3-85eb2c804781', '2026-09-07 11:12:10');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (113, 18, 'debit', '5.00', '4919.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89578634', '2026-09-07 11:12:11');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (114, 18, 'debit', '5.00', '4914.55', 'api_usage', 'API Usage: /srv2/statement-upload', '709a4836-149c-44ea-9f0d-e21e8fb1842f', '2026-09-07 11:14:17');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (115, 18, 'debit', '5.00', '4909.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89578979', '2026-09-07 11:14:18');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (116, 18, 'debit', '5.00', '4904.55', 'api_usage', 'API Usage: /srv2/statement-upload', 'e2e3acaf-2b8b-467b-8ce0-bd9f1c575724', '2026-09-07 11:18:04');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (117, 18, 'debit', '5.00', '4899.55', 'api_usage', 'API Usage: /srv2/statement-upload', '08722c04-addf-4c5a-9043-a61b90031bb1', '2026-09-07 11:19:17');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (118, 18, 'debit', '5.00', '4894.55', 'api_usage', 'API Usage: /srv2/statement-upload', '135f81b9-2ab9-4048-9268-636d886a65c5', '2026-09-07 11:20:40');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (119, 18, 'debit', '5.00', '4889.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89580021', '2026-09-07 11:20:51');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (120, 18, 'debit', '5.00', '4884.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89580021', '2026-09-07 11:20:52');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (121, 18, 'debit', '5.00', '4879.55', 'api_usage', 'API Usage: /srv2/statement-upload', '2b77852a-c7d7-461f-ab02-87fe09bd28ab', '2026-09-07 11:22:08');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (122, 18, 'debit', '5.00', '4874.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89580287', '2026-09-07 11:22:20');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (123, 18, 'debit', '5.00', '4869.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89580287', '2026-09-07 11:22:21');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (124, 18, 'debit', '5.00', '4864.55', 'api_usage', 'API Usage: /srv2/statement-upload', '105893b4-b5f2-4f36-9bc3-05d957d17a72', '2026-09-07 11:24:18');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (125, 18, 'debit', '5.00', '4859.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89580697', '2026-09-07 11:24:29');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (126, 18, 'debit', '5.00', '4854.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89580697', '2026-09-07 11:24:30');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (127, 18, 'debit', '5.00', '4849.55', 'api_usage', 'API Usage: /srv2/statement-upload', '40258e72-3d4e-4730-8b10-640dd72cc014', '2026-09-07 11:26:23');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (128, 18, 'debit', '5.00', '4844.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89581029', '2026-09-07 11:26:35');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (129, 18, 'debit', '5.00', '4839.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89581029', '2026-09-07 11:26:35');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (130, 18, 'debit', '5.00', '4834.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89581029', '2026-09-07 11:27:21');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (131, 18, 'debit', '5.00', '4829.55', 'api_usage', 'API Usage: /srv2/statement-upload', 'cdb81e01-7a7a-451a-bf54-fd44dfe55057', '2026-09-07 12:16:31');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (132, 18, 'debit', '5.00', '4824.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89589521', '2026-09-07 12:16:36');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (133, 18, 'debit', '5.00', '4819.55', 'api_usage', 'API Usage: /srv2/statement-upload', '28b2fc46-8eab-4ec2-9ee3-986526b6a71d', '2026-09-07 12:26:10');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (134, 18, 'debit', '5.00', '4814.55', 'api_usage', 'API Usage: /srv2/statement-upload', '05fb8eac-34de-4b7b-9135-7daceafd7fb1', '2026-09-07 12:36:12');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (135, 18, 'debit', '5.00', '4809.55', 'api_usage', 'API Usage: /srv2/statement-upload', '515d69f1-44d6-4264-af8b-308e2ca9756e', '2026-09-07 12:40:18');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (136, 18, 'debit', '5.00', '4804.55', 'api_usage', 'API Usage: /srv2/statement-upload', '89593995', '2026-09-07 12:40:59');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (137, 18, 'debit', '2.00', '4802.55', 'api_usage', 'API Usage: /srv3/mobile-to-bank/advance', '154cb5f2-02a5-4ee2-9f52-771fd049b458', '2026-09-08 05:19:04');
+INSERT INTO `wallet_transactions` (`id`, `user_id`, `type`, `amount`, `balance_after`, `category`, `description`, `reference_id`, `created_at`) VALUES (138, 18, 'debit', '2.00', '4800.55', 'api_usage', 'API Usage: /srv3/mobile-to-bank/advance', '9fe28939-cbc4-4b56-b7fd-31da4238975d', '2026-09-08 05:31:09');
+
+SET FOREIGN_KEY_CHECKS = 1;
+-- ==================== END OF DUMP ====================
