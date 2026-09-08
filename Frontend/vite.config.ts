@@ -36,15 +36,15 @@ function syncDistPlugin() {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Bharat API Cloud — Banking & KYC APIs</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
     <script>
-      /* Hostinger Deployment Backend API Config:
-         Change this URL if your backend runs on a different port/subdomain, e.g. 'https://api.yourdomain.com/api/v1' */
-      window.__API_URL__ = window.__API_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5002/api/v1' : window.location.origin + '/api/v1');
+      /* Bharat API Cloud Backend Gateway Config: */
+      window.__API_URL__ = window.__API_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5002/api/v1' : 'https://backend.bharatapi.cloud/api/v1');
     </script>
     ${cssFile ? `<link rel="stylesheet" href="/assets/${cssFile}" />` : ""}
   </head>

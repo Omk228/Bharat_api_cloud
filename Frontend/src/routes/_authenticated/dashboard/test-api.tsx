@@ -1146,7 +1146,7 @@ function TestApiPage() {
             <div className="grid gap-2 sm:grid-cols-2 text-muted-foreground">
               <div>
                 <span className="font-medium text-foreground">Base Gateway URL:</span>{" "}
-                <code className="font-mono text-primary">http://localhost:5002</code>
+                <code className="font-mono text-primary">https://backend.bharatapi.cloud</code>
               </div>
               <div>
                 <span className="font-medium text-foreground">Endpoint:</span>{" "}
@@ -2033,7 +2033,7 @@ function TestApiPage() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">Querying Bharat API Cloud Gateway...</p>
                       <p className="mt-1 text-xs text-muted-foreground font-mono">
-                        POST http://localhost:5002{currentEndpoint}
+                        POST https://backend.bharatapi.cloud{currentEndpoint}
                       </p>
                     </div>
                   </div>
