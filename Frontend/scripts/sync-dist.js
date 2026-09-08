@@ -12,7 +12,7 @@ const frontendDist = path.resolve(frontendDir, 'dist');
 const rootDist = path.resolve(rootDir, 'dist');
 const publicDir = path.resolve(frontendDir, 'public');
 
-async function getPrerenderedHtml(fallbackHtml) {
+async function getPrerenderedHtml(fallbackHtml, cssFile) {
   const serverPath = path.resolve(frontendDir, '.output', 'server', 'index.mjs');
   if (!fs.existsSync(serverPath)) return fallbackHtml;
 
@@ -30,15 +30,21 @@ async function getPrerenderedHtml(fallbackHtml) {
           if (res.ok) {
             let html = await res.text();
             child.kill();
-            // Inject runtime backend API URL config into head
-            const apiConfigScript = `
+            
+            const timestamp = Date.now();
+            // Inject direct resilient CSS links and backend config into head
+            const headInjections = `
+    <link rel="stylesheet" href="/assets/${cssFile}?v=${timestamp}" />
+    <link rel="stylesheet" href="./assets/${cssFile}?v=${timestamp}" />
+    <link rel="stylesheet" href="/styles.css?v=${timestamp}" />
+    <link rel="stylesheet" href="./styles.css?v=${timestamp}" />
     <script>
       /* Hostinger Deployment Backend API Config:
          Change this URL if your backend runs on a different port/subdomain, e.g. 'https://api.yourdomain.com/api/v1' */
       window.__API_URL__ = window.__API_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5002/api/v1' : window.location.origin + '/api/v1');
     </script>
   </head>`;
-            html = html.replace('</head>', apiConfigScript);
+            html = html.replace('</head>', headInjections);
             console.log(`✓ Generated SSR prerendered index.html (${html.length} bytes)`);
             return resolve(html);
           }
@@ -121,10 +127,14 @@ async function run() {
 </html>
 `;
 
-      const finalHtml = await getPrerenderedHtml(fallbackHtml);
+      const finalHtml = await getPrerenderedHtml(fallbackHtml, cssFile);
 
       for (const dir of [frontendDist, rootDist, outputPublic]) {
         fs.writeFileSync(path.join(dir, 'index.html'), finalHtml, 'utf-8');
+        // Also copy stylesheet to root styles.css as an infallible fallback
+        if (cssFile) {
+          fs.copyFileSync(path.join(assetsDir, cssFile), path.join(dir, 'styles.css'));
+        }
       }
     }
 
