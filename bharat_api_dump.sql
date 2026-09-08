@@ -1,11 +1,8 @@
 -- ========================================================
--- Bharat API Cloud Complete MySQL Database Dump
--- Generated on: 2026-09-08T12:04:14.759Z
--- Compatible with: MySQL 5.7+, MySQL 8.0+, MariaDB, TiDB, Aiven, phpMyAdmin, Hostinger
+-- Bharat API Cloud Complete MySQL Database Dump (phpMyAdmin / Hostinger Compatible)
+-- Generated on: 2026-09-08T12:10:10.949Z
+-- Compatible with: Hostinger phpMyAdmin, MariaDB, MySQL 8.0+, TiDB, Aiven
 -- ========================================================
-
-CREATE DATABASE IF NOT EXISTS `bharat_api`;
-USE `bharat_api`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 SET NAMES utf8mb4;

@@ -12,12 +12,10 @@ async function generateDump() {
   });
 
   let sql = '-- ========================================================\n';
-  sql += '-- Bharat API Cloud Complete MySQL Database Dump\n';
+  sql += '-- Bharat API Cloud Complete MySQL Database Dump (phpMyAdmin / Hostinger Compatible)\n';
   sql += '-- Generated on: ' + new Date().toISOString() + '\n';
-  sql += '-- Compatible with: MySQL 5.7+, MySQL 8.0+, MariaDB, TiDB, Aiven, phpMyAdmin, Hostinger\n';
+  sql += '-- Compatible with: Hostinger phpMyAdmin, MariaDB, MySQL 8.0+, TiDB, Aiven\n';
   sql += '-- ========================================================\n\n';
-  sql += 'CREATE DATABASE IF NOT EXISTS `bharat_api`;\n';
-  sql += 'USE `bharat_api`;\n\n';
   sql += 'SET FOREIGN_KEY_CHECKS = 0;\n';
   sql += 'SET NAMES utf8mb4;\n\n';
 
