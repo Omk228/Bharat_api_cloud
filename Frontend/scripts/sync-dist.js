@@ -31,26 +31,7 @@ async function getPrerenderedHtml(fallbackHtml, cssFile, jsFile) {
             let html = await res.text();
             child.kill();
             
-            const timestamp = Date.now();
-            
-            // Bypass any stale browser/CDN caches for scripts and CSS
-            if (jsFile) {
-              html = html.replaceAll(jsFile, `${jsFile}?v=${timestamp}`);
-            }
-
-            // Inject direct resilient CSS links and backend config into head
-            const headInjections = `
-    <link rel="stylesheet" href="/assets/${cssFile}?v=${timestamp}" />
-    <link rel="stylesheet" href="./assets/${cssFile}?v=${timestamp}" />
-    <link rel="stylesheet" href="/styles.css?v=${timestamp}" />
-    <link rel="stylesheet" href="./styles.css?v=${timestamp}" />
-    <script>
-      /* Bharat API Cloud Backend Gateway Config: */
-      window.__API_URL__ = window.__API_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5002/api/v1' : 'https://brown-goldfish-546701.hostingersite.com/api/v1');
-    </script>
-  </head>`;
-            html = html.replace('</head>', headInjections);
-            console.log(`✓ Generated SSR prerendered index.html (${html.length} bytes) with cache-busting (?v=${timestamp})`);
+            console.log(`✓ Generated clean SSR prerendered index.html (${html.length} bytes)`);
             return resolve(html);
           }
         } catch (e) {

@@ -123,6 +123,7 @@ function RootShell({ children }: { children: ReactNode }) {
                   document.documentElement.classList.add('dark');
                 }
               } catch (e) {}
+              window.__API_URL__ = window.__API_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5002/api/v1' : 'https://brown-goldfish-546701.hostingersite.com/api/v1');
             `,
           }}
         />
