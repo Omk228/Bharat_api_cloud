@@ -77,6 +77,14 @@ app.get('/', (req, res) => {
   });
 });
 
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'Bharat API Cloud Backend Gateway',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Direct service routes matching provider URL structure (/srv2/validation/pan, /srv3/verification/aadhar, /idfc/beneficiary, /srv4/credit-report/prefill)
 app.use('/', panRoutes);
 app.use('/', aadhaarRoutes);

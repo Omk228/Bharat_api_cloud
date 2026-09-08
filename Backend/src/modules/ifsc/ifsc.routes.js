@@ -27,9 +27,10 @@ router.post('/verification/ifsc', verifyApiClientCredentials, IfscController.get
 // Root path matching Razorpay https://ifsc.razorpay.com/:ifsc directly
 // Only matches 11-character alphanumeric codes or IFSC-like path params, skipping internal resources
 router.get('/:ifsc', (req, res, next) => {
-  const p = req.params.ifsc;
-  if (!p || p === 'favicon.ico' || p === 'robots.txt' || p === 'health' || p.startsWith('api')) {
-    return next();
+  const p = (req.params.ifsc || '').trim().toUpperCase();
+  const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+  if (!ifscRegex.test(p)) {
+    return next('route');
   }
   next();
 }, verifyApiClientCredentials, IfscController.getIfscDetails);
