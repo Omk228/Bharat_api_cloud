@@ -1,0 +1,12 @@
+{
+  "name": "bharat-api-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm --prefix Frontend run build",
+    "start": "node Frontend/.output/server/index.mjs",
+    "start:frontend": "node Frontend/.output/server/index.mjs",
+    "start:backend": "node Backend/src/server.js"
+  }
+}
