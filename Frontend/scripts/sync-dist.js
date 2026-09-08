@@ -1,30 +1,41 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const outputPublic = path.resolve('.output', 'public');
-const distDir = path.resolve('dist');
-const publicDir = path.resolve('public');
+// Determine if running from Frontend/ or workspace root
+const isInsideFrontend = fs.existsSync(path.resolve('src')) && fs.existsSync(path.resolve('package.json'));
+const frontendDir = isInsideFrontend ? process.cwd() : path.resolve('Frontend');
+const rootDir = isInsideFrontend ? path.resolve('..') : process.cwd();
+
+const outputPublic = path.resolve(frontendDir, '.output', 'public');
+const frontendDist = path.resolve(frontendDir, 'dist');
+const rootDist = path.resolve(rootDir, 'dist');
+const publicDir = path.resolve(frontendDir, 'public');
+
+const targetDirs = [frontendDist, rootDist, outputPublic];
 
 try {
-  // Ensure dist directory exists
-  fs.mkdirSync(distDir, { recursive: true });
+  // Ensure all target directories exist
+  for (const dir of targetDirs) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 
-  // 1. Copy .output/public contents to dist if available
+  // 1. Copy .output/public contents to frontendDist and rootDist if present
   if (fs.existsSync(outputPublic)) {
-    fs.cpSync(outputPublic, distDir, { recursive: true });
-    console.log(`✓ Synced .output/public -> dist`);
+    for (const target of [frontendDist, rootDist]) {
+      fs.cpSync(outputPublic, target, { recursive: true });
+    }
+    console.log(`✓ Copied .output/public -> Frontend/dist and root/dist`);
   }
 
   // 2. Ensure public folder assets (favicon.ico, robots.txt) are copied
   if (fs.existsSync(publicDir)) {
-    fs.cpSync(publicDir, distDir, { recursive: true });
-    if (fs.existsSync(outputPublic)) {
-      fs.cpSync(publicDir, outputPublic, { recursive: true });
+    for (const target of targetDirs) {
+      fs.cpSync(publicDir, target, { recursive: true });
     }
   }
 
   // 3. Find latest CSS and JS assets in assets folder
-  const assetsDir = path.join(distDir, 'assets');
+  const assetsDir = path.join(frontendDist, 'assets');
   if (fs.existsSync(assetsDir)) {
     const files = fs.readdirSync(assetsDir);
     const cssFile = files.find(f => f.endsWith('.css'));
@@ -49,11 +60,10 @@ try {
 </html>
 `;
 
-    fs.writeFileSync(path.join(distDir, 'index.html'), htmlContent, 'utf-8');
-    if (fs.existsSync(outputPublic)) {
-      fs.writeFileSync(path.join(outputPublic, 'index.html'), htmlContent, 'utf-8');
+    for (const dir of targetDirs) {
+      fs.writeFileSync(path.join(dir, 'index.html'), htmlContent, 'utf-8');
     }
-    console.log('✓ Generated production index.html');
+    console.log('✓ Generated production index.html in all output dirs');
   }
 
   // 4. Create .htaccess for SPA routing on Hostinger (Apache/LiteSpeed)
@@ -66,13 +76,14 @@ try {
   RewriteRule . /index.html [L]
 </IfModule>
 `;
-  fs.writeFileSync(path.join(distDir, '.htaccess'), htaccessContent, 'utf-8');
-  if (fs.existsSync(outputPublic)) {
-    fs.writeFileSync(path.join(outputPublic, '.htaccess'), htaccessContent, 'utf-8');
+
+  for (const dir of targetDirs) {
+    fs.writeFileSync(path.join(dir, '.htaccess'), htaccessContent, 'utf-8');
   }
-  console.log('✓ Created .htaccess for SPA client-side routing');
-  console.log(`✓ Output directory 'dist' is ready with ${fs.readdirSync(distDir).length} items`);
+  console.log('✓ Created .htaccess in all output dirs');
+  console.log(`✓ Frontend/dist items: ${fs.readdirSync(frontendDist).length}, root/dist items: ${fs.readdirSync(rootDist).length}`);
 } catch (err) {
   console.error('Error syncing dist directory:', err.message);
-  fs.mkdirSync(distDir, { recursive: true });
+  fs.mkdirSync(frontendDist, { recursive: true });
+  fs.mkdirSync(rootDist, { recursive: true });
 }
