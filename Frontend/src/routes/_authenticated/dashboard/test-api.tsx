@@ -112,6 +112,14 @@ export type VerificationResult = {
   name_at_bank?: string;
   verification_type?: string;
   verification_status?: string;
+  bank_account_data?: {
+    name?: string;
+    utr?: string;
+    account_number?: string;
+    ifsc?: string;
+    upi?: string;
+    [key: string]: unknown;
+  };
 };
 
 export type ApiResponseEnvelope = {
@@ -123,6 +131,14 @@ export type ApiResponseEnvelope = {
     code?: number;
     type?: string;
     message?: string;
+  };
+  bank_account_data?: {
+    name?: string;
+    utr?: string;
+    account_number?: string;
+    ifsc?: string;
+    upi?: string;
+    [key: string]: unknown;
   };
   data?: VerificationResult;
   result?: VerificationResult;
@@ -167,7 +183,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -175,6 +191,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
     service:
       search["service"] === "ifsc" || search["service"] === "ifsc-lookup" || search["service"] === "bank_ifsc" || search["service"] === "bank-ifsc"
         ? "ifsc"
+        : search["service"] === "mobile_to_bank" || search["service"] === "mobile-to-bank" || search["service"] === "mobile_to_bank_advance" || search["service"] === "mobile-to-bank-advance"
+        ? "mobile_to_bank"
+        : search["service"] === "digilocker" || search["service"] === "digilocker-digital-kyc" || search["service"] === "digilocker_kyc" || search["service"] === "digilocker-kyc"
+        ? "digilocker"
         : search["service"] === "mobile_upi" || search["service"] === "mobile-upi" || search["service"] === "upi"
         ? "mobile_upi"
         : search["service"] === "domain_age" || search["service"] === "domain-age" || search["service"] === "domain"
@@ -206,7 +226,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, Bank Verification, Bank Account Validation, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
+        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
       },
     ],
   }),
@@ -216,9 +236,13 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc">(
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank">(
     searchParams.service === "ifsc"
       ? "ifsc"
+      : searchParams.service === "mobile_to_bank"
+      ? "mobile_to_bank"
+      : searchParams.service === "digilocker"
+      ? "digilocker"
       : searchParams.service === "mobile_upi"
       ? "mobile_upi"
       : searchParams.service === "domain_age"
@@ -316,6 +340,13 @@ function TestApiPage() {
   // Aadhaar fields
   const [aadhaar, setAadhaar] = useState("");
 
+  // DigiLocker fields
+  const [digilockerMethod, setDigilockerMethod] = useState<"generateToken" | "fetchDetails">("generateToken");
+  const [digilockerRedirectUrl, setDigilockerRedirectUrl] = useState("https://yourdomain.com/kyc/callback");
+  const [digilockerLogoUrl, setDigilockerLogoUrl] = useState("");
+  const [digilockerAadhaar, setDigilockerAadhaar] = useState("");
+  const [digilockerClientId, setDigilockerClientId] = useState("");
+
   // Bank fields
   const [creditorAccountId, setCreditorAccountId] = useState("");
   const [ifscCode, setIfscCode] = useState("");
@@ -347,6 +378,10 @@ function TestApiPage() {
 
   // Mobile to UPI fields
   const [mobileUpiNumber, setMobileUpiNumber] = useState("");
+
+  // Mobile to Bank Advance fields
+  const [mobileToBankNumber, setMobileToBankNumber] = useState("");
+  const [mobileToBankConsent, setMobileToBankConsent] = useState("Y");
 
   // IFSC Lookup fields
   const [ifscCodeInput, setIfscCodeInput] = useState("KKBK0004587");
@@ -396,6 +431,14 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "mobile_to_bank"
+      ? {
+          mobile_number: mobileToBankNumber.trim().replace(/\D/g, "") || "8987198823",
+          consent: mobileToBankConsent || "Y",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
       : selectedService === "mobile_upi"
       ? {
           mobile_number: mobileUpiNumber.trim().replace(/\D/g, "") || "8527475512",
@@ -435,6 +478,32 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "digilocker"
+      ? digilockerMethod === "fetchDetails"
+        ? {
+            methods: {
+              fetchDetails: {
+                api_id: effectiveApiId,
+                api_key: effectiveApiKey,
+                token_id: effectiveTokenId,
+                methodName: "fetchDetails",
+                client_id: digilockerClientId.trim() || "digilocker_ee20c92e",
+              },
+            },
+          }
+        : {
+            methods: {
+              generateToken: {
+                api_id: effectiveApiId,
+                api_key: effectiveApiKey,
+                token_id: effectiveTokenId,
+                methodName: "generateToken",
+                redirectUrl: digilockerRedirectUrl.trim(),
+                ...(digilockerLogoUrl.trim() ? { logoUrl: digilockerLogoUrl.trim() } : {}),
+                ...(digilockerAadhaar.trim() ? { aadhaar_number: digilockerAadhaar.trim().replace(/\D/g, "") } : {}),
+              },
+            },
+          }
       : selectedService === "bank"
       ? {
           creditor_account_id: creditorAccountId.trim(),
@@ -502,6 +571,20 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "digilocker") {
+      if (digilockerMethod === "generateToken" && !digilockerRedirectUrl.trim()) {
+        toast.error("Please enter a valid Redirect / Callback URL");
+        return;
+      }
+      if (digilockerMethod === "fetchDetails" && !digilockerClientId.trim()) {
+        toast.error("Please enter a Client ID");
+        return;
+      }
+    }
+    if (selectedService === "mobile_to_bank" && !mobileToBankNumber.trim()) {
+      toast.error("Please enter a 10-digit mobile number (e.g. 8987198823)");
+      return;
+    }
     if (selectedService === "mobile_upi" && !mobileUpiNumber.trim()) {
       toast.error("Please enter a 10-digit mobile number (e.g. 8527475512)");
       return;
@@ -555,6 +638,25 @@ function TestApiPage() {
       if (selectedService === "ifsc") {
         rawData = await apiClient.verifyIfsc({
           ifsc: ifscCodeInput.trim().toUpperCase() || "KKBK0004587",
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "digilocker") {
+        rawData = await apiClient.verifyDigilocker({
+          method: digilockerMethod,
+          redirect_url: digilockerRedirectUrl.trim() || undefined,
+          logo_url: digilockerLogoUrl.trim() || undefined,
+          aadhaar_number: digilockerAadhaar.trim().replace(/\D/g, "") || undefined,
+          client_id: digilockerClientId.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "mobile_to_bank") {
+        rawData = await apiClient.verifyMobileToBankAdvance({
+          mobile_number: mobileToBankNumber.trim().replace(/\D/g, ""),
+          consent: mobileToBankConsent || "Y",
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -822,6 +924,10 @@ function TestApiPage() {
   const currentEndpoint =
     selectedService === "ifsc"
       ? "/bank/ifsc/:ifsc"
+      : selectedService === "mobile_to_bank"
+      ? "/srv3/mobile-to-bank/advance"
+      : selectedService === "digilocker"
+      ? "/srv2/validation/digilocker-digital-kyc"
       : selectedService === "mobile_upi"
       ? "/srv2/mobile-upi-lookup/enhanced"
       : selectedService === "domain_age"
@@ -851,6 +957,10 @@ function TestApiPage() {
   const currentServiceName =
     selectedService === "ifsc"
       ? "IFSC lookup (Bank Branch & Payment Rails)"
+      : selectedService === "mobile_to_bank"
+      ? "Mobile To Bank Advance (Live Account Linkage)"
+      : selectedService === "digilocker"
+      ? "DigiLocker Digital KYC (Paperless Consent & Details)"
       : selectedService === "mobile_upi"
       ? "Mobile to UPI Lookup Advance"
       : selectedService === "domain_age"
@@ -906,6 +1016,8 @@ function TestApiPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {selectedService === "ifsc"
                   ? "Direct Bank Branch details, contact, and payment rails (RTGS, NEFT, IMPS, UPI) verification powered by Bharat API Cloud."
+                  : selectedService === "digilocker"
+                  ? "Direct instant DigiLocker Digital KYC token generation, consent session URL, and full paperless identity details fetching gateway."
                   : selectedService === "mobile_upi"
                   ? "Direct live Mobile to UPI ID (VPA) and NPCI-registered account holder name verification gateway."
                   : selectedService === "domain_age"
@@ -933,6 +1045,10 @@ function TestApiPage() {
                   endpoint:
                     selectedService === "ifsc"
                       ? "ifsc-lookup"
+                      : selectedService === "mobile_to_bank"
+                      ? "mobile-to-bank-advance"
+                      : selectedService === "digilocker"
+                      ? "digilocker-digital-kyc"
                       : selectedService === "mobile_upi"
                       ? "mobile-to-upi"
                       : selectedService === "domain_age"
@@ -976,6 +1092,8 @@ function TestApiPage() {
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
                   {selectedService === "ifsc" && <Landmark className="h-4 w-4 text-blue-400" />}
+                  {selectedService === "mobile_to_bank" && <Building2 className="h-4 w-4 text-blue-400" />}
+                  {selectedService === "digilocker" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "mobile_upi" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "domain_age" && <Globe className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "pan_plus" && <CreditCard className="h-4 w-4 text-sky-400" />}
@@ -991,6 +1109,8 @@ function TestApiPage() {
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
                     {selectedService === "ifsc" && "IFSC lookup (/bank/ifsc/{ifsc})"}
+                    {selectedService === "mobile_to_bank" && "Mobile To Bank Advance (/srv3/mobile-to-bank/advance)"}
+                    {selectedService === "digilocker" && "DigiLocker Digital KYC (/srv2/validation/digilocker-digital-kyc)"}
                     {selectedService === "mobile_upi" && "Mobile to UPI Lookup (/srv2/mobile-upi-lookup/enhanced)"}
                     {selectedService === "domain_age" && "Domain Age (/dosvak/domain-age)"}
                     {selectedService === "pan_plus" && "Pan Details Plus (/srv2/validation/pan/plus)"}
@@ -1184,6 +1304,102 @@ function TestApiPage() {
                         👉 Resolves live branch details, contact, and payment rails (RTGS, NEFT, IMPS, UPI) for any RBI-registered bank IFSC.
                       </p>
                     </>
+                  ) : selectedService === "digilocker" ? (
+                    <>
+                      {/* Method Selector Tabs */}
+                      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-1">
+                        <button
+                          type="button"
+                          onClick={() => setDigilockerMethod("generateToken")}
+                          className={`rounded-md py-1.5 text-xs font-semibold transition-all ${
+                            digilockerMethod === "generateToken"
+                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          ⚡ 1. Generate Consent Token
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDigilockerMethod("fetchDetails")}
+                          className={`rounded-md py-1.5 text-xs font-semibold transition-all ${
+                            digilockerMethod === "fetchDetails"
+                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          🔍 2. Fetch KYC Details
+                        </button>
+                      </div>
+
+                      {digilockerMethod === "generateToken" ? (
+                        <>
+                          <div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span className="font-medium text-foreground">Redirect / Callback URL *</span>
+                              <span className="text-[11px] text-muted-foreground">HTTPS recommended</span>
+                            </div>
+                            <input
+                              value={digilockerRedirectUrl}
+                              onChange={(e) => setDigilockerRedirectUrl(e.target.value)}
+                              placeholder="https://yourdomain.com/kyc/callback"
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
+                            />
+                          </div>
+
+                          <div>
+                            <span className="block text-xs text-muted-foreground mb-1">Company Logo URL (Optional)</span>
+                            <input
+                              value={digilockerLogoUrl}
+                              onChange={(e) => setDigilockerLogoUrl(e.target.value)}
+                              placeholder="https://yourdomain.com/logo.png"
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span className="font-medium text-foreground">Aadhaar Number (Optional)</span>
+                              <span className="text-[11px] text-muted-foreground">Pre-fills DigiLocker login</span>
+                            </div>
+                            <input
+                              value={digilockerAadhaar}
+                              maxLength={12}
+                              onChange={(e) => setDigilockerAadhaar(e.target.value.replace(/\D/g, ""))}
+                              placeholder="12-digit Aadhaar Number"
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span className="font-medium text-foreground">Client ID *</span>
+                              <span className="text-[11px] text-muted-foreground">Returned from step 1</span>
+                            </div>
+                            <input
+                              value={digilockerClientId}
+                              onChange={(e) => setDigilockerClientId(e.target.value.trim())}
+                              placeholder="e.g. digilocker_prpGVnusagiugoUNmePG"
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-emerald-400">₹{getServicePrice("digilocker").toFixed(2)} / Hit</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Generates a secure Bharat API Cloud consent session link for paperless user identity verification.
+                      </p>
+                    </>
                   ) : selectedService === "pan_plus" ? (
                     <>
                       <div>
@@ -1372,6 +1588,53 @@ function TestApiPage() {
                       <p className="text-[11px] text-muted-foreground">
                         👉 Response will reflect in the response section
                       </p>
+                    </>
+                  ) : selectedService === "mobile_to_bank" ? (
+                    /* Mobile To Bank Advance Form */
+                    <>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Mobile Number *</span>
+                            <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 8987198823)</span>
+                          </div>
+                          <input
+                            type="tel"
+                            maxLength={10}
+                            value={mobileToBankNumber}
+                            onChange={(e) => setMobileToBankNumber(e.target.value.replace(/\D/g, ""))}
+                            placeholder="Enter 10-digit mobile number (e.g. 8987198823)"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-blue-400"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">User Consent *</span>
+                            <span className="text-[11px] text-muted-foreground">Mandatory for Bank Lookup</span>
+                          </div>
+                          <select
+                            value={mobileToBankConsent}
+                            onChange={(e) => setMobileToBankConsent(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold outline-none focus:border-blue-400"
+                          >
+                            <option value="Y">Y (Explicit User Consent Granted)</option>
+                            <option value="N">N (No Consent)</option>
+                          </select>
+                        </div>
+
+                        {/* Pricing Banner */}
+                        <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-2.5 text-xs text-blue-300 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            💰 Wallet Debit:
+                          </span>
+                          <span className="font-bold text-blue-400">₹{getServicePrice("mobile_to_bank").toFixed(2)} / Request</span>
+                        </div>
+
+                        <p className="text-[11px] text-muted-foreground">
+                          👉 Direct live Mobile to Bank Advance account linkage lookup powered by IDSpay.
+                        </p>
+                      </div>
                     </>
                   ) : selectedService === "mobile_upi" ? (
                     /* Mobile to UPI Lookup Form */
@@ -1809,9 +2072,163 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 🏛️ IFSC LOOKUP DEDICATED VISUAL CARD                      */}
+                        {/* 🪪 DIGILOCKER DIGITAL KYC DEDICATED VISUAL CARD           */}
                         {/* ========================================================= */}
-                        {selectedService === "ifsc" ? (
+                        {selectedService === "digilocker" ? (
+                          (() => {
+                            const data: any = responseJson?.data || responseJson?.result || responseJson || {};
+                            const isTokenResponse = Boolean(data.url || data.token);
+                            const consentUrl = data.url || "";
+                            const clientId = data.client_id || digilockerClientId || "—";
+                            const tokenVal = data.token || "—";
+                            const expirySec = data.expiry_seconds || 1800;
+
+                            const verifiedName = data.name || data.fullname || data.full_name || resData.name || resData.full_name || "";
+                            const verifiedAadhaar = data.aadhaar_number || data.aadhaar || resData.aadhaar_number || "";
+                            const verifiedDob = data.dob || resData.dob || "";
+                            const verifiedGender = data.gender || resData.gender || "";
+                            const verifiedAddress = typeof data.address === "string" ? data.address : extractedAddress || "";
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Badge Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-emerald-500/15 p-1.5 text-emerald-400 border border-emerald-500/30">
+                                      <Fingerprint className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-foreground">
+                                        {isTokenResponse ? "DigiLocker KYC Token & Session Generated" : "DigiLocker Verified KYC Profile"}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground font-mono">
+                                        Client ID: {clientId}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> {isTokenResponse ? "SESSION READY" : "KYC VERIFIED"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {isTokenResponse ? (
+                                  /* Token Generation Details */
+                                  <div className="space-y-3 text-xs">
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                      <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                          Client ID
+                                        </span>
+                                        <p className="font-mono font-bold text-foreground text-xs break-all">
+                                          {clientId}
+                                        </p>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                          Session Validity
+                                        </span>
+                                        <p className="font-semibold text-foreground text-xs">
+                                          {expirySec} seconds ({Math.round(expirySec / 60)} mins)
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {consentUrl && (
+                                      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                            <ShieldCheck className="h-4 w-4" /> Ready for User Authorization
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                          Click the button below to open the DigiLocker consent gateway and complete paperless identity authorization.
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <a
+                                            href={consentUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow transition-colors"
+                                          >
+                                            🚀 Open DigiLocker Consent Flow <ExternalLink className="h-3.5 w-3.5" />
+                                          </a>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(consentUrl);
+                                              toast.success("Consent URL copied!");
+                                            }}
+                                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                                          >
+                                            <Copy className="h-3 w-3" /> Copy Link
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  /* Verified Profile Details */
+                                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                        Full Name
+                                      </span>
+                                      <p className="font-bold text-foreground text-sm">
+                                        {verifiedName || "—"}
+                                      </p>
+                                      <p className="text-[11px] text-emerald-400 font-medium">✓ Verified from DigiLocker Aadhaar</p>
+                                    </div>
+
+                                    <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                        Aadhaar Number
+                                      </span>
+                                      <p className="font-mono font-bold text-primary text-sm">
+                                        {verifiedAadhaar || "XXXXXXXX1234"}
+                                      </p>
+                                    </div>
+
+                                    {verifiedDob && (
+                                      <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                          Date of Birth
+                                        </span>
+                                        <p className="font-semibold text-foreground text-xs">
+                                          {verifiedDob}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {verifiedGender && (
+                                      <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                          Gender
+                                        </span>
+                                        <p className="font-semibold text-foreground text-xs">
+                                          {verifiedGender === "M" ? "Male" : verifiedGender === "F" ? "Female" : verifiedGender}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {verifiedAddress && (
+                                      <div className="rounded-lg border border-border bg-card p-3 space-y-1 sm:col-span-2">
+                                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                          Full Address
+                                        </span>
+                                        <p className="font-semibold text-foreground text-xs">
+                                          {verifiedAddress}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "ifsc" ? (
                           (() => {
                             const data: any = responseJson || {};
                             const bankName = data.BANK || data.bank || "Kotak Mahindra Bank";
@@ -1970,6 +2387,450 @@ function TestApiPage() {
                                   </div>
                                 </div>
                               </div>
+                            );
+                          })()
+                        ) : selectedService === "mobile_to_bank" ? (
+                          (() => {
+                            const anyRes = (responseJson || {}) as Record<string, unknown>;
+                            const rawResult = (responseJson?.result || responseJson?.data || resData || {}) as Record<string, unknown>;
+                            
+                            // Comprehensive bulletproof extraction for bank_account_data across all wrapper shapes
+                            const bankAccountData = (
+                              (anyRes["bank_account_data"] as Record<string, unknown>) ||
+                              ((anyRes["data"] as Record<string, unknown>)?.[
+                                "bank_account_data"
+                              ] as Record<string, unknown>) ||
+                              ((anyRes["result"] as Record<string, unknown>)?.[
+                                "bank_account_data"
+                              ] as Record<string, unknown>) ||
+                              (resData?.bank_account_data as Record<string, unknown>) ||
+                              (Array.isArray(anyRes["data"]) ? ((anyRes["data"][0] as Record<string, unknown>)?.[
+                                "bank_account_data"
+                              ] || (anyRes["data"][0] as Record<string, unknown>)) : null) ||
+                              (Array.isArray(anyRes["accounts"]) ? (anyRes["accounts"][0] as Record<string, unknown>) : null) ||
+                              ((anyRes["data"] as Record<string, unknown>)?.["account_number"] || (anyRes["data"] as Record<string, unknown>)?.["name"] ? (anyRes["data"] as Record<string, unknown>) : null) ||
+                              ((anyRes["result"] as Record<string, unknown>)?.["account_number"] || (anyRes["result"] as Record<string, unknown>)?.["name"] ? (anyRes["result"] as Record<string, unknown>) : null) ||
+                              (anyRes["account_number"] || anyRes["name"] ? anyRes : null) ||
+                              (rawResult["bank_account_data"] as Record<string, unknown>) ||
+                              {}
+                            ) as Record<string, unknown>;
+
+                            const resultCode = Number(responseJson?.result_code ?? (responseStatus === 200 ? 101 : 102));
+                            const isSuccess = resultCode === 101;
+                            const message = String(responseJson?.message || (isSuccess ? "Details fetched successfully." : "Verification failed"));
+                            const displayMobile = mobileToBankNumber || String(rawResult["mobile_number"] || rawResult["mobile"] || "—");
+
+                            // Extract exact details matching IDSpay bank_account_data (as shown in Screenshot 1)
+                            const accountHolderName = String(
+                              bankAccountData["name"] ||
+                              bankAccountData["account_holder_name"] ||
+                              bankAccountData["beneficiary_name"] ||
+                              (anyRes["bank_account_data"] as Record<string, unknown>)?.[
+                                "name"
+                              ] ||
+                              (anyRes["data"] as Record<string, unknown>)?.[
+                                "name"
+                              ] ||
+                              anyRes["name"] ||
+                              "—"
+                            );
+
+                            const accountNumber = String(
+                              bankAccountData["account_number"] ||
+                              bankAccountData["accountNo"] ||
+                              bankAccountData["account"] ||
+                              (anyRes["bank_account_data"] as Record<string, unknown>)?.[
+                                "account_number"
+                              ] ||
+                              (anyRes["data"] as Record<string, unknown>)?.[
+                                "account_number"
+                              ] ||
+                              anyRes["account_number"] ||
+                              "—"
+                            );
+
+                            const ifsc = String(
+                              bankAccountData["ifsc"] ||
+                              bankAccountData["ifsc_code"] ||
+                              (anyRes["bank_account_data"] as Record<string, unknown>)?.[
+                                "ifsc"
+                              ] ||
+                              (anyRes["data"] as Record<string, unknown>)?.[
+                                "ifsc"
+                              ] ||
+                              anyRes["ifsc"] ||
+                              "—"
+                            );
+
+                            const utr = String(
+                              bankAccountData["utr"] ||
+                              bankAccountData["rrn"] ||
+                              (anyRes["bank_account_data"] as Record<string, unknown>)?.[
+                                "utr"
+                              ] ||
+                              (anyRes["data"] as Record<string, unknown>)?.[
+                                "utr"
+                              ] ||
+                              anyRes["utr"] ||
+                              "—"
+                            );
+
+                            const upi = String(
+                              bankAccountData["upi"] ||
+                              bankAccountData["vpa"] ||
+                              (anyRes["bank_account_data"] as Record<string, unknown>)?.[
+                                "upi"
+                              ] ||
+                              (anyRes["data"] as Record<string, unknown>)?.[
+                                "upi"
+                              ] ||
+                              anyRes["upi"] ||
+                              "—"
+                            );
+
+                            // Derive readable Bank Name from IFSC code prefix or explicit field
+                            const bankName = (() => {
+                              if (bankAccountData["bank_name"]) return String(bankAccountData["bank_name"]);
+                              if (bankAccountData["bank"]) return String(bankAccountData["bank"]);
+                              const prefix = ifsc.slice(0, 4).toUpperCase();
+                              if (prefix === "KKBK") return "Kotak Mahindra Bank";
+                              if (prefix === "SBIN") return "State Bank of India";
+                              if (prefix === "HDFC") return "HDFC Bank";
+                              if (prefix === "ICIC") return "ICICI Bank";
+                              if (prefix === "PUNB") return "Punjab National Bank";
+                              if (prefix === "UTIB") return "Axis Bank";
+                              if (prefix === "BARB") return "Bank of Baroda";
+                              if (prefix === "CNRB") return "Canara Bank";
+                              if (prefix === "UBIN") return "Union Bank of India";
+                              if (prefix === "IDFB") return "IDFC First Bank";
+                              if (prefix === "YESB") return "Yes Bank";
+                              if (prefix === "INDB") return "IndusInd Bank";
+                              if (prefix && prefix !== "—") return `${prefix} Bank`;
+                              return "Verified Bank";
+                            })();
+
+                            return (
+                              <>
+                                {/* Top Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className={`rounded-lg p-2 border ${
+                                      isSuccess
+                                        ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                                        : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                    }`}>
+                                      <Building2 className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-bold text-foreground">
+                                        {isSuccess
+                                          ? (accountHolderName !== "—" ? accountHolderName : "Verified Bank Account")
+                                          : "No Bank Record Linked"}
+                                      </p>
+                                      <p className="font-mono text-xs text-muted-foreground">
+                                        Mobile: +91 {displayMobile} · IDSpay Mobile To Bank Advance Gateway
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    {isSuccess ? (
+                                      <>
+                                        <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                          <ShieldCheck className="h-3.5 w-3.5" /> VERIFIED · BANK LINKED
+                                        </span>
+                                        <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                                          ₹2.00 Billed
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400 inline-flex items-center gap-1">
+                                          <AlertCircle className="h-3.5 w-3.5" /> FAILED / UNLINKED
+                                        </span>
+                                        <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                                          ₹0.00 Not Billed
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Hero Bank Account Highlight Card */}
+                                <div className={`rounded-xl border p-4 space-y-3 ${
+                                  isSuccess
+                                    ? "border-blue-500/30 bg-card/90"
+                                    : "border-amber-500/30 bg-amber-950/10"
+                                }`}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                      <Landmark className={`h-4 w-4 ${isSuccess ? "text-blue-400" : "text-amber-400"}`} />
+                                      <span className="font-semibold uppercase tracking-wider text-xs text-foreground">
+                                        Primary Linked Bank Account
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {isSuccess && (
+                                        <span className="rounded bg-blue-500/15 border border-blue-500/30 px-2.5 py-0.5 text-[11px] font-mono font-semibold text-blue-400">
+                                          {bankName}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                                    <div>
+                                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                                        Account Number
+                                      </p>
+                                      <p className={`font-mono font-bold text-xl sm:text-2xl tracking-wider ${
+                                        isSuccess ? "text-blue-400" : "text-amber-400"
+                                      }`}>
+                                        {accountNumber !== "—" ? accountNumber : (isSuccess ? "Account Verified" : "No Bank Account Found")}
+                                      </p>
+                                    </div>
+                                    {isSuccess && accountNumber !== "—" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(accountNumber, "Account Number")}
+                                        className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors cursor-pointer"
+                                        title="Copy Account Number"
+                                      >
+                                        <Copy className="h-3 w-3" /> Copy Account
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {isSuccess && (
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs border-t border-border/40 pt-2.5">
+                                      <span className="text-muted-foreground">
+                                        Beneficiary: <span className="font-bold text-foreground">{accountHolderName}</span>
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        IFSC: <span className="font-mono font-semibold text-blue-400">{ifsc}</span>
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        Bank: <span className="font-semibold text-foreground">{bankName}</span>
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  <p className="text-xs text-muted-foreground">
+                                    {isSuccess
+                                      ? "✓ Live verified Indian bank account linked to registered mobile number."
+                                      : `⚠️ ${message}`}
+                                  </p>
+                                </div>
+
+                                {/* 6-Grid Detail Cards matching Screenshot 1 JSON fields exactly as it is */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+                                  {/* 1. Beneficiary Name */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <User className={`h-3.5 w-3.5 ${isSuccess ? "text-blue-400" : "text-amber-400"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Beneficiary Name</span>
+                                      </div>
+                                      {isSuccess && accountHolderName !== "—" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(accountHolderName, "Beneficiary Name")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          title="Copy Name"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className={`font-bold text-base ${isSuccess ? "text-foreground" : "text-muted-foreground italic"}`}>
+                                      {accountHolderName}
+                                    </p>
+                                    <p className={`text-[11px] font-medium ${isSuccess ? "text-emerald-400" : "text-muted-foreground"}`}>
+                                      {isSuccess ? "✓ Name Matched at Bank" : "✗ Not Available"}
+                                    </p>
+                                  </div>
+
+                                  {/* 2. Bank Account Number */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <CreditCard className={`h-3.5 w-3.5 ${isSuccess ? "text-blue-400" : "text-muted-foreground"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Account Number</span>
+                                      </div>
+                                      {isSuccess && accountNumber !== "—" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(accountNumber, "Account Number")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          title="Copy Account Number"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="font-mono font-bold text-base text-foreground">
+                                      {accountNumber}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      Verified Savings / Current
+                                    </p>
+                                  </div>
+
+                                  {/* 3. Bank & IFSC */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <Landmark className={`h-3.5 w-3.5 ${isSuccess ? "text-blue-400" : "text-muted-foreground"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Bank & IFSC Code</span>
+                                      </div>
+                                      {isSuccess && ifsc !== "—" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(ifsc, "IFSC Code")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          title="Copy IFSC"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="font-semibold text-foreground text-sm">
+                                      {bankName}
+                                    </p>
+                                    <p className="text-[11px] font-mono font-semibold text-blue-400">
+                                      IFSC: {ifsc}
+                                    </p>
+                                  </div>
+
+                                  {/* 4. UTR */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <FileText className={`h-3.5 w-3.5 ${isSuccess ? "text-emerald-400" : "text-muted-foreground"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">UTR / Transaction Ref</span>
+                                      </div>
+                                      {isSuccess && utr !== "—" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(utr, "UTR")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          title="Copy UTR"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="font-mono font-bold text-sm text-foreground">
+                                      {utr}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      IMPS Verification UTR
+                                    </p>
+                                  </div>
+
+                                  {/* 5. Linked UPI ID */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <Smartphone className={`h-3.5 w-3.5 ${isSuccess ? "text-indigo-400" : "text-muted-foreground"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Linked UPI ID (VPA)</span>
+                                      </div>
+                                      {isSuccess && upi !== "—" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(upi, "UPI VPA")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          title="Copy UPI"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="font-mono font-bold text-sm text-emerald-400 break-all">
+                                      {upi}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">
+                                      NPCI Registered VPA
+                                    </p>
+                                  </div>
+
+                                  {/* 6. Queried Mobile */}
+                                  <div className="rounded-lg border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-muted-foreground">
+                                      <div className="flex items-center gap-1.5">
+                                        <Phone className={`h-3.5 w-3.5 ${isSuccess ? "text-blue-400" : "text-amber-400"}`} />
+                                        <span className="font-medium uppercase tracking-wider text-[10px]">Queried Mobile Number</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(String(displayMobile), "Mobile Number")}
+                                        className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                        title="Copy Mobile"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                    <p className="font-mono font-bold text-primary text-base">
+                                      +91 {displayMobile}
+                                    </p>
+                                    <p className={`text-[11px] ${isSuccess ? "text-emerald-400" : "text-amber-400"}`}>
+                                      {isSuccess ? "Status: Active Bank Linkage Found" : "Status: No Record Found"}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Gateway & Audit Metadata Footer */}
+                                <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2.5 text-xs">
+                                  <div className="flex items-center justify-between text-muted-foreground border-b border-border/40 pb-2">
+                                    <span className="font-medium text-[11px] uppercase tracking-wider text-foreground">
+                                      Gateway & Audit Metadata
+                                    </span>
+                                    <span className={`text-[11px] font-mono font-semibold ${isSuccess ? "text-emerald-400" : "text-amber-400"}`}>
+                                      HTTP {responseJson?.http_response_code || responseStatus || 200} · Code {resultCode}
+                                    </span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2 font-mono text-[11px]">
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
+                                      <span className="text-muted-foreground shrink-0">Request ID:</span>
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="text-foreground truncate font-semibold" title={String(responseJson?.request_id || "—")}>
+                                          {String(responseJson?.request_id || "—")}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(String(responseJson?.request_id || ""), "Request ID")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                                          title="Copy Request ID"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
+                                      <span className="text-muted-foreground shrink-0">Client Ref:</span>
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="text-foreground truncate font-semibold" title={String(responseJson?.client_ref_num || "—")}>
+                                          {String(responseJson?.client_ref_num || "—")}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(String(responseJson?.client_ref_num || ""), "Client Ref")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                                          title="Copy Client Ref"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40 sm:col-span-2">
+                                      <span className="text-muted-foreground shrink-0">Message:</span>
+                                      <span className={`font-semibold truncate ${isSuccess ? "text-emerald-400" : "text-amber-400"}`}>
+                                        {message}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
                             );
                           })()
                         ) : selectedService === "mobile_upi" ? (
@@ -2234,16 +3095,10 @@ function TestApiPage() {
                                         </button>
                                       </div>
                                     </div>
-                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
+                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40 sm:col-span-2">
                                       <span className="text-muted-foreground shrink-0">Message:</span>
                                       <span className={`font-semibold truncate ${isUpiLinked ? "text-emerald-400" : "text-amber-400"}`}>
                                         {upiMessage}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-2 min-w-0 bg-background/50 px-2.5 py-1.5 rounded border border-border/40">
-                                      <span className="text-muted-foreground shrink-0">Audit Settlement:</span>
-                                      <span className={`font-semibold ${isUpiLinked ? "text-primary" : "text-muted-foreground"}`}>
-                                        {isUpiLinked ? "Logged in BullMQ (₹2.00)" : "Not Billed (₹0.00)"}
                                       </span>
                                     </div>
                                   </div>

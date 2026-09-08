@@ -62,9 +62,10 @@ function ApisPage() {
       };
     }
     // Fallback by ID
-    if (ep.id === "verify-pan" && pricingData?.pricing?.pan) {
-      const isAssigned = pricingData?.assigned?.pan !== false;
-      return { price: pricingData.pricing.pan, isCustom: pricingData.pricing.pan !== 1.1, isAssigned };
+    if (ep.id === "verify-pan" && pricingData?.pricing?.["pan"]) {
+      const isAssigned = pricingData?.assigned?.["pan"] !== false;
+      const panPrice = pricingData.pricing["pan"] ?? 1.1;
+      return { price: panPrice, isCustom: panPrice !== 1.1, isAssigned };
     }
     return { price: 2.0, isCustom: false, isAssigned: true };
   };
@@ -210,6 +211,15 @@ function ApisPage() {
                   </span>
 
                   <div className="flex items-center gap-2">
+                    {ep.id === "digilocker-digital-kyc" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "digilocker" }}
+                        className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {ep.id === "verify-pan" && (
                       <Link
                         to="/dashboard/test-api"
@@ -233,6 +243,15 @@ function ApisPage() {
                         to="/dashboard/test-api"
                         search={{ service: "aadhaar" }}
                         className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {ep.id === "mobile-to-bank-advance" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "mobile_to_bank" }}
+                        className="inline-flex items-center gap-1 rounded bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 font-medium text-blue-400 hover:bg-blue-500/20 transition-colors"
                       >
                         ⚡ Test In Console
                       </Link>

@@ -16,6 +16,7 @@ import mobileUpiRoutes from '../modules/verification/mobile_upi/mobileUpi.routes
 import domainRoutes from '../modules/domain/domain.routes.js';
 import ifscRoutes from '../modules/ifsc/ifsc.routes.js';
 import pricingRoutes from '../modules/pricing/pricing.routes.js';
+import mobileToBankRoutes from '../modules/verification/mobile_to_bank/mobileToBank.routes.js';
 
 const apiRouter = Router();
 
@@ -37,6 +38,7 @@ apiRouter.use('/uan', uanRoutes);
 apiRouter.use('/srv3/uan-direct', uanRoutes);
 apiRouter.use('/uan-direct', uanRoutes);
 apiRouter.use('/', mobileUpiRoutes);
+apiRouter.use('/', mobileToBankRoutes);
 apiRouter.use('/', apilayerRoutes);
 apiRouter.use('/idfy', idfyRoutes);
 apiRouter.use('/validate_bank_account', idfyRoutes);

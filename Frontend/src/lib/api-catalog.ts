@@ -980,6 +980,45 @@ export const endpoints: ApiEndpoint[] = [
 
   /* ---------------- Banking ---------------- */
   {
+    id: "mobile-to-bank-advance",
+    group: "Banking",
+    method: "POST",
+    path: "/srv3/mobile-to-bank/advance",
+    title: "Mobile To Bank Advance",
+    desc: "Advanced mobile-to-bank account lookup and verification powered by IDSpay. Retrieve verified bank accounts and beneficiary details linked with an Indian mobile number.",
+    tags: ["bank", "mobile", "advance", "account", "verification", "idspay"],
+    latency: "~400ms",
+    params: [
+      { name: "mobile_number", type: "string", required: true, desc: "10-digit Indian mobile number of the account holder." },
+      { name: "consent", type: "string", required: true, desc: "Explicit user consent string ('Y')." },
+      { name: "client_ref_num", type: "string", desc: "Optional unique client reference transaction identifier." },
+    ],
+    sampleBody: {
+      mobile_number: "898719XXXX",
+      consent: "Y",
+    },
+    sampleResponse: {
+      http_response_code: 200,
+      result_code: 101,
+      message: "Details fetched successfully.",
+      request_id: "9fe28939-cbc4-4b56-9a2c",
+      client_ref_num: "M2B_D25BB4",
+      bank_account_data: {
+        name: "RINKI  .",
+        utr: "625199976885",
+        account_number: "6947737207",
+        ifsc: "KKBK0004587",
+        upi: "9650843194@nyes",
+      },
+    },
+    errorCodes: [
+      { code: 400, meaning: "Missing required mobile_number or invalid 10-digit Indian mobile number format." },
+      { code: 401, meaning: "Unauthorized: Missing required API credentials (api_id, api_key, token_id)." },
+      { code: 402, meaning: "Insufficient wallet balance (₹2.00 required)." },
+      { code: 502, meaning: "Upstream verification service temporarily unavailable." },
+    ],
+  },
+  {
     id: "bank-penny-less",
     group: "Banking",
     method: "POST",

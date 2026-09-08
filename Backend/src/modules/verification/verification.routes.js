@@ -6,6 +6,7 @@ import prefillRoutes from './prefill/prefill.routes.js';
 import nameFinderRoutes from './name_finder/nameFinder.routes.js';
 import mobileUpiRoutes from './mobile_upi/mobileUpi.routes.js';
 import digilockerRoutes from './digilocker/digilocker.routes.js';
+import mobileToBankRoutes from './mobile_to_bank/mobileToBank.routes.js';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use('/', prefillRoutes);
 router.use('/', nameFinderRoutes);
 router.use('/', mobileUpiRoutes);
 router.use('/', digilockerRoutes);
+router.use('/', mobileToBankRoutes);
 
 export default router;

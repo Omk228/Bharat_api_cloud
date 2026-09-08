@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'node:path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -20,11 +21,19 @@ import mobileUpiRoutes from './modules/verification/mobile_upi/mobileUpi.routes.
 import domainRoutes from './modules/domain/domain.routes.js';
 import ifscRoutes from './modules/ifsc/ifsc.routes.js';
 import digilockerRoutes from './modules/verification/digilocker/digilocker.routes.js';
+import statementAnalyzerRoutes from './modules/verification/statement_analyzer/statementAnalyzer.routes.js';
+import mobileToBankRoutes from './modules/verification/mobile_to_bank/mobileToBank.routes.js';
 
 const app = express();
 
 // Security Middlewares
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use(
   cors({
     origin: true,
@@ -53,9 +62,9 @@ if (ENV.NODE_ENV !== 'test') {
   app.use(morgan(ENV.NODE_ENV === 'development' ? 'dev' : 'combined'));
 }
 
-// Request Parsers
-app.use(express.json({ limit: '16kb' }));
-app.use(express.urlencoded({ extended: true, limit: '16kb' }));
+// Request Parsers - increased limit for PDF statement uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Root Health / Info Endpoint
 app.get('/', (req, res) => {
@@ -86,6 +95,12 @@ app.use('/reverse', geocodingRoutes);
 app.use('/', domainRoutes);
 app.use('/ifsc', ifscRoutes);
 app.use('/', digilockerRoutes);
+app.use('/', statementAnalyzerRoutes);
+app.use('/', mobileToBankRoutes);
+
+// Serve isolated test-tools statically
+app.use('/test-tools', express.static(path.resolve(process.cwd(), '../test-tools')));
+app.use('/test-tools', express.static(path.resolve(process.cwd(), 'test-tools')));
 
 // Mount Main API Routes
 app.use('/api/v1', apiRouter);

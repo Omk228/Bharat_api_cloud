@@ -643,6 +643,78 @@ export const apiClient = {
     return res.json();
   },
 
+  async verifyMobileToBankAdvance(data: {
+    mobile_number: string;
+    consent?: string;
+    client_ref_num?: string;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const host = API_BASE.replace(/\/api\/v1\/?$/, '');
+    const res = await fetch(`${host}/srv3/mobile-to-bank/advance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        mobile_number: data.mobile_number,
+        consent: data.consent || 'Y',
+        client_ref_num: data.client_ref_num,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
+  async verifyDigilocker(data: {
+    method?: 'generateToken' | 'fetchDetails' | undefined;
+    redirect_url?: string | undefined;
+    logo_url?: string | undefined;
+    aadhaar_number?: string | undefined;
+    client_id?: string | undefined;
+    client_ref_num?: string | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
+  }): Promise<Record<string, unknown>> {
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const host = API_BASE.replace(/\/api\/v1\/?$/, '');
+    const res = await fetch(`${host}/srv2/validation/digilocker-digital-kyc`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        method: data.method || (data.client_id ? 'fetchDetails' : 'generateToken'),
+        ...(data.redirect_url ? { redirect_url: data.redirect_url } : {}),
+        ...(data.logo_url ? { logo_url: data.logo_url } : {}),
+        ...(data.aadhaar_number ? { aadhaar_number: data.aadhaar_number } : {}),
+        ...(data.client_id ? { client_id: data.client_id } : {}),
+        ...(data.client_ref_num ? { client_ref_num: data.client_ref_num } : {}),
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
   async getWalletBalance(): Promise<{
     wallet_balance: number;
     today_spend: number;

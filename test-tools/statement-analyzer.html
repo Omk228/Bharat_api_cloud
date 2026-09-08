@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bharat API Cloud — Statement Analyzer PDF (Srv2) Test Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.5rem;
+    }
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      border-bottom: 1px solid #1f2937;
+      padding-bottom: 1.25rem;
+    }
+    @media (min-width: 768px) {
+      .header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo-icon {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.75rem;
+      background: linear-gradient(135deg, #059669, #34d399);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+      color: #000;
+      flex-shrink: 0;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.15rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #34d399;
+    }
+    .subtitle {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-top: 0.25rem;
+    }
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      color: #34d399;
+      background: #111827;
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.35rem;
+      border: 1px solid #1f2937;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #111827;
+      border: 1px solid #1f2937;
+      padding: 0.5rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #d1d5db;
+    }
+    .status-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 9999px;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 0.85rem;
+      padding: 1.25rem;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.8);
+      padding-bottom: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+    @media (min-width: 640px) {
+      .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (min-width: 1024px) {
+      .grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .input-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-bottom: 0.35rem;
+      font-weight: 500;
+    }
+    .input-control {
+      width: 100%;
+      background: #030712;
+      border: 1px solid #374151;
+      border-radius: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-control:focus {
+      border-color: #10b981;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    @media (min-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 7fr 5fr;
+      }
+    }
+    .tabs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1f2937;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .tab-btn {
+      background: rgba(31, 41, 55, 0.6);
+      border: 1px solid #374151;
+      padding: 0.45rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #9ca3af;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      color: #ffffff;
+    }
+    .tab-btn.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    .dropzone {
+      position: relative;
+      border: 2px dashed #374151;
+      border-radius: 0.75rem;
+      background: rgba(3, 7, 18, 0.6);
+      padding: 1.75rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    .dropzone:hover {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.05);
+    }
+    .dropzone.file-ready {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.08);
+    }
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .dropzone-icon {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 0.75rem;
+      color: #34d399;
+    }
+    .btn-primary {
+      width: 100%;
+      background: #059669;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 0.85rem 1.25rem;
+      border-radius: 0.5rem;
+      border: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover {
+      background: #10b981;
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .manual-buttons-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    @media (min-width: 640px) {
+      .manual-buttons-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    .btn-step {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.65rem 0.75rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .btn-step:hover {
+      background: rgba(16, 185, 129, 0.18);
+    }
+    .terminal-container {
+      background: #030712;
+      border: 1px solid #1f2937;
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+    }
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1f2937;
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.5rem;
+      color: #9ca3af;
+    }
+    .terminal-body {
+      height: 12rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #030712;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+    .json-pre {
+      background: #030712;
+      border: 1px solid #1f2937;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: #d1d5db;
+      max-height: 18rem;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .copy-btn {
+      background: none;
+      border: none;
+      color: #34d399;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Top Header Navigation -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-icon">
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <div class="title-row">
+            <h1 class="title">Statement Analyzer PDF (Srv2)</h1>
+            <span class="badge">Bharat API Gateway</span>
+          </div>
+          <p class="subtitle">
+            Gateway Route: <span class="code-pill">POST /srv2/statement-upload</span> · Bank Statement Analytics
+          </p>
+        </div>
+      </div>
+
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span>Gateway: Ready (http://localhost:5002)</span>
+      </div>
+    </header>
+
+    <!-- Configuration Bar -->
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#34d399">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Bharat API Credentials
+        </h2>
+        <span style="font-size: 0.7rem; color: #6b7280; font-family: 'JetBrains Mono', monospace;">Auth Headers Auto-Attached</span>
+      </div>
+
+      <div class="grid-4">
+        <div class="input-group">
+          <label>Gateway Base URL</label>
+          <input id="cfgBaseUrl" type="text" value="http://localhost:5002" class="input-control">
+        </div>
+        <div class="input-group">
+          <label>API ID (X-Api-Id)</label>
+          <input id="cfgApiId" type="text" value="APID099268" class="input-control">
+        </div>
+        <div class="input-group">
+          <label>API Key (X-Api-Key)</label>
+          <input id="cfgApiKey" type="text" value="663e05b0-603a-45d8-b2b4-07a7ea6a650d" class="input-control">
+        </div>
+        <div class="input-group">
+          <label>Token ID (X-Token-Id)</label>
+          <input id="cfgTokenId" type="text" value="OMWTdrz2jroQy4C7Gtf96HNu6VNoQFo3" class="input-control">
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Workflow Grid -->
+    <div class="main-grid">
+
+      <!-- Left Column: Controls (7 cols) -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <div class="card">
+          <div class="tabs-header">
+            <div style="display: flex; gap: 0.5rem;">
+              <button id="tabBtnAuto" type="button" class="tab-btn active">
+                ⚡ 1-Shot Complete Pipeline (Single Hit)
+              </button>
+              <button id="tabBtnManual" type="button" class="tab-btn">
+                🛠️ 6-Step Method Controller
+              </button>
+            </div>
+            <span style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: #9ca3af;">POST /srv2/statement-upload</span>
+          </div>
+
+          <!-- PDF Upload Zone (Always accessible) -->
+          <div style="margin-bottom: 1rem;">
+            <div id="dropZone" class="dropzone">
+              <input type="file" id="pdfFileInput" accept="application/pdf">
+              <div class="dropzone-icon">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <p style="font-size: 0.85rem; font-weight: 600; color: #ffffff;" id="fileLabelTitle">Choose a Bank Statement PDF or Drag & Drop</p>
+              <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.2rem;" id="fileLabelSub">Supported format: Standard Bank Statement (.pdf)</p>
+              <div id="fileInfoBadge" class="badge hidden" style="margin-top: 0.5rem;">
+                📄 No file selected
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 1: 1-Shot Automated Statement Analysis -->
+          <div id="viewAutoWorkflow" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="input-group">
+                <label>Acceptance Policy</label>
+                <select id="autoAcceptancePolicy" class="input-control">
+                  <option value="atLeastOneTransactionInRange">atLeastOneTransactionInRange</option>
+                  <option value="allTransactionsInRange">allTransactionsInRange</option>
+                  <option value="any">any</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Report Subtype</label>
+                <select id="autoReportSubtype" class="input-control">
+                  <option value="type3">type3 (Comprehensive Financial Analysis)</option>
+                  <option value="type1">type1</option>
+                  <option value="type2">type2</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 1-Shot Action Button -->
+            <button id="btnRunAutomated" type="button" class="btn-primary">
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>⚡ Execute Complete Analysis (1 Single Hit)</span>
+            </button>
+          </div>
+
+          <!-- TAB 2: Advanced 6-Step Method Controller -->
+          <div id="viewManualWorkflow" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Auto-populated Session Context -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+              <div class="input-group">
+                <label>Session Token (from Step 1)</label>
+                <input id="manToken" type="text" placeholder="Auto-fills from Step 1..." class="input-control">
+              </div>
+              <div class="input-group">
+                <label>Request ID (from Step 1)</label>
+                <input id="manRequestId" type="text" placeholder="Auto-fills from Step 1..." class="input-control">
+              </div>
+              <div class="input-group">
+                <label>Transaction ID / txn_id (from Step 3/4)</label>
+                <input id="manTxnId" type="text" placeholder="Auto-fills from Step 3..." class="input-control">
+              </div>
+            </div>
+
+            <!-- Individual Step Action Buttons Grid -->
+            <div style="margin-top: 0.5rem;">
+              <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600;">INDIVIDUAL METHODS (1 Hit Each):</p>
+              <div class="manual-buttons-grid">
+                <button type="button" class="btn-step" id="btnStep1">
+                  1️⃣ INITIATE_UPLOAD ↗
+                  <span style="display: block; font-size: 0.65rem; color: #9ca3af; font-weight: 400;">Generates Token & Request ID</span>
+                </button>
+                <button type="button" class="btn-step" id="btnStep2">
+                  2️⃣ UPLOAD PDF FILE ↗
+                  <span style="display: block; font-size: 0.65rem; color: #9ca3af; font-weight: 400;">INITIATE_UPLOAD with PDF & Token</span>
+                </button>
+                <button type="button" class="btn-step" id="btnStep3">
+                  3️⃣ COMPLETE_UPLOAD ↗
+                  <span style="display: block; font-size: 0.65rem; color: #9ca3af; font-weight: 400;">Marks upload done & generates txn_id</span>
+                </button>
+                <button type="button" class="btn-step" id="btnStep4" style="border-color: rgba(56, 189, 248, 0.3); color: #38bdf8;">
+                  4️⃣ CHECK_STATUS ↗
+                  <span style="display: block; font-size: 0.65rem; color: #9ca3af; font-weight: 400;">Checks OCR processing progress</span>
+                </button>
+                <button type="button" class="btn-step" id="btnStep5" style="border-color: rgba(251, 191, 36, 0.3); color: #fbbf24;">
+                  5️⃣ RETRIEVE_STATEMENT ↗
+                  <span style="display: block; font-size: 0.65rem; color: #9ca3af; font-weight: 400;">Retrieves statement analysis JSON</span>
+                </button>
+                <button type="button" class="btn-step" id="btnStep6" style="border-color: rgba(248, 113, 113, 0.3); color: #f87171;">
+                  6️⃣ CANCEL_REQUEST ✕
+                  <span style="display: block; font-size: 0.65rem; color: #9ca3af; font-weight: 400;">Cancels in-flight session</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Terminal Logs -->
+        <div class="terminal-container">
+          <div class="terminal-header">
+            <span style="display: flex; align-items: center; gap: 0.4rem; color: #d1d5db; font-weight: 600;">
+              <span class="status-dot"></span> Live Terminal Logs
+            </span>
+            <button id="btnClearLogs" type="button" style="background: none; border: none; color: #6b7280; font-size: 0.7rem; cursor: pointer; font-family: 'JetBrains Mono', monospace;">
+              Clear Console
+            </button>
+          </div>
+          <div id="terminalLog" class="terminal-body custom-scrollbar">
+            <div style="color: #6b7280;">[System] Bharat API Cloud Statement Analyzer Test Console initialized.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Response Visual Summary & Raw JSON (5 cols) -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Visual Analysis Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#34d399">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Statement Analysis Summary
+            </h2>
+            <span id="responseStatusBadge" class="code-pill" style="color: #9ca3af; font-size: 0.65rem;">
+              AWAITING RUN
+            </span>
+          </div>
+
+          <!-- Dynamic Output Content -->
+          <div id="visualSummaryContainer" style="font-size: 0.8rem;">
+            <div style="border: 1px dashed #1f2937; background: rgba(3, 7, 18, 0.4); border-radius: 0.5rem; padding: 1.5rem; text-align: center; color: #6b7280;">
+              Execute analysis to view real-time statement analytics here.
+            </div>
+          </div>
+
+          <!-- Raw Response JSON Collapsible -->
+          <div style="border-top: 1px solid #1f2937; padding-top: 0.85rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: 0.75rem; font-weight: 600; color: #9ca3af; font-family: 'JetBrains Mono', monospace;">Raw Response JSON</span>
+              <button id="btnCopyJson" type="button" class="copy-btn">
+                Copy JSON
+              </button>
+            </div>
+            <pre id="rawJsonResponse" class="json-pre custom-scrollbar">{ "status": "waiting for request" }</pre>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid #1f2937; padding-top: 1rem; text-align: center; font-size: 0.75rem; color: #6b7280; font-family: 'JetBrains Mono', monospace;">
+      Bharat API Cloud Platform · Pure White-Labeled Gateway Testing Console · Direct Backend Route /srv2/statement-upload
+    </footer>
+
+  </div>
+
+  <script>
+    // State storage
+    let currentBase64Pdf = "";
+    let selectedFileName = "";
+    let lastResponseObj = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Tab switcher bindings
+      document.getElementById('tabBtnAuto').addEventListener('click', () => switchWorkflowTab('auto'));
+      document.getElementById('tabBtnManual').addEventListener('click', () => switchWorkflowTab('manual'));
+
+      // File input handling
+      const fileInput = document.getElementById('pdfFileInput');
+      fileInput.addEventListener('change', (e) => {
+        handleFileSelected(e.target.files[0]);
+      });
+
+      // Clear logs button
+      document.getElementById('btnClearLogs').addEventListener('click', clearLogs);
+
+      // Copy response button
+      document.getElementById('btnCopyJson').addEventListener('click', copyRawResponse);
+
+      // 1-Shot Execution button
+      document.getElementById('btnRunAutomated').addEventListener('click', runOneShotAnalysis);
+
+      // Manual Step buttons
+      document.getElementById('btnStep1').addEventListener('click', () => runManualStep('INITIATE_UPLOAD'));
+      document.getElementById('btnStep2').addEventListener('click', () => runManualStep('UPLOAD_FILE'));
+      document.getElementById('btnStep3').addEventListener('click', () => runManualStep('COMPLETE_UPLOAD'));
+      document.getElementById('btnStep4').addEventListener('click', () => runManualStep('CHECK_STATUS'));
+      document.getElementById('btnStep5').addEventListener('click', () => runManualStep('RETRIEVE_STATEMENT'));
+      document.getElementById('btnStep6').addEventListener('click', () => runManualStep('CANCEL_REQUEST'));
+    });
+
+    function handleFileSelected(file) {
+      if (!file) return;
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        alert('Please select a valid PDF file.');
+        return;
+      }
+      const dropZone = document.getElementById('dropZone');
+      const fileInfoBadge = document.getElementById('fileInfoBadge');
+      const fileLabelTitle = document.getElementById('fileLabelTitle');
+      const fileLabelSub = document.getElementById('fileLabelSub');
+
+      selectedFileName = file.name;
+      fileLabelTitle.innerText = file.name;
+      fileLabelSub.innerText = `${(file.size / 1024).toFixed(1)} KB · Ready to upload`;
+      fileInfoBadge.classList.remove('hidden');
+      fileInfoBadge.innerText = `✓ Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      dropZone.classList.add('file-ready');
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        currentBase64Pdf = reader.result;
+        log(`[File] Loaded PDF "${file.name}" (${(file.size / 1024).toFixed(1)} KB)`, 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function switchWorkflowTab(mode) {
+      const autoBtn = document.getElementById('tabBtnAuto');
+      const manBtn = document.getElementById('tabBtnManual');
+      const autoView = document.getElementById('viewAutoWorkflow');
+      const manView = document.getElementById('viewManualWorkflow');
+
+      if (mode === 'auto') {
+        autoBtn.classList.add('active');
+        manBtn.classList.remove('active');
+        autoView.classList.remove('hidden');
+        manView.classList.add('hidden');
+      } else {
+        manBtn.classList.add('active');
+        autoBtn.classList.remove('active');
+        manView.classList.remove('hidden');
+        autoView.classList.add('hidden');
+      }
+    }
+
+    function log(msg, type = 'info') {
+      const term = document.getElementById('terminalLog');
+      const div = document.createElement('div');
+      const timestamp = new Date().toLocaleTimeString();
+      let color = '#d1d5db';
+      if (type === 'success') color = '#34d399';
+      if (type === 'error') color = '#f87171';
+      if (type === 'warn') color = '#fbbf24';
+
+      div.style.color = color;
+      div.innerText = `[${timestamp}] ${msg}`;
+      term.appendChild(div);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('terminalLog').innerHTML = '';
+    }
+
+    // Bharat API Request Dispatcher
+    async function sendBharatApiRequest(payload) {
+      const baseUrl = document.getElementById('cfgBaseUrl').value.trim().replace(/\/+$/, '');
+      const apiId = document.getElementById('cfgApiId').value.trim();
+      const apiKey = document.getElementById('cfgApiKey').value.trim();
+      const tokenId = document.getElementById('cfgTokenId').value.trim();
+
+      const fullUrl = `${baseUrl}/srv2/statement-upload`;
+      log(`📡 POST ${fullUrl} [method: ${payload.method || '1-SHOT PIPELINE'}]...`);
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Api-Id': apiId,
+        'X-Api-Key': apiKey,
+        'X-Token-Id': tokenId,
+      };
+
+      const start = performance.now();
+      try {
+        const res = await fetch(fullUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            api_id: apiId,
+            api_key: apiKey,
+            token_id: tokenId,
+            ...payload,
+          }),
+        });
+
+        const latency = Math.round(performance.now() - start);
+        const json = await res.json().catch(() => ({ error: 'Invalid JSON response from gateway' }));
+        lastResponseObj = json;
+
+        document.getElementById('rawJsonResponse').innerText = JSON.stringify(json, null, 2);
+        const statusBadge = document.getElementById('responseStatusBadge');
+
+        const isSuccess = res.ok && json.result_code !== 102 && json.status_code !== 400 && json.status_code !== 422 && json.status_code !== 500 && json.status_code !== 404;
+
+        if (isSuccess) {
+          statusBadge.style.color = '#34d399';
+          statusBadge.innerText = `${res.status} SUCCESS (${latency}ms)`;
+          log(`📥 [${res.status} OK] Response received in ${latency}ms`, 'success');
+        } else {
+          statusBadge.style.color = '#f87171';
+          statusBadge.innerText = `${res.status || json.status_code || 400} ERROR (${latency}ms)`;
+          log(`❌ [${res.status || json.status_code || 400} ERROR] ${json.message || 'Request failed'} (${latency}ms)`, 'error');
+        }
+
+        return { res: { ok: isSuccess, status: res.status }, json, latency };
+      } catch (networkErr) {
+        const latency = Math.round(performance.now() - start);
+        log(`❌ Network Error: Could not reach gateway at ${fullUrl}`, 'error');
+        return { res: { ok: false, status: 0 }, json: { message: networkErr.message }, latency };
+      }
+    }
+
+    // 1-Shot Statement Analysis Runner
+    async function runOneShotAnalysis() {
+      const btn = document.getElementById('btnRunAutomated');
+
+      if (!currentBase64Pdf) {
+        alert('⚠️ Please select or drop a Bank Statement PDF file first!');
+        log('❌ Execution halted: No PDF file selected.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+
+      try {
+        log('⚡ Dispatching 1-Shot Statement Analysis Request to Gateway...');
+        const policy = document.getElementById('autoAcceptancePolicy').value;
+        const reportSubtype = document.getElementById('autoReportSubtype').value;
+
+        const res = await sendBharatApiRequest({
+          file: currentBase64Pdf,
+          acceptance_policy: policy,
+          report_subtype: reportSubtype,
+        });
+
+        if (!res.res.ok) {
+          throw new Error(res.json.message || 'Statement analysis failed');
+        }
+
+        const data = res.json.data || res.json;
+        if (res.json.token || data?.token) document.getElementById('manToken').value = res.json.token || data.token;
+        if (res.json.request_id || data?.request_id) document.getElementById('manRequestId').value = res.json.request_id || data.request_id;
+        if (res.json.txn_id || data?.txn_id) document.getElementById('manTxnId').value = res.json.txn_id || data.txn_id;
+
+        renderVisualSummary(res.json);
+        log('🎉 Complete Statement Analysis executed and verified in 1 Single Hit!', 'success');
+
+      } catch (err) {
+        log(`Execution halted: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Manual Step Runner
+    async function runManualStep(stepMethod) {
+      const token = document.getElementById('manToken').value.trim();
+      const requestId = document.getElementById('manRequestId').value.trim();
+      const txnId = document.getElementById('manTxnId').value.trim();
+      const policy = document.getElementById('autoAcceptancePolicy').value;
+      const reportSubtype = document.getElementById('autoReportSubtype').value;
+
+      let payload = {};
+
+      if (stepMethod === 'INITIATE_UPLOAD') {
+        payload = {
+          method: 'INITIATE_UPLOAD',
+          acceptance_policy: policy,
+        };
+      } else if (stepMethod === 'UPLOAD_FILE') {
+        if (!currentBase64Pdf) {
+          alert('⚠️ Please select a PDF file first!');
+          return;
+        }
+        if (!token || !requestId) {
+          alert('⚠️ Please run Step 1 (INITIATE_UPLOAD) first to get token & request_id!');
+          return;
+        }
+        payload = {
+          method: 'INITIATE_UPLOAD',
+          token: token,
+          request_id: requestId,
+          file: currentBase64Pdf,
+        };
+      } else if (stepMethod === 'COMPLETE_UPLOAD') {
+        if (!requestId) {
+          alert('⚠️ Please enter or generate a Request ID first!');
+          return;
+        }
+        payload = {
+          method: 'COMPLETE_UPLOAD',
+          request_id: requestId,
+        };
+      } else if (stepMethod === 'CHECK_STATUS') {
+        if (!requestId) {
+          alert('⚠️ Please enter or generate a Request ID first!');
+          return;
+        }
+        payload = {
+          method: 'CHECK_STATUS',
+          request_id: requestId,
+        };
+      } else if (stepMethod === 'RETRIEVE_STATEMENT') {
+        if (!txnId && !requestId) {
+          alert('⚠️ Please enter Transaction ID / txn_id!');
+          return;
+        }
+        payload = {
+          method: 'RETRIEVE_STATEMENT',
+          txn_id: txnId || requestId,
+          report_type: 'json',
+          report_subtype: reportSubtype,
+        };
+      } else if (stepMethod === 'CANCEL_REQUEST') {
+        if (!requestId) {
+          alert('⚠️ Please enter Request ID!');
+          return;
+        }
+        payload = {
+          method: 'CANCEL_REQUEST',
+          request_id: requestId,
+        };
+      }
+
+      log(`▶ Executing Step: ${stepMethod}...`);
+      const res = await sendBharatApiRequest(payload);
+      const data = res.json.data || res.json;
+
+      if (res.json.token || data?.token) document.getElementById('manToken').value = res.json.token || data.token;
+      if (res.json.request_id || data?.request_id) document.getElementById('manRequestId').value = res.json.request_id || data.request_id;
+      if (res.json.txn_id || data?.txn_id) document.getElementById('manTxnId').value = res.json.txn_id || data.txn_id;
+
+      if (res.res.ok) {
+        renderVisualSummary(res.json);
+      }
+    }
+
+    // Render formatted summary in UI
+    function renderVisualSummary(resp) {
+      const container = document.getElementById('visualSummaryContainer');
+      const data = resp.data || resp.result || resp;
+
+      const isProcessing =
+        resp.status_message === 'PROCESSING' ||
+        data.status === 'PROCESSING' ||
+        data.status === 'error' ||
+        data.code === 404 ||
+        data?.status?.code === 404;
+
+      if (isProcessing) {
+        container.innerHTML = `
+          <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 0.5rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.8rem; font-weight: 700; color: #fbbf24; display: flex; align-items: center; gap: 0.4rem;">
+                ⏳ Statement Processing (OCR in progress)
+              </span>
+              <span class="badge" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">PROCESSING</span>
+            </div>
+            <p style="font-size: 0.75rem; color: #d1d5db;">
+              PDF statement is uploaded successfully. Upstream engine is extracting bank transactions.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; background: #030712; padding: 0.5rem; border-radius: 0.35rem;">
+              <div><span style="color: #6b7280;">Request ID:</span> <span style="color: #ffffff;">${resp.request_id || data.request_id || '—'}</span></div>
+              <div><span style="color: #6b7280;">Txn ID:</span> <span style="color: #34d399;">${resp.txn_id || data.txn_id || '—'}</span></div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+              <button id="btnCheckStatusInline" type="button" class="btn-step" style="flex: 1; text-align: center; border-color: #38bdf8; color: #38bdf8;">
+                🔄 4. Check Status
+              </button>
+              <button id="btnRetrieveInline" type="button" class="btn-step" style="flex: 1; text-align: center; border-color: #fbbf24; color: #fbbf24;">
+                📊 5. Retrieve Report
+              </button>
+            </div>
+          </div>
+        `;
+        document.getElementById('btnCheckStatusInline')?.addEventListener('click', () => runManualStep('CHECK_STATUS'));
+        document.getElementById('btnRetrieveInline')?.addEventListener('click', () => runManualStep('RETRIEVE_STATEMENT'));
+        return;
+      }
+
+      const account = data.account_info || {};
+      const summary = data.summary || {};
+
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Account Highlights -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div style="background: #030712; border: 1px solid #1f2937; border-radius: 0.5rem; padding: 0.6rem 0.75rem;">
+              <span style="font-size: 0.65rem; text-transform: uppercase; color: #6b7280; font-family: 'JetBrains Mono', monospace;">Bank Name</span>
+              <p style="font-weight: 700; color: #ffffff; font-size: 0.85rem; margin-top: 0.15rem;">${account.bank_name || 'Bank Account Verified'}</p>
+            </div>
+            <div style="background: #030712; border: 1px solid #1f2937; border-radius: 0.5rem; padding: 0.6rem 0.75rem;">
+              <span style="font-size: 0.65rem; text-transform: uppercase; color: #6b7280; font-family: 'JetBrains Mono', monospace;">Account Number</span>
+              <p style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #34d399; font-size: 0.85rem; margin-top: 0.15rem;">${account.account_number || data.request_id || '—'}</p>
+            </div>
+          </div>
+
+          <!-- Financial Summary -->
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 0.5rem; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 700; color: #34d399;">
+              <span>Financial Overview</span>
+              <span style="font-family: 'JetBrains Mono', monospace;">Status: ${resp.status_message || 'SUCCESS'}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.75rem; padding-top: 0.25rem;">
+              <div>
+                <span style="color: #9ca3af; font-size: 0.65rem;">Total Inflow / Credits</span>
+                <p style="font-weight: 700; color: #ffffff;">₹${Number(summary.total_credits || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <span style="color: #9ca3af; font-size: 0.65rem;">Total Outflow / Debits</span>
+                <p style="font-weight: 700; color: #ffffff;">₹${Number(summary.total_debits || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <span style="color: #9ca3af; font-size: 0.65rem;">Avg Monthly Balance</span>
+                <p style="font-weight: 700; color: #34d399;">₹${Number(summary.average_monthly_balance || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <span style="color: #9ca3af; font-size: 0.65rem;">Salary Detected</span>
+                <p style="font-weight: 700; color: #ffffff;">${summary.salary_detected ? '✓ YES (₹' + Number(summary.monthly_salary_estimate || 0).toLocaleString('en-IN') + '/mo)' : 'No'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function copyRawResponse() {
+      if (!lastResponseObj) return;
+      navigator.clipboard.writeText(JSON.stringify(lastResponseObj, null, 2));
+      alert('Raw response JSON copied to clipboard!');
+    }
+  </script>
+</body>
+</html>
