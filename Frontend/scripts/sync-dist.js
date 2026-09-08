@@ -12,7 +12,7 @@ const frontendDist = path.resolve(frontendDir, 'dist');
 const rootDist = path.resolve(rootDir, 'dist');
 const publicDir = path.resolve(frontendDir, 'public');
 
-async function getPrerenderedHtml(fallbackHtml, cssFile) {
+async function getPrerenderedHtml(fallbackHtml, cssFile, jsFile) {
   const serverPath = path.resolve(frontendDir, '.output', 'server', 'index.mjs');
   if (!fs.existsSync(serverPath)) return fallbackHtml;
 
@@ -32,6 +32,12 @@ async function getPrerenderedHtml(fallbackHtml, cssFile) {
             child.kill();
             
             const timestamp = Date.now();
+            
+            // Bypass any stale browser/CDN caches for scripts and CSS
+            if (jsFile) {
+              html = html.replaceAll(jsFile, `${jsFile}?v=${timestamp}`);
+            }
+
             // Inject direct resilient CSS links and backend config into head
             const headInjections = `
     <link rel="stylesheet" href="/assets/${cssFile}?v=${timestamp}" />
@@ -45,7 +51,7 @@ async function getPrerenderedHtml(fallbackHtml, cssFile) {
     </script>
   </head>`;
             html = html.replace('</head>', headInjections);
-            console.log(`✓ Generated SSR prerendered index.html (${html.length} bytes)`);
+            console.log(`✓ Generated SSR prerendered index.html (${html.length} bytes) with cache-busting (?v=${timestamp})`);
             return resolve(html);
           }
         } catch (e) {
@@ -103,6 +109,7 @@ async function run() {
 
       console.log(`✓ Active entry bundle: ${jsFile} | stylesheet: ${cssFile}`);
 
+      const timestamp = Date.now();
       const fallbackHtml = `<!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -118,16 +125,17 @@ async function run() {
          Change this URL if your backend runs on a different port/subdomain, e.g. 'https://api.yourdomain.com/api/v1' */
       window.__API_URL__ = window.__API_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5002/api/v1' : window.location.origin + '/api/v1');
     </script>
-    ${cssFile ? `<link rel="stylesheet" href="/assets/${cssFile}" />` : ''}
+    ${cssFile ? `<link rel="stylesheet" href="/assets/${cssFile}?v=${timestamp}" />` : ''}
+    ${cssFile ? `<link rel="stylesheet" href="/styles.css?v=${timestamp}" />` : ''}
   </head>
   <body>
     <div id="root"></div>
-    ${jsFile ? `<script type="module" crossorigin src="/assets/${jsFile}"></script>` : ''}
+    ${jsFile ? `<script type="module" crossorigin src="/assets/${jsFile}?v=${timestamp}"></script>` : ''}
   </body>
 </html>
 `;
 
-      const finalHtml = await getPrerenderedHtml(fallbackHtml, cssFile);
+      const finalHtml = await getPrerenderedHtml(fallbackHtml, cssFile, jsFile);
 
       for (const dir of [frontendDist, rootDist, outputPublic]) {
         fs.writeFileSync(path.join(dir, 'index.html'), finalHtml, 'utf-8');
@@ -138,8 +146,14 @@ async function run() {
       }
     }
 
-    // 5. Create robust .htaccess with MIME types and standard SPA rewrite rules
-    const htaccessContent = `<IfModule mod_mime.c>
+    // 5. Create robust .htaccess with no-cache headers, MIME types and standard SPA rewrite rules
+    const htaccessContent = `<IfModule mod_headers.c>
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires 0
+</IfModule>
+
+<IfModule mod_mime.c>
   AddType application/javascript .js
   AddType application/javascript .mjs
   AddType text/css .css
@@ -161,7 +175,7 @@ async function run() {
     for (const dir of [frontendDist, rootDist, outputPublic]) {
       fs.writeFileSync(path.join(dir, '.htaccess'), htaccessContent, 'utf-8');
     }
-    console.log('✓ Created .htaccess with mod_mime and SPA routing in all output dirs');
+    console.log('✓ Created .htaccess with no-cache headers, mod_mime and SPA routing in all output dirs');
     console.log(`✓ Frontend/dist items: ${fs.readdirSync(frontendDist).length}, root/dist items: ${fs.readdirSync(rootDist).length}`);
   } catch (err) {
     console.error('Error syncing dist directory:', err.message);
