@@ -1,7 +1,7 @@
 const API_BASE = 
   (typeof window !== 'undefined' && (window as unknown as { __API_URL__?: string }).__API_URL__) ||
   (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] ||
-  'https://backend.bharatapi.cloud/api/v1';
+  'https://brown-goldfish-546701.hostingersite.com/api/v1';
 
 export type UserPayload = {
   id: number;
