@@ -24,7 +24,7 @@ export function DashboardLayout({
   activeTab,
 }: {
   children: (data: DashboardData) => React.ReactNode;
-  activeTab: "overview" | "wallet" | "apis" | "logs" | "ip_whitelist" | "webhooks" | "test_api";
+  activeTab: "overview" | "wallet" | "apis" | "logs" | "webhooks" | "test_api";
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -138,13 +138,6 @@ export function DashboardLayout({
               icon={<Activity className="h-4 w-4" />}
               label="API Hit Logs"
               badge={`${data.apiHitLogs.length}`}
-            />
-            <NavRouteLink
-              to="/dashboard/ip-whitelist"
-              active={activeTab === "ip_whitelist" || currentPath.startsWith("/dashboard/ip-whitelist")}
-              icon={<ShieldCheck className="h-4 w-4" />}
-              label="IP Whitelisting"
-              badge={`${data.ipWhitelist.filter((x) => x.status === "active").length}`}
             />
             <NavRouteLink
               to="/dashboard/webhooks"

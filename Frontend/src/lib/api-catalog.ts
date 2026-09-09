@@ -38,7 +38,7 @@ export type ApiGroup = "KYC" | "Banking" | "Account Aggregator" | "Payments";
 
 export const API_GROUPS: ApiGroup[] = ["KYC", "Banking", "Account Aggregator", "Payments"];
 
-export const BASE_URL = "https://api.bharatapicloud.io/v1";
+export const BASE_URL = "https://brown-goldfish-546701.hostingersite.com";
 
 export const DEFAULT_ERROR_CODES: ApiErrorCode[] = [
   { code: 400, meaning: "Invalid request payload or malformed parameters." },

@@ -119,93 +119,31 @@ export class PanVerificationService {
         isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
       } catch (err) {
         console.error('⚠️ IDSPay upstream provider call failed:', err.message);
-      }
-    } else {
-      console.log('ℹ️ No IDSPay master keys found in .env, using gateway simulated sandbox.');
-    }
-
-    // Fallback sandbox simulation if upstream was not called or failed
-    if (!finalResponse) {
-      if (!isValidFormat || cleanPan.startsWith('INVALID')) {
-        // Verification Failure Response (200 · 102)
         resultCode = 102;
         isSuccess = false;
         finalResponse = {
-          http_response_code: 200,
+          http_response_code: 502,
           result_code: 102,
           request_id: requestId,
           client_ref_num: clientRef,
-          message: 'Invalid Pan number or combination of inputs',
-          status_message: 'Refund processed',
-          result: {
-            pan: cleanPan || 'XXXXXXX',
-            pan_status: 'Invalid',
-            pan_type: '',
-            fullname: '',
-            first_name: '',
-            middle_name: '',
-            last_name: '',
-            gender: '',
-            aadhaar_seeding_status: '',
-            aadhaar_number: '',
-            aadhaar_linked: '',
-            dob: '',
-            address: {
-              building_name: '',
-              locality: '',
-              street_name: '',
-              pincode: '',
-              city: '',
-              state: '',
-              country: ''
-            },
-            mobile: '',
-            email: ''
-          }
-        };
-      } else {
-        // Success Verification Response (200 · 101)
-        resultCode = 101;
-        isSuccess = true;
-        const nameParts = (cleanName || 'Aarav Sharma').split(' ');
-        const firstName = nameParts[0] || 'SUXXXX';
-        const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'XXXXX';
-        const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
-        const panType = cleanPan[3] === 'P' ? 'Individual' : cleanPan[3] === 'C' ? 'Company' : 'Individual';
-
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 101,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          result: {
-            pan: cleanPan,
-            pan_type: panType,
-            fullname: cleanName || `${firstName} ${lastName}`,
-            first_name: firstName,
-            middle_name: middleName,
-            last_name: lastName,
-            gender: 'male',
-            aadhaar_seeding_status: 'Y',
-            aadhaar_number: 'XXXXXXXX1445',
-            aadhaar_linked: true,
-            dob: '07/11/1980',
-            address: {
-              building_name: '202, Shanti Heights',
-              locality: 'Hazratganj',
-              street_name: 'MG Road',
-              pincode: '226001',
-              city: 'Lucknow',
-              state: 'Uttar Pradesh',
-              country: 'India'
-            },
-            mobile: '90XXXXXX34',
-            email: 'ab******************ol@gmail.com',
-            name_match: Boolean(cleanName),
-            name_match_score: cleanName ? 100 : 0
-          }
+          message: 'Upstream verification service temporarily unavailable.',
+          status_message: 'Verification failed',
+          result: null
         };
       }
+    } else {
+      console.log('ℹ️ No IDSPay master keys found in .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        http_response_code: 503,
+        result_code: 103,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Upstream verification provider credentials not configured.',
+        status_message: 'Service unavailable',
+        result: null
+      };
     }
 
     // 3. Store result in Cache (24 Hours for valid, 5 Mins for invalid)
@@ -373,73 +311,20 @@ export class PanVerificationService {
         };
       }
     } else {
-      console.log('ℹ️ No IDSPay master keys found in .env, using gateway simulated sandbox.');
-    }
-
-    // Fallback sandbox simulation ONLY if upstream keys were not configured
-    if (!finalResponse) {
-      const isValidFormat = this.isValidPanFormat(cleanPan);
-      if (!isValidFormat || cleanPan.startsWith('INVALID')) {
-        resultCode = 102;
-        isSuccess = false;
-        finalResponse = {
-          status: {
-            code: 400,
-            type: 'failed',
-            message: 'Invalid PAN number or combination of inputs.',
-          },
-          message: 'Invalid PAN number or combination of inputs.',
-          data: null,
-          request_id: requestId,
-          client_ref_num: clientRef,
-        };
-      } else {
-        resultCode = 101;
-        isSuccess = true;
-        const panType = cleanPan[3] === 'P' ? 'Individual' : cleanPan[3] === 'C' ? 'Company' : 'Individual';
-
-        finalResponse = {
-          status: {
-            code: 200,
-            type: 'success',
-            message: 'Pan details validation successful.',
-          },
-          message: 'Pan details validation successful.',
-          data: {
-            pan: cleanPan,
-            pan_status: 'Active and inoperative',
-            pan_type: panType,
-            fullname: 'VERIFIED PAN HOLDER',
-            first_name: 'VERIFIED',
-            middle_name: '',
-            last_name: 'HOLDER',
-            gender: 'male',
-            aadhaar_seeding_status: 'Y',
-            aadhaar_number: 'XXXXXXXX1234',
-            aadhaar_linked: true,
-            dob: '30/05/1985',
-            address: {
-              building_name: 'Tower 4, Floor 5',
-              locality: 'Cyber City',
-              street_name: 'DLF Phase 2',
-              pincode: '122002',
-              city: 'Gurugram',
-              state: 'Haryana',
-              country: 'India',
-            },
-            mobile: '98XXXXXX10',
-            email: 'user*****@gmail.com',
-            signatory_details: [],
-            is_sole_proprietor: 'N',
-            is_director: 'N',
-            is_salaried: 'Y',
-            pan_allotment_date: '12/11/2008',
-          },
-          request_id: requestId,
-          client_ref_num: clientRef,
-          _simulated: true,
-        };
-      }
+      console.log('ℹ️ No IDSPay master keys found in .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        status: {
+          code: 503,
+          type: 'failed',
+          message: 'Upstream verification provider credentials not configured on server.',
+        },
+        message: 'Upstream verification provider credentials not configured on server.',
+        data: null,
+        request_id: requestId,
+        client_ref_num: clientRef,
+      };
     }
 
     const durationMs = Date.now() - startedAt;
