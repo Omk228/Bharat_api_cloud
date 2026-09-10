@@ -260,8 +260,8 @@ export const walletService = {
    */
   async submitRechargeRequest(userId, { amount, utr_number, method = 'UPI Instant QR' }) {
     const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount < 100) {
-      throw ApiError.badRequest('Recharge amount must be at least ₹100');
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw ApiError.badRequest('Please enter a valid positive recharge amount');
     }
 
     const cleanUtr = String(utr_number || '').trim().replace(/[\s-]/g, '');

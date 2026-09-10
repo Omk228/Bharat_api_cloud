@@ -136,7 +136,7 @@ function WalletPage() {
 
   // Sync generated amount when effective amount changes
   useEffect(() => {
-    if (effectiveAmount >= 100) {
+    if (effectiveAmount > 0) {
       setGeneratedAmount(effectiveAmount);
       setIsQrGenerated(true);
     }
@@ -165,8 +165,8 @@ function WalletPage() {
   };
 
   const handleGenerateQr = async () => {
-    if (effectiveAmount < 100) {
-      toast.error("Minimum recharge amount is ₹100");
+    if (effectiveAmount <= 0) {
+      toast.error("Please enter a valid recharge amount");
       return;
     }
     setIsGeneratingQr(true);
@@ -234,8 +234,8 @@ function WalletPage() {
 
   const handleSubmitUtrPayment = async () => {
     const payAmt = isQrGenerated ? generatedAmount : effectiveAmount;
-    if (payAmt < 100) {
-      toast.error("Minimum recharge amount is ₹100");
+    if (payAmt <= 0) {
+      toast.error("Please enter a valid recharge amount");
       return;
     }
 
@@ -425,7 +425,7 @@ function WalletPage() {
                     <div className="pt-2 border-t border-border/60">
                       <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                         <span>Or enter custom amount:</span>
-                        <span className="text-[11px]">Min. ₹100 — Max. ₹5,00,000</span>
+                        <span className="text-[11px]">Min. ₹1 — Max. ₹5,00,000</span>
                       </div>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-mono text-sm font-bold text-muted-foreground">
@@ -433,9 +433,9 @@ function WalletPage() {
                         </span>
                         <input
                           type="number"
-                          min={100}
+                          min={1}
                           max={500000}
-                          placeholder="e.g. 15000"
+                          placeholder="e.g. 500"
                           value={customAmount}
                           onChange={(e) => setCustomAmount(e.target.value)}
                           className="w-full rounded-xl border border-border bg-background pl-8 pr-4 py-2.5 font-mono text-sm font-semibold outline-none focus:border-primary transition-colors"
@@ -599,7 +599,7 @@ function WalletPage() {
                         <button
                           type="button"
                           onClick={handleGenerateQr}
-                          disabled={isGeneratingQr || effectiveAmount < 100}
+                          disabled={isGeneratingQr || effectiveAmount <= 0}
                           className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
                         >
                           {isGeneratingQr ? (
@@ -775,7 +775,7 @@ function WalletPage() {
                           <button
                             type="button"
                             onClick={handleGenerateQr}
-                            disabled={isGeneratingQr || effectiveAmount < 100}
+                            disabled={isGeneratingQr || effectiveAmount <= 0}
                             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 active:scale-[0.99] cursor-pointer"
                           >
                             {isGeneratingQr ? (
