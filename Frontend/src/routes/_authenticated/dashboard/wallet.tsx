@@ -78,7 +78,7 @@ function WalletPage() {
   const totalCredited = effectiveAmount + bonusAmount;
 
   // Dynamic UPI URL
-  const upiId = "bharatapicloud@icici";
+  const upiId = "8882746176@pthdfc";
   const upiPayUri = `upi://pay?pa=${upiId}&pn=Bharat%20API%20Cloud&am=${effectiveAmount}&cu=INR&tn=Prepaid%20Wallet%20Topup`;
 
   // Countdown timer for dynamic QR code
