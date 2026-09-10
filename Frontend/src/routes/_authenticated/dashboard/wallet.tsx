@@ -66,6 +66,10 @@ function WalletPage() {
   const [gstin, setGstin] = useState<string>("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isQrGenerated, setIsQrGenerated] = useState(false);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [generatedAmount, setGeneratedAmount] = useState<number>(1000);
+  const [utrNumber, setUtrNumber] = useState<string>("");
   const [qrExpirySeconds, setQrExpirySeconds] = useState(900); // 15 mins
 
   // Ledger filter state
@@ -73,21 +77,23 @@ function WalletPage() {
   const [search, setSearch] = useState("");
 
   const effectiveAmount = customAmount ? parseFloat(customAmount) || 0 : selectedPack;
-  const currentPack = RECHARGE_PACKS.find((p) => p.amount === effectiveAmount);
+  const currentPack = RECHARGE_PACKS.find((p) => p.amount === (isQrGenerated ? generatedAmount : effectiveAmount));
   const bonusAmount = currentPack?.bonus || 0;
-  const totalCredited = effectiveAmount + bonusAmount;
+  const totalCredited = (isQrGenerated ? generatedAmount : effectiveAmount) + bonusAmount;
 
-  // Dynamic UPI URL
+  // Dynamic UPI URL based on generated amount
   const upiId = "8882746176@pthdfc";
-  const upiPayUri = `upi://pay?pa=${upiId}&pn=Bharat%20API%20Cloud&am=${effectiveAmount}&cu=INR&tn=Prepaid%20Wallet%20Topup`;
+  const activeQrAmount = isQrGenerated ? generatedAmount : effectiveAmount;
+  const upiPayUri = `upi://pay?pa=${upiId}&pn=Bharat%20API%20Cloud&am=${activeQrAmount}&cu=INR&tn=Prepaid%20Wallet%20Topup`;
 
   // Countdown timer for dynamic QR code
   useEffect(() => {
+    if (!isQrGenerated) return;
     const timer = setInterval(() => {
       setQrExpirySeconds((prev) => (prev > 0 ? prev - 1 : 900));
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isQrGenerated]);
 
   const formatTimer = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -102,8 +108,24 @@ function WalletPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleExecutePayment = () => {
+  const handleGenerateQr = () => {
     if (effectiveAmount < 100) {
+      toast.error("Minimum recharge amount is ₹100");
+      return;
+    }
+    setIsGeneratingQr(true);
+    setTimeout(() => {
+      setGeneratedAmount(effectiveAmount);
+      setIsQrGenerated(true);
+      setQrExpirySeconds(900);
+      setIsGeneratingQr(false);
+      toast.success(`Dynamic UPI QR generated for ₹${effectiveAmount.toLocaleString("en-IN")}`);
+    }, 400);
+  };
+
+  const handleExecutePayment = () => {
+    const payAmt = isQrGenerated ? generatedAmount : effectiveAmount;
+    if (payAmt < 100) {
       toast.error("Minimum recharge amount is ₹100");
       return;
     }
@@ -118,11 +140,17 @@ function WalletPage() {
             : paymentMethod === "va"
             ? "Virtual Account (NEFT/IMPS)"
             : "Corporate Card",
-        note: bonusAmount > 0 ? `Recharge ₹${effectiveAmount} (+₹${bonusAmount} Bonus Credit)` : `Recharge ₹${effectiveAmount}`,
+        note: utrNumber.trim()
+          ? `Recharge ₹${payAmt} (UTR: ${utrNumber.trim()})`
+          : bonusAmount > 0
+          ? `Recharge ₹${payAmt} (+₹${bonusAmount} Bonus Credit)`
+          : `Recharge ₹${payAmt}`,
       });
 
-      toast.success(`🎉 Payment of ₹${effectiveAmount.toLocaleString("en-IN")} successful! ₹${totalCredited.toLocaleString("en-IN")} credited to your wallet.`);
+      toast.success(`🎉 Payment of ₹${payAmt.toLocaleString("en-IN")} successful! ₹${totalCredited.toLocaleString("en-IN")} credited to your wallet.`);
       setIsProcessing(false);
+      setIsQrGenerated(false);
+      setUtrNumber("");
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["user-pricing"] });
     }, 1200);
@@ -442,6 +470,31 @@ function WalletPage() {
                         className="w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs font-semibold uppercase outline-none focus:border-primary"
                       />
                     </div>
+
+                    {/* Generate QR Button in Step 2 */}
+                    {paymentMethod === "upi" && (
+                      <div className="pt-2 border-t border-border/60">
+                        <button
+                          type="button"
+                          onClick={handleGenerateQr}
+                          disabled={isGeneratingQr || effectiveAmount < 100}
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+                        >
+                          {isGeneratingQr ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" /> Generating Secure Dynamic QR...
+                            </>
+                          ) : (
+                            <>
+                              <QrCode className="h-4 w-4" />
+                              {isQrGenerated && generatedAmount === effectiveAmount
+                                ? `Refresh UPI QR Code (₹${effectiveAmount.toLocaleString("en-IN")})`
+                                : `Generate Dynamic UPI QR (₹${effectiveAmount.toLocaleString("en-IN")})`}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -450,39 +503,82 @@ function WalletPage() {
                   <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
                     {/* QR Code Card (For UPI) or Summary Card */}
                     {paymentMethod === "upi" ? (
-                      <div className="flex flex-col items-center rounded-xl border border-border bg-secondary/30 p-5 text-center">
-                        <div className="flex items-center justify-between w-full text-xs text-muted-foreground mb-3">
-                          <span className="font-semibold flex items-center gap-1 text-foreground">
-                            <QrCode className="h-3.5 w-3.5 text-primary" /> Dynamic UPI QR
-                          </span>
-                          <span className="flex items-center gap-1 font-mono text-amber-400 font-semibold text-[11px]">
-                            <Clock className="h-3 w-3" /> Expires in {formatTimer(qrExpirySeconds)}
-                          </span>
-                        </div>
+                      isQrGenerated ? (
+                        <div className="flex flex-col items-center rounded-xl border border-border bg-secondary/30 p-5 text-center transition-all animate-in fade-in duration-300">
+                          <div className="flex items-center justify-between w-full text-xs text-muted-foreground mb-3">
+                            <span className="font-semibold flex items-center gap-1 text-foreground">
+                              <QrCode className="h-3.5 w-3.5 text-primary" /> Live Dynamic UPI QR
+                            </span>
+                            <span className="flex items-center gap-1 font-mono text-amber-400 font-semibold text-[11px]">
+                              <Clock className="h-3 w-3" /> Expires in {formatTimer(qrExpirySeconds)}
+                            </span>
+                          </div>
 
-                        {/* Generated Visual QR Code Box */}
-                        <div className="relative rounded-2xl border-2 border-primary/40 bg-white p-3 shadow-md">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                              upiPayUri
-                            )}&margin=4`}
-                            alt="Scan UPI QR Code"
-                            className="h-44 w-44 rounded-lg"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="rounded-full bg-white p-1 shadow-md border border-slate-200">
-                              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                          {/* Generated Visual QR Code Box */}
+                          <div className="relative rounded-2xl border-2 border-primary/40 bg-white p-3 shadow-md">
+                            <img
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                                upiPayUri
+                              )}&margin=4`}
+                              alt="Scan UPI QR Code"
+                              className="h-44 w-44 rounded-lg"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="rounded-full bg-white p-1 shadow-md border border-slate-200">
+                                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <p className="mt-3 text-sm font-bold text-foreground">
-                          Scan &amp; Pay ₹{effectiveAmount.toLocaleString("en-IN")}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          Supported Apps: Google Pay, PhonePe, Paytm, CRED &amp; BHIM
-                        </p>
-                      </div>
+                          <p className="mt-3 text-sm font-bold text-foreground">
+                            Scan &amp; Pay ₹{generatedAmount.toLocaleString("en-IN")}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            Supported Apps: Google Pay, PhonePe, Paytm, CRED &amp; BHIM
+                          </p>
+
+                          {/* 12-digit UTR Input */}
+                          <div className="mt-4 w-full text-left space-y-1">
+                            <label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
+                              <span>12-Digit UPI UTR / Reference ID</span>
+                              <span className="text-[10px] text-muted-foreground">(Optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              maxLength={16}
+                              placeholder="e.g. 425109823456"
+                              value={utrNumber}
+                              onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ""))}
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary text-foreground"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-secondary/20 p-6 text-center space-y-3">
+                          <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3.5 text-primary">
+                            <QrCode className="h-8 w-8" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-foreground text-sm">Dynamic UPI QR Ready to Generate</h4>
+                            <p className="mt-1 text-xs text-muted-foreground max-w-xs">
+                              Select your desired recharge amount and click below to generate your secure UPI payment QR code for <strong>₹{effectiveAmount.toLocaleString("en-IN")}</strong>.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleGenerateQr}
+                            disabled={isGeneratingQr || effectiveAmount < 100}
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 active:scale-[0.99] cursor-pointer"
+                          >
+                            {isGeneratingQr ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5" />
+                            )}
+                            Generate UPI QR (₹{effectiveAmount.toLocaleString("en-IN")})
+                          </button>
+                        </div>
+                      )
                     ) : (
                       <div className="rounded-xl border border-border bg-secondary/30 p-5 text-center space-y-2">
                         <div className="inline-flex p-3 rounded-full bg-primary/10 text-primary">
@@ -503,7 +599,9 @@ function WalletPage() {
                     <div className="space-y-2.5 rounded-xl border border-border/80 bg-secondary/20 p-4 text-xs">
                       <div className="flex items-center justify-between text-muted-foreground">
                         <span>Recharge Amount</span>
-                        <span className="font-mono font-semibold text-foreground">₹{effectiveAmount.toFixed(2)}</span>
+                        <span className="font-mono font-semibold text-foreground">
+                          ₹{(isQrGenerated ? generatedAmount : effectiveAmount).toFixed(2)}
+                        </span>
                       </div>
 
                       {bonusAmount > 0 && (
@@ -527,7 +625,7 @@ function WalletPage() {
                     {/* Action Button */}
                     <button
                       type="button"
-                      disabled={isProcessing || effectiveAmount < 100}
+                      disabled={isProcessing || (isQrGenerated ? generatedAmount : effectiveAmount) < 100}
                       onClick={handleExecutePayment}
                       className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.99] disabled:opacity-60 cursor-pointer"
                     >
