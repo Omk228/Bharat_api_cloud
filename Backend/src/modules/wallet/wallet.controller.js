@@ -56,11 +56,12 @@ export const walletController = {
    * Submit Recharge Request with UTR for Admin Verification
    */
   submitRechargeRequest: asyncHandler(async (req, res) => {
-    const { amount, utr_number, method } = req.body;
+    const { amount, utr_number, method, screenshot } = req.body;
     const result = await walletService.submitRechargeRequest(req.user.id, {
       amount,
       utr_number,
       method,
+      screenshot,
     });
     return ApiResponse.success(
       res,

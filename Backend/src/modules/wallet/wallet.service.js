@@ -60,7 +60,7 @@ export const walletService = {
    */
   async getTransactions(userId, { limit = 50, offset = 0, type = null, search = null } = {}) {
     let query = `
-      SELECT id, user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, admin_notes, created_at
+      SELECT id, user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, admin_notes, payment_screenshot, created_at
       FROM wallet_transactions
       WHERE user_id = ?
     `;
@@ -94,6 +94,7 @@ export const walletService = {
       status: row.status || 'success',
       utr_number: row.utr_number || null,
       admin_notes: row.admin_notes || null,
+      payment_screenshot: row.payment_screenshot || null,
       created_at: row.created_at,
     }));
   },
@@ -258,7 +259,7 @@ export const walletService = {
    * @param {number} userId 
    * @param {object} param1 
    */
-  async submitRechargeRequest(userId, { amount, utr_number, method = 'UPI Instant QR' }) {
+  async submitRechargeRequest(userId, { amount, utr_number, method = 'Bank Account Transfer', screenshot = null }) {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       throw ApiError.badRequest('Please enter a valid positive recharge amount');
@@ -266,7 +267,7 @@ export const walletService = {
 
     const cleanUtr = String(utr_number || '').trim().replace(/[\s-]/g, '');
     if (!cleanUtr || cleanUtr.length < 6) {
-      throw ApiError.badRequest('Please enter a valid 12-digit UPI UTR or Bank Reference Number');
+      throw ApiError.badRequest('Please enter a valid Bank UTR or IMPS/NEFT Reference Number');
     }
 
     // Check for duplicate UTR
@@ -295,18 +296,19 @@ export const walletService = {
     const currentBalance = parseFloat(user.wallet_balance || '0.00');
     const ref = `req_utr_${Date.now()}`;
 
-    // Record pending transaction
+    // Record pending transaction with optional payment screenshot
     const [result] = await dbPool.query(
       `INSERT INTO wallet_transactions (
-        user_id, type, amount, balance_after, category, description, reference_id, status, utr_number
-      ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'pending', ?)`,
+        user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, payment_screenshot
+      ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'pending', ?, ?)`,
       [
         userId,
         numAmount,
         currentBalance,
         `Wallet Recharge via ${method} (UTR: ${cleanUtr})`,
         ref,
-        cleanUtr
+        cleanUtr,
+        screenshot || null
       ]
     );
 
@@ -316,7 +318,8 @@ export const walletService = {
       amount: numAmount,
       utr_number: cleanUtr,
       status: 'pending',
-      message: 'Payment details submitted successfully. Please allow 2-5 minutes for admin verification.',
+      has_screenshot: Boolean(screenshot),
+      message: 'Payment details & screenshot submitted successfully. Please allow 2-5 minutes for admin verification.',
       created_at: new Date().toISOString(),
     };
   },
@@ -328,7 +331,7 @@ export const walletService = {
     let query = `
       SELECT t.id, t.user_id, t.type, t.amount, t.balance_after, t.category, 
              t.description, t.reference_id, t.status, t.utr_number, t.admin_notes, 
-             t.approved_at, t.created_at,
+             t.payment_screenshot, t.approved_at, t.created_at,
              u.name as user_name, u.email as user_email, u.company_name as user_company,
              u.wallet_balance as current_user_balance
       FROM wallet_transactions t
@@ -370,6 +373,7 @@ export const walletService = {
       status: row.status || 'pending',
       utr_number: row.utr_number || '',
       admin_notes: row.admin_notes || null,
+      payment_screenshot: row.payment_screenshot || null,
       approved_at: row.approved_at,
       created_at: row.created_at,
     }));

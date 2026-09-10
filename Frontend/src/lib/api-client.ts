@@ -841,6 +841,7 @@ export const apiClient = {
     amount: number;
     utr_number: string;
     method?: string;
+    screenshot?: string | null;
   }): Promise<{
     transaction_id: string;
     numeric_id: number;

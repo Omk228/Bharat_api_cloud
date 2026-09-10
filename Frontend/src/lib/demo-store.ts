@@ -87,6 +87,7 @@ export type WalletTransactionRow = {
   status: "success" | "pending" | "rejected";
   utr_number?: string;
   admin_notes?: string;
+  payment_screenshot?: string | null;
   created_at: string;
 };
 
@@ -529,6 +530,7 @@ export async function submitRechargeRequest(input: {
   amount: number;
   utr_number: string;
   paymentMethod: string;
+  screenshot?: string | null;
 }) {
   const state = read();
   const current = typeof state.wallet_balance === "number" ? state.wallet_balance : 0.00;
@@ -546,6 +548,7 @@ export async function submitRechargeRequest(input: {
     payment_method: input.paymentMethod,
     status: "pending",
     utr_number: cleanUtr,
+    payment_screenshot: input.screenshot || null,
     created_at: new Date().toISOString(),
   };
 
@@ -556,6 +559,7 @@ export async function submitRechargeRequest(input: {
         amount: input.amount,
         utr_number: cleanUtr,
         method: input.paymentMethod,
+        screenshot: input.screenshot || null,
       });
       if (backendRes) {
         row.id = backendRes.transaction_id;
@@ -569,7 +573,7 @@ export async function submitRechargeRequest(input: {
 
   update((s) => {
     s.wallet_transactions = [row, ...(s.wallet_transactions || [])];
-    logAudit(s, "wallet.utr_submitted", `₹${input.amount.toFixed(2)}`, `Submitted UTR ${cleanUtr} for Admin Verification`);
+    logAudit(s, "wallet.utr_submitted", `₹${input.amount.toFixed(2)}`, `Submitted UTR ${cleanUtr} & Screenshot for Admin Verification`);
   });
 
   return { ok: true as const, transaction: row };

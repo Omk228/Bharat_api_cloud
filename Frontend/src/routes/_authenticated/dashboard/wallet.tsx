@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Wallet,
-  Plus,
   ArrowDownLeft,
   ArrowUpRight,
   Search,
@@ -11,9 +10,7 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  QrCode,
   Building2,
-  CreditCard,
   Copy,
   Check,
   ShieldCheck,
@@ -23,15 +20,16 @@ import {
   Clock,
   Download,
   Receipt,
-  FileCheck,
-  Percent,
   RefreshCw,
-  UserCheck,
-  BadgeAlert,
+  UploadCloud,
+  Image as ImageIcon,
+  Trash2,
+  Eye,
+  X,
+  FileText,
 } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
-import QRCode from "qrcode";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import {
@@ -47,10 +45,10 @@ import { apiClient } from "@/lib/api-client";
 export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
   head: () => ({
     meta: [
-      { title: "Payment & Wallet Recharge — Bharat API Cloud" },
+      { title: "Bank Account Transfer & Wallet Recharge — Bharat API Cloud" },
       {
         name: "description",
-        content: "Instant UPI QR, Virtual Account IMPS/NEFT, and Corporate card payments with UTR verification for your prepaid API wallet.",
+        content: "Recharge your prepaid API wallet via Bank Account Transfer (NEFT/IMPS/RTGS) with UTR and payment screenshot verification.",
       },
     ],
   }),
@@ -65,26 +63,43 @@ const RECHARGE_PACKS = [
   { amount: 10000, label: "Enterprise", bonus: 1000, tag: "+10% Extra", special: true },
 ];
 
+const BANK_DETAILS = {
+  beneficiaryName: "Bharat API Cloud Technologies Pvt Ltd",
+  bankName: "YES Bank Ltd",
+  accountNumber: "BAC99210488",
+  ifscCode: "YESB0CMSNOC",
+  accountType: "Current Account",
+  branch: "CMS Hub Mumbai",
+  supportedRails: "IMPS / NEFT / RTGS (24x7 Instant Settlement)",
+};
+
 function WalletPage() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Payment section state
+  // Recharge selection state
   const [selectedPack, setSelectedPack] = useState<number>(1000);
   const [customAmount, setCustomAmount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "va" | "card">("upi");
   const [gstin, setGstin] = useState<string>("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isQrGenerated, setIsQrGenerated] = useState(true); // Default true so QR is ready instantly
-  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
-  const [generatedAmount, setGeneratedAmount] = useState<number>(1000);
-  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  // UTR & Screenshot upload state
   const [utrNumber, setUtrNumber] = useState<string>("");
-  const [qrExpirySeconds, setQrExpirySeconds] = useState(900); // 15 mins
+  const [screenshotDataUrl, setScreenshotDataUrl] = useState<string | null>(null);
+  const [screenshotFileName, setScreenshotFileName] = useState<string | null>(null);
+  const [screenshotFileSize, setScreenshotFileSize] = useState<string | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+
+  // Preview Modal state
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+
+  // Last submitted state
   const [lastSubmittedUtr, setLastSubmittedUtr] = useState<{
     utr: string;
     amount: number;
     submittedAt: string;
+    hasScreenshot: boolean;
   } | null>(null);
 
   // Admin Queue state
@@ -98,64 +113,9 @@ function WalletPage() {
   const [search, setSearch] = useState("");
 
   const effectiveAmount = customAmount ? parseFloat(customAmount) || 0 : selectedPack;
-  const currentPack = RECHARGE_PACKS.find((p) => p.amount === (isQrGenerated ? generatedAmount : effectiveAmount));
+  const currentPack = RECHARGE_PACKS.find((p) => p.amount === effectiveAmount);
   const bonusAmount = currentPack?.bonus || 0;
-  const totalCredited = (isQrGenerated ? generatedAmount : effectiveAmount) + bonusAmount;
-
-  // Dynamic UPI URL based on generated amount
-  const upiId = "8882746176@pthdfc";
-  const activeQrAmount = isQrGenerated ? generatedAmount : effectiveAmount;
-  const upiPayUri = `upi://pay?pa=${upiId}&pn=Bharat%20API%20Cloud&am=${activeQrAmount}&cu=INR&tn=Prepaid%20Wallet%20Topup`;
-
-  // Generate QR code client-side whenever amount or URI changes
-  useEffect(() => {
-    let isSubscribed = true;
-    const renderQr = async () => {
-      try {
-        const url = await QRCode.toDataURL(upiPayUri, {
-          width: 320,
-          margin: 1,
-          color: {
-            dark: "#0a0f1d",
-            light: "#ffffff",
-          },
-          errorCorrectionLevel: "M",
-        });
-        if (isSubscribed) {
-          setQrDataUrl(url);
-        }
-      } catch (err) {
-        console.error("Failed to generate local QR code:", err);
-      }
-    };
-    renderQr();
-    return () => {
-      isSubscribed = false;
-    };
-  }, [upiPayUri]);
-
-  // Sync generated amount when effective amount changes
-  useEffect(() => {
-    if (effectiveAmount > 0) {
-      setGeneratedAmount(effectiveAmount);
-      setIsQrGenerated(true);
-    }
-  }, [effectiveAmount]);
-
-  // Countdown timer for dynamic QR code
-  useEffect(() => {
-    if (!isQrGenerated) return;
-    const timer = setInterval(() => {
-      setQrExpirySeconds((prev) => (prev > 0 ? prev - 1 : 900));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isQrGenerated]);
-
-  const formatTimer = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
+  const totalCredited = effectiveAmount + bonusAmount;
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -164,31 +124,54 @@ function WalletPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleGenerateQr = async () => {
-    if (effectiveAmount <= 0) {
-      toast.error("Please enter a valid recharge amount");
+  const processFile = (file: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+      toast.error("Please upload a valid image file (PNG, JPG, JPEG, WEBP) or PDF receipt");
       return;
     }
-    setIsGeneratingQr(true);
-    try {
-      const url = await QRCode.toDataURL(upiPayUri, {
-        width: 320,
-        margin: 1,
-        color: { dark: "#0a0f1d", light: "#ffffff" },
-      });
-      setQrDataUrl(url);
-      setGeneratedAmount(effectiveAmount);
-      setIsQrGenerated(true);
-      setQrExpirySeconds(900);
-      toast.success(`Dynamic UPI QR refreshed for ₹${effectiveAmount.toLocaleString("en-IN")}`);
-    } catch (err) {
-      toast.error("Failed to generate QR code");
-    } finally {
-      setIsGeneratingQr(false);
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("File size exceeds 8MB limit. Please upload a smaller screenshot.");
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setScreenshotDataUrl(dataUrl);
+      setScreenshotFileName(file.name);
+      const sizeKb = Math.round(file.size / 1024);
+      setScreenshotFileSize(sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`);
+      toast.success("Payment screenshot uploaded successfully!");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read image file.");
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Fetch Admin Requests if admin
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleRemoveScreenshot = () => {
+    setScreenshotDataUrl(null);
+    setScreenshotFileName(null);
+    setScreenshotFileSize(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    toast.info("Screenshot removed.");
+  };
+
   const fetchAdminRecharges = async () => {
     setIsLoadingAdminRequests(true);
     try {
@@ -232,47 +215,46 @@ function WalletPage() {
     }
   };
 
-  const handleSubmitUtrPayment = async () => {
-    const payAmt = isQrGenerated ? generatedAmount : effectiveAmount;
-    if (payAmt <= 0) {
+  const handleSubmitPayment = async () => {
+    if (effectiveAmount <= 0) {
       toast.error("Please enter a valid recharge amount");
       return;
     }
 
     const cleanUtr = utrNumber.trim().replace(/[\s-]/g, "");
     if (!cleanUtr || cleanUtr.length < 6) {
-      toast.error("Please enter your valid 12-digit UPI UTR / Bank Reference Number.");
+      toast.error("Please enter your Bank Transfer UTR / IMPS/NEFT Reference Number (Min. 6 digits).");
+      return;
+    }
+
+    if (!screenshotDataUrl) {
+      toast.error("Please upload the screenshot or receipt of your bank payment.");
       return;
     }
 
     setIsProcessing(true);
     try {
-      const methodLabel =
-        paymentMethod === "upi"
-          ? "UPI Dynamic QR"
-          : paymentMethod === "va"
-          ? "Virtual Account (NEFT/IMPS)"
-          : "Corporate Card";
-
       await submitRechargeRequest({
-        amount: payAmt,
+        amount: effectiveAmount,
         utr_number: cleanUtr,
-        paymentMethod: methodLabel,
+        paymentMethod: "Bank Account Transfer (NEFT/IMPS/RTGS)",
+        screenshot: screenshotDataUrl,
       });
 
       setLastSubmittedUtr({
         utr: cleanUtr,
-        amount: payAmt,
+        amount: effectiveAmount,
         submittedAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        hasScreenshot: Boolean(screenshotDataUrl),
       });
 
-      toast.success(`🎉 UTR ${cleanUtr} submitted! Please wait 2-5 minutes for admin verification.`);
+      toast.success(`🎉 Payment details & UTR ${cleanUtr} submitted! Please allow 2-5 minutes for admin verification.`);
       setUtrNumber("");
-      setIsQrGenerated(false);
+      handleRemoveScreenshot();
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["user-pricing"] });
     } catch (err: any) {
-      toast.error(err?.message || "Failed to submit recharge request. Please check UTR.");
+      toast.error(err?.message || "Failed to submit payment details. Please verify your UTR.");
     } finally {
       setIsProcessing(false);
     }
@@ -292,7 +274,8 @@ function WalletPage() {
               t.id.toLowerCase().includes(q) ||
               t.description.toLowerCase().includes(q) ||
               (t.reference_id && t.reference_id.toLowerCase().includes(q)) ||
-              (t.api_endpoint && t.api_endpoint.toLowerCase().includes(q))
+              (t.api_endpoint && t.api_endpoint.toLowerCase().includes(q)) ||
+              (t.utr_number && t.utr_number.toLowerCase().includes(q))
             );
           }
           return true;
@@ -350,16 +333,16 @@ function WalletPage() {
             </div>
 
             {/* ========================================================================= */}
-            {/* 💳 DEDICATED PAYMENT & RECHARGE SECTION */}
+            {/* 🏦 DEDICATED BANK ACCOUNT TRANSFER & RECHARGE SECTION */}
             {/* ========================================================================= */}
             <section className="space-y-6">
               <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                 <div>
                   <h3 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
-                    <CreditCard className="h-5 w-5 text-primary" /> Instant Wallet Recharge & Checkout
+                    <Building2 className="h-5 w-5 text-primary" /> Bank Account Transfer &amp; Recharge
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Select a pack or enter custom amount. Instant credit via UPI, Net Banking, or Virtual Account.
+                    Transfer via IMPS, NEFT, or RTGS to our official corporate account, then submit your UTR &amp; screenshot.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -368,7 +351,7 @@ function WalletPage() {
               </div>
 
               <div className="grid gap-6 lg:grid-cols-12">
-                {/* Left Column: Recharge Amount & Payment Method Selection (7 Cols) */}
+                {/* Left Column: Choose Pack + Bank Account Details (7 Cols) */}
                 <div className="space-y-6 lg:col-span-7">
                   {/* Step 1: Select Pack */}
                   <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4">
@@ -444,135 +427,92 @@ function WalletPage() {
                     </div>
                   </div>
 
-                  {/* Step 2: Payment Rail Selection */}
-                  <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Step 2 · Select Payment Method
-                    </span>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("upi")}
-                        className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all cursor-pointer ${
-                          paymentMethod === "upi"
-                            ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
-                            : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <QrCode className="h-5 w-5" />
-                        <span className="text-xs">UPI / Dynamic QR</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("va")}
-                        className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all cursor-pointer ${
-                          paymentMethod === "va"
-                            ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
-                            : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <Building2 className="h-5 w-5" />
-                        <span className="text-xs">Virtual Account (NEFT)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("card")}
-                        className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all cursor-pointer ${
-                          paymentMethod === "card"
-                            ? "border-primary bg-primary/10 text-primary font-bold shadow-sm"
-                            : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <CreditCard className="h-5 w-5" />
-                        <span className="text-xs">Cards / NetBanking</span>
-                      </button>
+                  {/* Step 2: Official Corporate Bank Details Card */}
+                  <div className="rounded-2xl border border-primary/30 bg-card p-5 sm:p-6 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Step 2 · Transfer Funds to Official Bank Account
+                      </span>
+                      <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-primary border border-primary/20">
+                        Zero Surcharge
+                      </span>
                     </div>
 
-                    {/* Method Specific Details View */}
-                    <div className="rounded-xl border border-border bg-secondary/20 p-4">
-                      {paymentMethod === "upi" && (
-                        <div className="space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                              <p className="text-xs font-semibold text-foreground">UPI ID for Direct Payment</p>
-                              <p className="mt-0.5 font-mono text-xs text-primary font-bold">{upiId}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(upiId, "UPI ID")}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
-                            >
-                              {copiedField === "UPI ID" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                              Copy UPI ID
-                            </button>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            Scan the live QR code on the right with Google Pay, PhonePe, Paytm, CRED, or any BHIM UPI app. Balance reflects instantly.
-                          </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Beneficiary Name */}
+                      <div className="col-span-1 sm:col-span-2 rounded-xl border border-border/80 bg-secondary/30 p-3.5 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] text-muted-foreground block font-medium">Beneficiary / Company Name</span>
+                          <p className="font-bold text-foreground text-sm mt-0.5">{BANK_DETAILS.beneficiaryName}</p>
                         </div>
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(BANK_DETAILS.beneficiaryName, "Beneficiary Name")}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+                        >
+                          {copiedField === "Beneficiary Name" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-primary" />}
+                          Copy Name
+                        </button>
+                      </div>
 
-                      {paymentMethod === "va" && (
-                        <div className="space-y-3 text-xs">
-                          <div className="flex items-center justify-between pb-2 border-b border-border">
-                            <span className="font-semibold text-foreground">Dedicated Corporate Virtual Account</span>
-                            <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
-                              Zero Charges
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="rounded-lg border border-border/80 bg-card p-2.5">
-                              <span className="text-[10px] text-muted-foreground">Bank Name</span>
-                              <p className="font-semibold text-foreground">YES Bank Ltd</p>
-                            </div>
-                            <div className="rounded-lg border border-border/80 bg-card p-2.5">
-                              <span className="text-[10px] text-muted-foreground">Account Type</span>
-                              <p className="font-semibold text-foreground">Current / Virtual Account</p>
-                            </div>
-                            <div className="rounded-lg border border-border/80 bg-card p-2.5 flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] text-muted-foreground">Account Number</span>
-                                <p className="font-mono font-bold text-foreground">BAC99210488</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopy("BAC99210488", "Account Number")}
-                                className="p-1 text-muted-foreground hover:text-foreground"
-                              >
-                                {copiedField === "Account Number" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                              </button>
-                            </div>
-                            <div className="rounded-lg border border-border/80 bg-card p-2.5 flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] text-muted-foreground">IFSC Code</span>
-                                <p className="font-mono font-bold text-foreground">YESB0CMSNOC</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopy("YESB0CMSNOC", "IFSC Code")}
-                                className="p-1 text-muted-foreground hover:text-foreground"
-                              >
-                                {copiedField === "IFSC Code" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            👉 Add this as a beneficiary in your corporate net banking. Funds transferred via IMPS, NEFT, or RTGS auto-reconcile to your wallet in real-time.
-                          </p>
-                        </div>
-                      )}
+                      {/* Bank Name */}
+                      <div className="rounded-xl border border-border/80 bg-secondary/30 p-3">
+                        <span className="text-[10px] text-muted-foreground block">Bank Name</span>
+                        <p className="font-semibold text-foreground mt-0.5">{BANK_DETAILS.bankName}</p>
+                        <span className="text-[10px] text-muted-foreground">{BANK_DETAILS.branch}</span>
+                      </div>
 
-                      {paymentMethod === "card" && (
-                        <div className="space-y-2 text-xs">
-                          <p className="font-semibold text-foreground">Corporate Cards &amp; NetBanking Gateway</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            Supports Visa, MasterCard, RuPay Corporate Cards, and Net Banking for 50+ Indian commercial banks.
-                          </p>
+                      {/* Account Type */}
+                      <div className="rounded-xl border border-border/80 bg-secondary/30 p-3">
+                        <span className="text-[10px] text-muted-foreground block">Account Type</span>
+                        <p className="font-semibold text-foreground mt-0.5">{BANK_DETAILS.accountType}</p>
+                        <span className="text-[10px] text-primary font-medium">Direct Settlement</span>
+                      </div>
+
+                      {/* Account Number */}
+                      <div className="rounded-xl border border-border/80 bg-secondary/30 p-3 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block">Account Number</span>
+                          <p className="font-mono font-bold text-foreground text-sm tracking-wider mt-0.5">{BANK_DETAILS.accountNumber}</p>
                         </div>
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(BANK_DETAILS.accountNumber, "Account Number")}
+                          className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
+                          title="Copy Account Number"
+                        >
+                          {copiedField === "Account Number" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-primary" />}
+                        </button>
+                      </div>
+
+                      {/* IFSC Code */}
+                      <div className="rounded-xl border border-border/80 bg-secondary/30 p-3 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block">IFSC Code</span>
+                          <p className="font-mono font-bold text-foreground text-sm tracking-wider mt-0.5">{BANK_DETAILS.ifscCode}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(BANK_DETAILS.ifscCode, "IFSC Code")}
+                          className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
+                          title="Copy IFSC Code"
+                        >
+                          {copiedField === "IFSC Code" ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-primary" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Instructions Banner */}
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-muted-foreground space-y-1.5">
+                      <p className="font-semibold text-foreground flex items-center gap-1.5">
+                        <Info className="h-4 w-4 text-primary" /> Instructions for Bank Transfer:
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed">
+                        <li>Open your Mobile Banking or Corporate NetBanking application.</li>
+                        <li>Add beneficiary or do quick transfer to the account above via <strong>IMPS / NEFT / RTGS</strong>.</li>
+                        <li>Transfer exact amount (<strong>₹{effectiveAmount.toLocaleString("en-IN")}</strong>).</li>
+                        <li>Take a screenshot of the confirmation page and copy the <strong>UTR / Ref Number</strong>.</li>
+                      </ol>
                     </div>
 
                     {/* Optional GSTIN for B2B Invoice */}
@@ -592,35 +532,10 @@ function WalletPage() {
                         className="w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs font-semibold uppercase outline-none focus:border-primary"
                       />
                     </div>
-
-                    {/* Generate QR Button in Step 2 */}
-                    {paymentMethod === "upi" && (
-                      <div className="pt-2 border-t border-border/60">
-                        <button
-                          type="button"
-                          onClick={handleGenerateQr}
-                          disabled={isGeneratingQr || effectiveAmount <= 0}
-                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
-                        >
-                          {isGeneratingQr ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" /> Generating Secure Dynamic QR...
-                            </>
-                          ) : (
-                            <>
-                              <QrCode className="h-4 w-4" />
-                              {isQrGenerated && generatedAmount === effectiveAmount
-                                ? `Refresh UPI QR Code (₹${effectiveAmount.toLocaleString("en-IN")})`
-                                : `Generate Dynamic UPI QR (₹${effectiveAmount.toLocaleString("en-IN")})`}
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                    {/* Right Column: Dynamic Live QR & Checkout Summary (5 Cols) */}
+                {/* Right Column: Step 3 UTR & Screenshot Verification Form (5 Cols) */}
                 <div className="space-y-6 lg:col-span-5">
                   {/* Active Pending Verification Notification if user just submitted */}
                   {lastSubmittedUtr && (
@@ -632,7 +547,7 @@ function WalletPage() {
                           </div>
                           <div>
                             <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                              Payment Under Admin Verification
+                              Payment Under Verification
                             </h4>
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500">
                               Estimated Time: 2–5 Minutes
@@ -650,13 +565,13 @@ function WalletPage() {
                           <p className="font-mono font-bold text-foreground">{lastSubmittedUtr.utr}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Amount Submitted</p>
+                          <p className="text-[10px] text-muted-foreground">Amount</p>
                           <p className="font-mono font-bold text-foreground">₹{lastSubmittedUtr.amount.toLocaleString("en-IN")}</p>
                         </div>
                       </div>
 
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        ✅ We have received your payment request. Our admin is matching your UTR against the bank statement. Your wallet balance will be credited as soon as verified.
+                        ✅ Your UTR and payment screenshot have been received. Our admin is matching your transaction against the bank statement. Your balance will be credited instantly upon verification.
                       </p>
 
                       <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground">
@@ -673,163 +588,27 @@ function WalletPage() {
                   )}
 
                   <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
-                    {/* QR Code Card (For UPI) or Summary Card */}
-                    {paymentMethod === "upi" ? (
-                      isQrGenerated ? (
-                        <div className="flex flex-col items-center rounded-xl border border-border bg-secondary/30 p-5 text-center transition-all animate-in fade-in duration-300">
-                          <div className="flex items-center justify-between w-full text-xs text-muted-foreground mb-3">
-                            <span className="font-semibold flex items-center gap-1 text-foreground">
-                              <QrCode className="h-3.5 w-3.5 text-primary" /> Dynamic UPI Payment QR
-                            </span>
-                            <span className="flex items-center gap-1 font-mono text-amber-500 font-semibold text-[11px]">
-                              <Clock className="h-3 w-3" /> Expires in {formatTimer(qrExpirySeconds)}
-                            </span>
-                          </div>
-
-                          {/* Generated Visual QR Code Box */}
-                          <div className="relative rounded-2xl border-2 border-primary/40 bg-white p-3 shadow-md">
-                            {qrDataUrl ? (
-                              <img
-                                src={qrDataUrl}
-                                alt="Scan UPI QR Code"
-                                className="h-48 w-48 rounded-lg"
-                              />
-                            ) : (
-                              <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                                  upiPayUri
-                                )}&margin=4`}
-                                alt="Scan UPI QR Code"
-                                className="h-48 w-48 rounded-lg"
-                              />
-                            )}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="rounded-full bg-white p-1 shadow-md border border-slate-200">
-                                <ShieldCheck className="h-5 w-5 text-emerald-600" />
-                              </div>
-                            </div>
-                          </div>
-
-                          <p className="mt-3 text-sm font-bold text-foreground">
-                            Scan &amp; Pay ₹{generatedAmount.toLocaleString("en-IN")}
-                          </p>
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            UPI ID: <span className="font-mono font-semibold text-foreground">{upiId}</span>
-                          </p>
-                          <a
-                            href={upiPayUri}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
-                          >
-                            <Sparkles className="h-3 w-3" /> Tap to Pay via UPI App on Mobile
-                          </a>
-
-                          {/* Payment Instructions Badge */}
-                          <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-left text-[11px] text-muted-foreground space-y-1 w-full">
-                            <p className="font-semibold text-foreground flex items-center gap-1">
-                              <Info className="h-3.5 w-3.5 text-primary" /> Steps to Complete Payment:
-                            </p>
-                            <ol className="list-decimal list-inside space-y-0.5 text-[10.5px]">
-                              <li>Scan the QR code using PhonePe / GPay / Paytm / BHIM.</li>
-                              <li>Pay exact amount (₹{generatedAmount.toLocaleString("en-IN")}).</li>
-                              <li>Copy the <strong>12-Digit UPI UTR / Ref No.</strong> from your UPI app.</li>
-                              <li>Paste the UTR below and submit for 2–5 min verification.</li>
-                            </ol>
-                          </div>
-
-                          {/* Mandatory 12-digit UTR Input */}
-                          <div className="mt-4 w-full text-left space-y-1.5">
-                            <label className="text-xs font-bold text-foreground flex items-center justify-between">
-                              <span className="flex items-center gap-1">
-                                Enter 12-Digit UPI UTR / Reference No. <span className="text-rose-500">*</span>
-                              </span>
-                              <span className="font-mono text-[10px] text-muted-foreground">
-                                {utrNumber.length}/12 Digits
-                              </span>
-                            </label>
-                            <input
-                              type="text"
-                              maxLength={16}
-                              placeholder="e.g. 425109823456"
-                              value={utrNumber}
-                              onChange={(e) => setUtrNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, ""))}
-                              className="w-full rounded-xl border-2 border-primary/40 bg-background px-3.5 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary text-foreground shadow-sm transition-colors"
-                            />
-                            <p className="text-[10px] text-muted-foreground">
-                              💡 Found in your UPI transaction receipt details as 'UPI Ref ID' or 'UTR'.
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-secondary/20 p-6 text-center space-y-3">
-                          <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3.5 text-primary">
-                            <QrCode className="h-8 w-8" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-foreground text-sm">Dynamic UPI QR Ready to Generate</h4>
-                            <p className="mt-1 text-xs text-muted-foreground max-w-xs">
-                              Select your desired recharge amount and click below to generate your secure UPI payment QR code for <strong>₹{effectiveAmount.toLocaleString("en-IN")}</strong>.
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleGenerateQr}
-                            disabled={isGeneratingQr || effectiveAmount <= 0}
-                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 active:scale-[0.99] cursor-pointer"
-                          >
-                            {isGeneratingQr ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-3.5 w-3.5" />
-                            )}
-                            Generate UPI QR (₹{effectiveAmount.toLocaleString("en-IN")})
-                          </button>
-                        </div>
-                      )
-                    ) : (
-                      <div className="rounded-xl border border-border bg-secondary/30 p-5 text-center space-y-3">
-                        <div className="inline-flex p-3 rounded-full bg-primary/10 text-primary">
-                          {paymentMethod === "va" ? <Building2 className="h-7 w-7" /> : <CreditCard className="h-7 w-7" />}
-                        </div>
-                        <h4 className="font-bold text-foreground text-sm">
-                          {paymentMethod === "va" ? "Bank Wire / NEFT Transfer" : "Corporate Payment Gateway"}
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          {paymentMethod === "va"
-                            ? "Transfer directly to your designated virtual account, then submit your IMPS/NEFT UTR below."
-                            : "Click below to complete transaction via Secure Gateway."}
-                        </p>
-
-                        {/* UTR Input for Bank Wire */}
-                        <div className="w-full text-left space-y-1.5 pt-2 border-t border-border">
-                          <label className="text-xs font-bold text-foreground flex items-center justify-between">
-                            <span>Enter Bank IMPS/NEFT UTR Number <span className="text-rose-500">*</span></span>
-                          </label>
-                          <input
-                            type="text"
-                            maxLength={24}
-                            placeholder="e.g. YESBH24251098234"
-                            value={utrNumber}
-                            onChange={(e) => setUtrNumber(e.target.value.trim().toUpperCase())}
-                            className="w-full rounded-xl border-2 border-primary/40 bg-background px-3.5 py-2 font-mono text-xs font-bold outline-none focus:border-primary text-foreground"
-                          />
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Step 3 · Submit UTR &amp; Payment Screenshot
+                      </span>
+                      <h4 className="mt-1 text-base font-bold text-foreground">
+                        Verify Bank Transfer (₹{effectiveAmount.toLocaleString("en-IN")})
+                      </h4>
+                    </div>
 
                     {/* Detailed Bill Breakdown */}
                     <div className="space-y-2.5 rounded-xl border border-border/80 bg-secondary/20 p-4 text-xs">
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span>Recharge Amount</span>
+                        <span>Transfer Amount</span>
                         <span className="font-mono font-semibold text-foreground">
-                          ₹{(isQrGenerated ? generatedAmount : effectiveAmount).toFixed(2)}
+                          ₹{effectiveAmount.toFixed(2)}
                         </span>
                       </div>
 
                       {bonusAmount > 0 && (
                         <div className="flex items-center justify-between text-success font-medium">
-                          <span>Special Pack Bonus Credit</span>
+                          <span>Special Bonus Extra Credit</span>
                           <span className="font-mono font-bold">+₹{bonusAmount.toFixed(2)}</span>
                         </div>
                       )}
@@ -845,11 +624,129 @@ function WalletPage() {
                       </div>
                     </div>
 
-                    {/* Submit UTR Button */}
+                    {/* Field 1: UTR Input */}
+                    <div className="space-y-1.5 text-left">
+                      <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          1. Bank Transfer UTR / Reference No. <span className="text-rose-500">*</span>
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {utrNumber.length} chars
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={26}
+                        placeholder="e.g. YESBH24251098234 or 425109823456"
+                        value={utrNumber}
+                        onChange={(e) => setUtrNumber(e.target.value.trim().toUpperCase())}
+                        className="w-full rounded-xl border-2 border-primary/40 bg-background px-3.5 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary text-foreground shadow-sm transition-colors"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        💡 Found on your bank transfer receipt, SMS, or NetBanking statement.
+                      </p>
+                    </div>
+
+                    {/* Field 2: Screenshot File Upload */}
+                    <div className="space-y-1.5 text-left">
+                      <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          2. Upload Payment Screenshot / Receipt <span className="text-rose-500">*</span>
+                        </span>
+                        {screenshotFileSize && (
+                          <span className="font-mono text-[10px] text-success font-semibold">
+                            {screenshotFileSize}
+                          </span>
+                        )}
+                      </label>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+                        onChange={handleFileInputChange}
+                        className="hidden"
+                      />
+
+                      {!screenshotDataUrl ? (
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDraggingFile(true);
+                          }}
+                          onDragLeave={() => setIsDraggingFile(false)}
+                          onDrop={handleDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-all cursor-pointer ${
+                            isDraggingFile
+                              ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                              : "border-border bg-secondary/30 hover:border-primary/50 hover:bg-secondary/50"
+                          }`}
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2">
+                            <UploadCloud className="h-5 w-5" />
+                          </div>
+                          <p className="text-xs font-bold text-foreground">
+                            Click to browse or drag &amp; drop screenshot
+                          </p>
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            PNG, JPG, JPEG, WEBP or PDF receipt up to 8MB
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-border bg-secondary/40 p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 overflow-hidden">
+                              {screenshotDataUrl.startsWith("data:image/") ? (
+                                <img
+                                  src={screenshotDataUrl}
+                                  alt="Payment Screenshot Preview"
+                                  className="h-12 w-12 rounded-lg object-cover border border-border shrink-0 cursor-pointer"
+                                  onClick={() => setPreviewImage({ src: screenshotDataUrl, title: screenshotFileName || "Payment Screenshot" })}
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                                  <FileText className="h-6 w-6" />
+                                </div>
+                              )}
+                              <div className="overflow-hidden text-xs">
+                                <p className="font-semibold text-foreground truncate">{screenshotFileName}</p>
+                                <span className="text-[10px] text-success font-medium flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3" /> Ready for submission
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              {screenshotDataUrl.startsWith("data:image/") && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage({ src: screenshotDataUrl, title: screenshotFileName || "Payment Screenshot" })}
+                                  className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
+                                  title="View Full Size Screenshot"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleRemoveScreenshot}
+                                className="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors"
+                                title="Remove Screenshot"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Submit Verification Button */}
                     <button
                       type="button"
-                      disabled={isProcessing || !utrNumber.trim() || utrNumber.trim().length < 6}
-                      onClick={handleSubmitUtrPayment}
+                      disabled={isProcessing || !utrNumber.trim() || utrNumber.trim().length < 6 || !screenshotDataUrl}
+                      onClick={handleSubmitPayment}
                       className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {isProcessing ? (
@@ -858,7 +755,7 @@ function WalletPage() {
                         </>
                       ) : (
                         <>
-                          <ShieldCheck className="h-4 w-4" /> Submit UTR for Admin Verification (2–5 Mins)
+                          <ShieldCheck className="h-4 w-4" /> Submit UTR &amp; Screenshot (2–5 Mins SLA)
                         </>
                       )}
                     </button>
@@ -891,7 +788,7 @@ function WalletPage() {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Match incoming user UTR submissions with bank account statement and approve or reject recharges.
+                      Match incoming user UTR submissions &amp; payment screenshots with bank account statement.
                     </p>
                   </div>
 
@@ -921,6 +818,7 @@ function WalletPage() {
                           <th className="px-4 py-3">Time</th>
                           <th className="px-4 py-3">User &amp; Email</th>
                           <th className="px-4 py-3">Submitted UTR</th>
+                          <th className="px-4 py-3 text-center">Receipt</th>
                           <th className="px-4 py-3 text-right">Amount</th>
                           <th className="px-4 py-3 text-center">Status</th>
                           <th className="px-4 py-3 text-right">Admin Action</th>
@@ -942,6 +840,19 @@ function WalletPage() {
                             </td>
                             <td className="px-4 py-3 font-mono font-bold text-foreground">
                               {req.utr_number || req.reference_id}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {req.payment_screenshot ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage({ src: req.payment_screenshot, title: `Receipt: UTR ${req.utr_number || req.id}` })}
+                                  className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                                >
+                                  <Eye className="h-3 w-3" /> View Slip
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground">No Slip</span>
+                              )}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-bold text-success">
                               ₹{req.amount.toFixed(2)}
@@ -1089,6 +1000,7 @@ function WalletPage() {
                         <th className="px-4 py-3.5">Txn ID</th>
                         <th className="px-4 py-3.5">Type</th>
                         <th className="px-4 py-3.5">Description / UTR</th>
+                        <th className="px-4 py-3.5 text-center">Screenshot</th>
                         <th className="px-4 py-3.5 text-right">Amount</th>
                         <th className="px-4 py-3.5 text-right">Balance After</th>
                         <th className="px-4 py-3.5 text-center">Status</th>
@@ -1139,6 +1051,19 @@ function WalletPage() {
                               </p>
                             ) : null}
                           </td>
+                          <td className="px-4 py-3.5 text-center">
+                            {txn.payment_screenshot ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImage({ src: txn.payment_screenshot!, title: `Payment Receipt: ${txn.utr_number || txn.id}` })}
+                                className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                              >
+                                <Eye className="h-3 w-3" /> View Slip
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">—</span>
+                            )}
+                          </td>
                           <td
                             className={`whitespace-nowrap px-4 py-3.5 text-right font-mono font-bold ${
                               txn.type === "credit"
@@ -1175,6 +1100,58 @@ function WalletPage() {
                 </div>
               )}
             </section>
+
+            {/* ========================================================================= */}
+            {/* 🔍 SCREENSHOT ZOOM PREVIEW MODAL */}
+            {/* ========================================================================= */}
+            {previewImage && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="relative max-w-3xl w-full max-h-[90vh] rounded-2xl border border-border bg-card p-5 shadow-2xl flex flex-col space-y-4">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-primary" />
+                      <h4 className="font-bold text-foreground text-sm">{previewImage.title}</h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(null)}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-auto rounded-xl bg-black/20 flex items-center justify-center p-2 min-h-[300px]">
+                    {previewImage.src.startsWith("data:image/") ? (
+                      <img
+                        src={previewImage.src}
+                        alt="Payment Receipt Slip"
+                        className="max-h-[70vh] max-w-full rounded-lg object-contain shadow-md"
+                      />
+                    ) : (
+                      <iframe
+                        src={previewImage.src}
+                        title="Receipt PDF"
+                        className="w-full h-[70vh] rounded-lg"
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-success" /> Verified Upload
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(null)}
+                      className="rounded-lg bg-secondary px-4 py-2 font-semibold text-foreground hover:bg-secondary/80 transition-colors"
+                    >
+                      Close Preview
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       }}

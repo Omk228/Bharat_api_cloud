@@ -123,6 +123,10 @@ export const initDatabase = async () => {
       if (!apprCol || apprCol.length === 0) {
         await dbPool.query("ALTER TABLE wallet_transactions ADD COLUMN approved_at TIMESTAMP NULL");
       }
+      const [screenCol] = await dbPool.query("SHOW COLUMNS FROM wallet_transactions LIKE 'payment_screenshot'");
+      if (!screenCol || screenCol.length === 0) {
+        await dbPool.query("ALTER TABLE wallet_transactions ADD COLUMN payment_screenshot LONGTEXT DEFAULT NULL");
+      }
     } catch (migErr) {
       console.warn('Column migration note:', migErr.message);
     }
