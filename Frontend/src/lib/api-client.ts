@@ -745,12 +745,16 @@ export const apiClient = {
     search?: string;
   }): Promise<Array<{
     id: string;
+    numeric_id?: number;
     type: 'credit' | 'debit';
     amount: number;
     balance_after: number;
     category: string;
     description: string;
     reference_id: string;
+    status: 'pending' | 'success' | 'rejected';
+    utr_number?: string | null;
+    admin_notes?: string | null;
     created_at: string;
   }>> {
     const token = this.getToken();
@@ -830,6 +834,119 @@ export const apiClient = {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.message || 'Failed to top-up wallet');
+    return json.data;
+  },
+
+  async submitRechargeRequest(data: {
+    amount: number;
+    utr_number: string;
+    method?: string;
+  }): Promise<{
+    transaction_id: string;
+    numeric_id: number;
+    amount: number;
+    utr_number: string;
+    status: 'pending' | 'success' | 'rejected';
+    message: string;
+    created_at: string;
+  }> {
+    const token = this.getToken();
+    const res = await fetch(`${API_BASE}/wallet/recharge-request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to submit recharge request');
+    return json.data;
+  },
+
+  async getAdminRecharges(params?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Array<{
+    id: string;
+    numeric_id: number;
+    user_id: number;
+    user_name: string;
+    user_email: string;
+    user_company: string;
+    current_user_balance: number;
+    type: 'credit' | 'debit';
+    amount: number;
+    balance_after: number;
+    category: string;
+    description: string;
+    reference_id: string;
+    status: 'pending' | 'success' | 'rejected';
+    utr_number: string;
+    admin_notes: string | null;
+    approved_at: string | null;
+    created_at: string;
+  }>> {
+    const token = this.getToken();
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.search) query.set('search', params.search);
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+
+    const res = await fetch(`${API_BASE}/wallet/admin/recharges?${query.toString()}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to fetch admin recharges');
+    return json.data || [];
+  },
+
+  async approveRecharge(id: string | number, data?: { adminNotes?: string }): Promise<{
+    transaction_id: string;
+    user_id: number;
+    amount_credited: number;
+    new_wallet_balance: number;
+    status: 'success';
+    approved_at: string;
+  }> {
+    const token = this.getToken();
+    const cleanId = String(id).replace('tx_', '');
+    const res = await fetch(`${API_BASE}/wallet/admin/recharges/${cleanId}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data || {}),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to approve recharge');
+    return json.data;
+  },
+
+  async rejectRecharge(id: string | number, data?: { reason?: string }): Promise<{
+    transaction_id: string;
+    user_id: number;
+    status: 'rejected';
+    reason: string;
+  }> {
+    const token = this.getToken();
+    const cleanId = String(id).replace('tx_', '');
+    const res = await fetch(`${API_BASE}/wallet/admin/recharges/${cleanId}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data || {}),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to reject recharge');
     return json.data;
   },
 

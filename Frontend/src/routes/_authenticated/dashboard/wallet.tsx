@@ -8,6 +8,8 @@ import {
   Search,
   History,
   CheckCircle2,
+  XCircle,
+  AlertCircle,
   Loader2,
   QrCode,
   Building2,
@@ -23,6 +25,9 @@ import {
   Receipt,
   FileCheck,
   Percent,
+  RefreshCw,
+  UserCheck,
+  BadgeAlert,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -31,9 +36,12 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import {
   downloadCsv,
   toCsv,
-  topupWallet,
+  submitRechargeRequest,
+  approveRechargeRequest,
+  rejectRechargeRequest,
   type WalletTransactionRow,
 } from "@/lib/demo-store";
+import { apiClient } from "@/lib/api-client";
 
 export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
   head: () => ({
@@ -41,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
       { title: "Payment & Wallet Recharge — Bharat API Cloud" },
       {
         name: "description",
-        content: "Instant UPI QR, Virtual Account IMPS/NEFT, and Corporate card payments for your prepaid API wallet.",
+        content: "Instant UPI QR, Virtual Account IMPS/NEFT, and Corporate card payments with UTR verification for your prepaid API wallet.",
       },
     ],
   }),
@@ -71,6 +79,17 @@ function WalletPage() {
   const [generatedAmount, setGeneratedAmount] = useState<number>(1000);
   const [utrNumber, setUtrNumber] = useState<string>("");
   const [qrExpirySeconds, setQrExpirySeconds] = useState(900); // 15 mins
+  const [lastSubmittedUtr, setLastSubmittedUtr] = useState<{
+    utr: string;
+    amount: number;
+    submittedAt: string;
+  } | null>(null);
+
+  // Admin Queue state
+  const [adminRequests, setAdminRequests] = useState<any[]>([]);
+  const [isLoadingAdminRequests, setIsLoadingAdminRequests] = useState(false);
+  const [processingAdminId, setProcessingAdminId] = useState<string | null>(null);
+  const [activeAdminTab, setActiveAdminTab] = useState<"pending" | "all">("pending");
 
   // Ledger filter state
   const [filterType, setFilterType] = useState<"all" | "credit" | "debit">("all");
@@ -123,37 +142,94 @@ function WalletPage() {
     }, 400);
   };
 
-  const handleExecutePayment = () => {
+  // Fetch Admin Requests if admin
+  const fetchAdminRecharges = async () => {
+    setIsLoadingAdminRequests(true);
+    try {
+      const list = await apiClient.getAdminRecharges({ status: activeAdminTab });
+      setAdminRequests(list || []);
+    } catch (err) {
+      console.warn("Could not load admin recharges:", err);
+    } finally {
+      setIsLoadingAdminRequests(false);
+    }
+  };
+
+  const handleAdminApprove = async (id: string | number, amount: number) => {
+    setProcessingAdminId(String(id));
+    try {
+      await approveRechargeRequest(String(id), amount);
+      toast.success(`Recharge of ₹${amount.toLocaleString("en-IN")} approved and credited.`);
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      fetchAdminRecharges();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to approve recharge.");
+    } finally {
+      setProcessingAdminId(null);
+    }
+  };
+
+  const handleAdminReject = async (id: string | number) => {
+    const reason = window.prompt("Enter rejection reason:", "Unmatched or Invalid UTR in Bank Statement");
+    if (reason === null) return;
+
+    setProcessingAdminId(String(id));
+    try {
+      await rejectRechargeRequest(String(id), reason || "Invalid UTR");
+      toast.info("Recharge request marked as rejected.");
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      fetchAdminRecharges();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reject recharge.");
+    } finally {
+      setProcessingAdminId(null);
+    }
+  };
+
+  const handleSubmitUtrPayment = async () => {
     const payAmt = isQrGenerated ? generatedAmount : effectiveAmount;
     if (payAmt < 100) {
       toast.error("Minimum recharge amount is ₹100");
       return;
     }
 
+    const cleanUtr = utrNumber.trim().replace(/[\s-]/g, "");
+    if (!cleanUtr || cleanUtr.length < 6) {
+      toast.error("Please enter your valid 12-digit UPI UTR / Bank Reference Number.");
+      return;
+    }
+
     setIsProcessing(true);
-    setTimeout(() => {
-      topupWallet({
-        amount: totalCredited,
-        paymentMethod:
-          paymentMethod === "upi"
-            ? "UPI Instant QR"
-            : paymentMethod === "va"
-            ? "Virtual Account (NEFT/IMPS)"
-            : "Corporate Card",
-        note: utrNumber.trim()
-          ? `Recharge ₹${payAmt} (UTR: ${utrNumber.trim()})`
-          : bonusAmount > 0
-          ? `Recharge ₹${payAmt} (+₹${bonusAmount} Bonus Credit)`
-          : `Recharge ₹${payAmt}`,
+    try {
+      const methodLabel =
+        paymentMethod === "upi"
+          ? "UPI Dynamic QR"
+          : paymentMethod === "va"
+          ? "Virtual Account (NEFT/IMPS)"
+          : "Corporate Card";
+
+      await submitRechargeRequest({
+        amount: payAmt,
+        utr_number: cleanUtr,
+        paymentMethod: methodLabel,
       });
 
-      toast.success(`🎉 Payment of ₹${payAmt.toLocaleString("en-IN")} successful! ₹${totalCredited.toLocaleString("en-IN")} credited to your wallet.`);
-      setIsProcessing(false);
-      setIsQrGenerated(false);
+      setLastSubmittedUtr({
+        utr: cleanUtr,
+        amount: payAmt,
+        submittedAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      });
+
+      toast.success(`🎉 UTR ${cleanUtr} submitted! Please wait 2-5 minutes for admin verification.`);
       setUtrNumber("");
+      setIsQrGenerated(false);
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["user-pricing"] });
-    }, 1200);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit recharge request. Please check UTR.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -498,8 +574,58 @@ function WalletPage() {
                   </div>
                 </div>
 
-                {/* Right Column: Dynamic Live QR & Checkout Summary (5 Cols) */}
+                    {/* Right Column: Dynamic Live QR & Checkout Summary (5 Cols) */}
                 <div className="space-y-6 lg:col-span-5">
+                  {/* Active Pending Verification Notification if user just submitted */}
+                  {lastSubmittedUtr && (
+                    <div className="rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-card to-amber-500/5 p-5 shadow-md animate-in fade-in slide-in-from-top-4 duration-300 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-amber-500 ring-4 ring-amber-500/10">
+                            <Clock className="h-5 w-5 animate-spin" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                              Payment Under Admin Verification
+                            </h4>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500">
+                              Estimated Time: 2–5 Minutes
+                            </span>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 font-mono text-[10px] font-bold text-amber-500 border border-amber-500/30">
+                          PENDING
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 rounded-xl border border-amber-500/20 bg-card/80 p-3 text-xs">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Submitted UTR</p>
+                          <p className="font-mono font-bold text-foreground">{lastSubmittedUtr.utr}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Amount Submitted</p>
+                          <p className="font-mono font-bold text-foreground">₹{lastSubmittedUtr.amount.toLocaleString("en-IN")}</p>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        ✅ We have received your payment request. Our admin is matching your UTR against the bank statement. Your wallet balance will be credited as soon as verified.
+                      </p>
+
+                      <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground">
+                        <span>Submitted at: {lastSubmittedUtr.submittedAt}</span>
+                        <button
+                          type="button"
+                          onClick={() => setLastSubmittedUtr(null)}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          Dismiss Notice
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-5">
                     {/* QR Code Card (For UPI) or Summary Card */}
                     {paymentMethod === "upi" ? (
@@ -507,9 +633,9 @@ function WalletPage() {
                         <div className="flex flex-col items-center rounded-xl border border-border bg-secondary/30 p-5 text-center transition-all animate-in fade-in duration-300">
                           <div className="flex items-center justify-between w-full text-xs text-muted-foreground mb-3">
                             <span className="font-semibold flex items-center gap-1 text-foreground">
-                              <QrCode className="h-3.5 w-3.5 text-primary" /> Live Dynamic UPI QR
+                              <QrCode className="h-3.5 w-3.5 text-primary" /> Dynamic UPI Payment QR
                             </span>
-                            <span className="flex items-center gap-1 font-mono text-amber-400 font-semibold text-[11px]">
+                            <span className="flex items-center gap-1 font-mono text-amber-500 font-semibold text-[11px]">
                               <Clock className="h-3 w-3" /> Expires in {formatTimer(qrExpirySeconds)}
                             </span>
                           </div>
@@ -534,23 +660,43 @@ function WalletPage() {
                             Scan &amp; Pay ₹{generatedAmount.toLocaleString("en-IN")}
                           </p>
                           <p className="mt-0.5 text-[11px] text-muted-foreground">
-                            Supported Apps: Google Pay, PhonePe, Paytm, CRED &amp; BHIM
+                            UPI ID: <span className="font-mono font-semibold text-foreground">{upiId}</span>
                           </p>
 
-                          {/* 12-digit UTR Input */}
-                          <div className="mt-4 w-full text-left space-y-1">
-                            <label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
-                              <span>12-Digit UPI UTR / Reference ID</span>
-                              <span className="text-[10px] text-muted-foreground">(Optional)</span>
+                          {/* Payment Instructions Badge */}
+                          <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-left text-[11px] text-muted-foreground space-y-1 w-full">
+                            <p className="font-semibold text-foreground flex items-center gap-1">
+                              <Info className="h-3.5 w-3.5 text-primary" /> Steps to Complete Payment:
+                            </p>
+                            <ol className="list-decimal list-inside space-y-0.5 text-[10.5px]">
+                              <li>Scan the QR code using PhonePe / GPay / Paytm / BHIM.</li>
+                              <li>Pay exact amount (₹{generatedAmount.toLocaleString("en-IN")}).</li>
+                              <li>Copy the <strong>12-Digit UPI UTR / Ref No.</strong> from your UPI app.</li>
+                              <li>Paste the UTR below and submit for 2–5 min verification.</li>
+                            </ol>
+                          </div>
+
+                          {/* Mandatory 12-digit UTR Input */}
+                          <div className="mt-4 w-full text-left space-y-1.5">
+                            <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                              <span className="flex items-center gap-1">
+                                Enter 12-Digit UPI UTR / Reference No. <span className="text-rose-500">*</span>
+                              </span>
+                              <span className="font-mono text-[10px] text-muted-foreground">
+                                {utrNumber.length}/12 Digits
+                              </span>
                             </label>
                             <input
                               type="text"
                               maxLength={16}
                               placeholder="e.g. 425109823456"
                               value={utrNumber}
-                              onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ""))}
-                              className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-primary text-foreground"
+                              onChange={(e) => setUtrNumber(e.target.value.replace(/[^0-9a-zA-Z]/g, ""))}
+                              className="w-full rounded-xl border-2 border-primary/40 bg-background px-3.5 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary text-foreground shadow-sm transition-colors"
                             />
+                            <p className="text-[10px] text-muted-foreground">
+                              💡 Found in your UPI transaction receipt details as 'UPI Ref ID' or 'UTR'.
+                            </p>
                           </div>
                         </div>
                       ) : (
@@ -580,7 +726,7 @@ function WalletPage() {
                         </div>
                       )
                     ) : (
-                      <div className="rounded-xl border border-border bg-secondary/30 p-5 text-center space-y-2">
+                      <div className="rounded-xl border border-border bg-secondary/30 p-5 text-center space-y-3">
                         <div className="inline-flex p-3 rounded-full bg-primary/10 text-primary">
                           {paymentMethod === "va" ? <Building2 className="h-7 w-7" /> : <CreditCard className="h-7 w-7" />}
                         </div>
@@ -589,9 +735,24 @@ function WalletPage() {
                         </h4>
                         <p className="text-xs text-muted-foreground">
                           {paymentMethod === "va"
-                            ? "Transfer directly to your designated virtual account."
+                            ? "Transfer directly to your designated virtual account, then submit your IMPS/NEFT UTR below."
                             : "Click below to complete transaction via Secure Gateway."}
                         </p>
+
+                        {/* UTR Input for Bank Wire */}
+                        <div className="w-full text-left space-y-1.5 pt-2 border-t border-border">
+                          <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                            <span>Enter Bank IMPS/NEFT UTR Number <span className="text-rose-500">*</span></span>
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={24}
+                            placeholder="e.g. YESBH24251098234"
+                            value={utrNumber}
+                            onChange={(e) => setUtrNumber(e.target.value.trim().toUpperCase())}
+                            className="w-full rounded-xl border-2 border-primary/40 bg-background px-3.5 py-2 font-mono text-xs font-bold outline-none focus:border-primary text-foreground"
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -612,46 +773,166 @@ function WalletPage() {
                       )}
 
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span>GST (18% ITC input credit)</span>
-                        <span className="font-mono">₹0.00 (Inclusive)</span>
+                        <span>Verification SLA</span>
+                        <span className="font-mono text-amber-500 font-semibold">2–5 Minutes</span>
                       </div>
 
                       <div className="border-t border-border pt-2 flex items-center justify-between text-sm font-bold text-foreground">
-                        <span>Total Credited to Wallet</span>
+                        <span>Total to be Credited</span>
                         <span className="font-mono text-primary text-base">₹{totalCredited.toFixed(2)}</span>
                       </div>
                     </div>
 
-                    {/* Action Button */}
+                    {/* Submit UTR Button */}
                     <button
                       type="button"
-                      disabled={isProcessing || (isQrGenerated ? generatedAmount : effectiveAmount) < 100}
-                      onClick={handleExecutePayment}
-                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+                      disabled={isProcessing || !utrNumber.trim() || utrNumber.trim().length < 6}
+                      onClick={handleSubmitUtrPayment}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {isProcessing ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Verifying &amp; Crediting Wallet...
+                          <Loader2 className="h-4 w-4 animate-spin" /> Submitting for Admin Verification...
                         </>
                       ) : (
                         <>
-                          <Zap className="h-4 w-4" /> Add ₹{totalCredited.toLocaleString("en-IN")} to Wallet Now
+                          <ShieldCheck className="h-4 w-4" /> Submit UTR for Admin Verification (2–5 Mins)
                         </>
                       )}
                     </button>
 
                     <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-success" /> Instant Activation
+                        <Clock className="h-3 w-3 text-amber-500" /> 2–5 Mins Verification
                       </span>
                       <span className="flex items-center gap-1">
-                        <FileCheck className="h-3 w-3 text-primary" /> Tax Invoice Generated
+                        <ShieldCheck className="h-3 w-3 text-success" /> Anti-Fraud Protected
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
+
+            {/* ========================================================================= */}
+            {/* 🛡️ ADMIN VERIFICATION QUEUE (Shown for Admin users or toggle) */}
+            {/* ========================================================================= */}
+            {data.profile.plan === "scale" || (data.session?.email && (data.session.email.includes("admin") || data.session.email.includes("demo"))) ? (
+              <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6 shadow-sm">
+                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-bold">Admin Payment Verification Desk</h3>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                        ADMIN DESK
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Match incoming user UTR submissions with bank account statement and approve or reject recharges.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={fetchAdminRecharges}
+                      disabled={isLoadingAdminRequests}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${isLoadingAdminRequests ? "animate-spin" : ""}`} />
+                      Refresh Queue
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter and Queue Table */}
+                {adminRequests.length === 0 && !isLoadingAdminRequests ? (
+                  <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                    Click "Refresh Queue" to load live UTR recharge submissions pending admin verification.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-border bg-background">
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b border-border bg-secondary/40 font-semibold text-muted-foreground">
+                        <tr>
+                          <th className="px-4 py-3">Time</th>
+                          <th className="px-4 py-3">User &amp; Email</th>
+                          <th className="px-4 py-3">Submitted UTR</th>
+                          <th className="px-4 py-3 text-right">Amount</th>
+                          <th className="px-4 py-3 text-center">Status</th>
+                          <th className="px-4 py-3 text-right">Admin Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {adminRequests.map((req) => (
+                          <tr key={req.id} className="hover:bg-secondary/20 transition-colors">
+                            <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                              {new Date(req.created_at).toLocaleTimeString("en-IN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })}
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="font-semibold text-foreground">{req.user_name || "User"}</p>
+                              <p className="font-mono text-[10px] text-muted-foreground">{req.user_email}</p>
+                            </td>
+                            <td className="px-4 py-3 font-mono font-bold text-foreground">
+                              {req.utr_number || req.reference_id}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-bold text-success">
+                              ₹{req.amount.toFixed(2)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              {req.status === "pending" ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-500 border border-amber-500/30">
+                                  <Clock className="h-3 w-3" /> Pending (2-5m)
+                                </span>
+                              ) : req.status === "success" ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success border border-success/30">
+                                  <Check className="h-3 w-3" /> Approved
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-500 border border-rose-500/30">
+                                  <XCircle className="h-3 w-3" /> Rejected
+                                </span>
+                              )}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-right space-x-1.5">
+                              {req.status === "pending" ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={processingAdminId === String(req.id || req.numeric_id)}
+                                    onClick={() => handleAdminApprove(req.numeric_id || req.id, req.amount)}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <Check className="h-3 w-3" /> Approve &amp; Credit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={processingAdminId === String(req.id || req.numeric_id)}
+                                    onClick={() => handleAdminReject(req.numeric_id || req.id)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-bold text-rose-500 hover:bg-rose-500/20 transition-colors disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <XCircle className="h-3 w-3" /> Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground font-mono">
+                                  {req.approved_at ? new Date(req.approved_at).toLocaleTimeString("en-IN") : "Processed"}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            ) : null}
 
             {/* ========================================================================= */}
             {/* 📜 TRANSACTION LEDGER & STATEMENT TABLE */}
@@ -669,7 +950,7 @@ function WalletPage() {
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Search Txn ID, API, ref..."
+                      placeholder="Search Txn ID, UTR, ref..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="rounded-lg border border-border bg-card py-1.5 pl-9 pr-3 text-xs outline-none focus:border-primary"
@@ -716,10 +997,11 @@ function WalletPage() {
                             balance_after: t.balance_after,
                             description: t.description,
                             reference_id: t.reference_id,
+                            utr_number: t.utr_number || "",
                             status: t.status,
                             created_at: t.created_at,
                           })),
-                          ["id", "type", "amount", "balance_after", "description", "reference_id", "status", "created_at"]
+                          ["id", "type", "amount", "balance_after", "description", "reference_id", "utr_number", "status", "created_at"]
                         );
                         downloadCsv(`bharat-wallet-ledger-${Date.now()}.csv`, csv);
                         toast.success("Transaction Ledger CSV downloaded.");
@@ -744,7 +1026,7 @@ function WalletPage() {
                         <th className="px-4 py-3.5">Date &amp; Time</th>
                         <th className="px-4 py-3.5">Txn ID</th>
                         <th className="px-4 py-3.5">Type</th>
-                        <th className="px-4 py-3.5">Description / Trigger</th>
+                        <th className="px-4 py-3.5">Description / UTR</th>
                         <th className="px-4 py-3.5 text-right">Amount</th>
                         <th className="px-4 py-3.5 text-right">Balance After</th>
                         <th className="px-4 py-3.5 text-center">Status</th>
@@ -768,9 +1050,15 @@ function WalletPage() {
                           </td>
                           <td className="px-4 py-3.5">
                             {txn.type === "credit" ? (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">
-                                <ArrowDownLeft className="h-3 w-3" /> Credit
-                              </span>
+                              txn.status === "pending" ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-500">
+                                  <Clock className="h-3 w-3" /> Credit (Pending)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">
+                                  <ArrowDownLeft className="h-3 w-3" /> Credit
+                                </span>
+                              )
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
                                 <ArrowUpRight className="h-3 w-3" /> Debit
@@ -779,15 +1067,23 @@ function WalletPage() {
                           </td>
                           <td className="px-4 py-3.5">
                             <p className="font-medium text-foreground">{txn.description}</p>
-                            {txn.reference_id && (
+                            {txn.utr_number ? (
+                              <p className="mt-0.5 font-mono text-[11px] text-primary font-bold">
+                                UTR: {txn.utr_number}
+                              </p>
+                            ) : txn.reference_id ? (
                               <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                                 Ref: {txn.reference_id}
                               </p>
-                            )}
+                            ) : null}
                           </td>
                           <td
                             className={`whitespace-nowrap px-4 py-3.5 text-right font-mono font-bold ${
-                              txn.type === "credit" ? "text-success" : "text-foreground"
+                              txn.type === "credit"
+                                ? txn.status === "pending"
+                                  ? "text-amber-500"
+                                  : "text-success"
+                                : "text-foreground"
                             }`}
                           >
                             {txn.type === "credit" ? "+" : "-"}₹{txn.amount.toFixed(2)}
@@ -796,9 +1092,19 @@ function WalletPage() {
                             ₹{txn.balance_after.toFixed(2)}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3.5 text-center">
-                            <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-semibold text-success border border-success/30">
-                              {txn.status}
-                            </span>
+                            {txn.status === "pending" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-500 border border-amber-500/30 animate-pulse">
+                                <Clock className="h-3 w-3" /> Pending (2–5m)
+                              </span>
+                            ) : txn.status === "rejected" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[11px] font-bold text-rose-500 border border-rose-500/30">
+                                <XCircle className="h-3 w-3" /> Rejected
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-semibold text-success border border-success/30">
+                                <Check className="h-3 w-3" /> Success
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}

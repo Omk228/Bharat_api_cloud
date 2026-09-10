@@ -60,7 +60,7 @@ export const walletService = {
    */
   async getTransactions(userId, { limit = 50, offset = 0, type = null, search = null } = {}) {
     let query = `
-      SELECT id, user_id, type, amount, balance_after, category, description, reference_id, created_at
+      SELECT id, user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, admin_notes, created_at
       FROM wallet_transactions
       WHERE user_id = ?
     `;
@@ -72,8 +72,8 @@ export const walletService = {
     }
 
     if (search && search.trim()) {
-      query += ' AND (description LIKE ? OR reference_id LIKE ?)';
-      params.push(`%${search.trim()}%`, `%${search.trim()}%`);
+      query += ' AND (description LIKE ? OR reference_id LIKE ? OR utr_number LIKE ?)';
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -84,12 +84,16 @@ export const walletService = {
     // Format for frontend consumption
     return rows.map((row) => ({
       id: `tx_${row.id}`,
+      numeric_id: row.id,
       type: row.type,
       amount: parseFloat(row.amount),
       balance_after: parseFloat(row.balance_after),
       category: row.category,
       description: row.description,
       reference_id: row.reference_id || `ref_${row.id}`,
+      status: row.status || 'success',
+      utr_number: row.utr_number || null,
+      admin_notes: row.admin_notes || null,
       created_at: row.created_at,
     }));
   },
@@ -250,6 +254,215 @@ export const walletService = {
   },
 
   /**
+   * Submit Recharge Request with UTR for Admin Verification
+   * @param {number} userId 
+   * @param {object} param1 
+   */
+  async submitRechargeRequest(userId, { amount, utr_number, method = 'UPI Instant QR' }) {
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount < 100) {
+      throw ApiError.badRequest('Recharge amount must be at least ₹100');
+    }
+
+    const cleanUtr = String(utr_number || '').trim().replace(/[\s-]/g, '');
+    if (!cleanUtr || cleanUtr.length < 6) {
+      throw ApiError.badRequest('Please enter a valid 12-digit UPI UTR or Bank Reference Number');
+    }
+
+    // Check for duplicate UTR
+    const [[existing]] = await dbPool.query(
+      'SELECT id, user_id, amount, status, created_at FROM wallet_transactions WHERE utr_number = ?',
+      [cleanUtr]
+    );
+
+    if (existing) {
+      const statusText = existing.status ? existing.status.toUpperCase() : 'PROCESSED';
+      throw ApiError.badRequest(
+        `This UTR (${cleanUtr}) has already been submitted (Status: ${statusText}). If you believe this is an error, please contact admin support.`
+      );
+    }
+
+    // Fetch current user wallet balance (balance is NOT updated yet)
+    const [[user]] = await dbPool.query(
+      'SELECT wallet_balance FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (!user) {
+      throw ApiError.notFound('User account not found');
+    }
+
+    const currentBalance = parseFloat(user.wallet_balance || '0.00');
+    const ref = `req_utr_${Date.now()}`;
+
+    // Record pending transaction
+    const [result] = await dbPool.query(
+      `INSERT INTO wallet_transactions (
+        user_id, type, amount, balance_after, category, description, reference_id, status, utr_number
+      ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'pending', ?)`,
+      [
+        userId,
+        numAmount,
+        currentBalance,
+        `Wallet Recharge via ${method} (UTR: ${cleanUtr})`,
+        ref,
+        cleanUtr
+      ]
+    );
+
+    return {
+      transaction_id: `tx_${result.insertId}`,
+      numeric_id: result.insertId,
+      amount: numAmount,
+      utr_number: cleanUtr,
+      status: 'pending',
+      message: 'Payment details submitted successfully. Please allow 2-5 minutes for admin verification.',
+      created_at: new Date().toISOString(),
+    };
+  },
+
+  /**
+   * Get all recharge requests for Admin Panel
+   */
+  async getAdminRechargeRequests({ status = 'all', search = null, limit = 50, offset = 0 } = {}) {
+    let query = `
+      SELECT t.id, t.user_id, t.type, t.amount, t.balance_after, t.category, 
+             t.description, t.reference_id, t.status, t.utr_number, t.admin_notes, 
+             t.approved_at, t.created_at,
+             u.name as user_name, u.email as user_email, u.company_name as user_company,
+             u.wallet_balance as current_user_balance
+      FROM wallet_transactions t
+      JOIN users u ON t.user_id = u.id
+      WHERE t.category = 'topup'
+    `;
+    const params = [];
+
+    if (status && status !== 'all') {
+      query += ' AND t.status = ?';
+      params.push(status);
+    }
+
+    if (search && search.trim()) {
+      query += ' AND (t.utr_number LIKE ? OR t.reference_id LIKE ? OR u.email LIKE ? OR u.name LIKE ?)';
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term, term);
+    }
+
+    query += ' ORDER BY t.created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit, 10), parseInt(offset, 10));
+
+    const [rows] = await dbPool.query(query, params);
+
+    return rows.map((row) => ({
+      id: `tx_${row.id}`,
+      numeric_id: row.id,
+      user_id: row.user_id,
+      user_name: row.user_name,
+      user_email: row.user_email,
+      user_company: row.user_company || '',
+      current_user_balance: parseFloat(row.current_user_balance || '0.00'),
+      type: row.type,
+      amount: parseFloat(row.amount),
+      balance_after: parseFloat(row.balance_after),
+      category: row.category,
+      description: row.description,
+      reference_id: row.reference_id,
+      status: row.status || 'pending',
+      utr_number: row.utr_number || '',
+      admin_notes: row.admin_notes || null,
+      approved_at: row.approved_at,
+      created_at: row.created_at,
+    }));
+  },
+
+  /**
+   * Approve a pending recharge request (Admin)
+   */
+  async approveRechargeRequest(transactionId, { adminNotes = 'Approved via Admin Panel' } = {}) {
+    const cleanId = String(transactionId).replace('tx_', '');
+
+    const [[txn]] = await dbPool.query(
+      'SELECT * FROM wallet_transactions WHERE id = ?',
+      [cleanId]
+    );
+
+    if (!txn) {
+      throw ApiError.notFound('Recharge transaction not found');
+    }
+
+    if (txn.status === 'success') {
+      throw ApiError.badRequest('This recharge request has already been approved and credited.');
+    }
+
+    const numAmount = parseFloat(txn.amount);
+
+    // Atomically increment user wallet balance
+    await dbPool.query(
+      'UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?',
+      [numAmount, txn.user_id]
+    );
+
+    const [[user]] = await dbPool.query(
+      'SELECT wallet_balance FROM users WHERE id = ?',
+      [txn.user_id]
+    );
+    const newBalance = parseFloat(user?.wallet_balance || '0.00');
+
+    // Update transaction to success
+    await dbPool.query(
+      `UPDATE wallet_transactions 
+       SET status = 'success', balance_after = ?, admin_notes = ?, approved_at = NOW() 
+       WHERE id = ?`,
+      [newBalance, adminNotes, cleanId]
+    );
+
+    return {
+      transaction_id: `tx_${txn.id}`,
+      numeric_id: txn.id,
+      user_id: txn.user_id,
+      amount_credited: numAmount,
+      new_wallet_balance: newBalance,
+      status: 'success',
+      approved_at: new Date().toISOString(),
+    };
+  },
+
+  /**
+   * Reject a pending recharge request (Admin)
+   */
+  async rejectRechargeRequest(transactionId, { reason = 'Invalid or Unmatched UTR' } = {}) {
+    const cleanId = String(transactionId).replace('tx_', '');
+
+    const [[txn]] = await dbPool.query(
+      'SELECT * FROM wallet_transactions WHERE id = ?',
+      [cleanId]
+    );
+
+    if (!txn) {
+      throw ApiError.notFound('Recharge transaction not found');
+    }
+
+    if (txn.status === 'success') {
+      throw ApiError.badRequest('Cannot reject a transaction that has already been approved and credited.');
+    }
+
+    await dbPool.query(
+      `UPDATE wallet_transactions 
+       SET status = 'rejected', admin_notes = ? 
+       WHERE id = ?`,
+      [reason, cleanId]
+    );
+
+    return {
+      transaction_id: `tx_${txn.id}`,
+      numeric_id: txn.id,
+      user_id: txn.user_id,
+      status: 'rejected',
+      reason,
+    };
+  },
+
+  /**
    * Add funds (Top-up) to user's wallet
    * @param {number} userId 
    * @param {object} param1 
@@ -277,8 +490,8 @@ export const walletService = {
     // Record credit transaction
     await dbPool.query(
       `INSERT INTO wallet_transactions (
-        user_id, type, amount, balance_after, category, description, reference_id
-      ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?)`,
+        user_id, type, amount, balance_after, category, description, reference_id, status
+      ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'success')`,
       [
         userId,
         numAmount,

@@ -75,6 +75,7 @@ export type AuditRow = {
 
 export type WalletTransactionRow = {
   id: string;
+  numeric_id?: number;
   type: "credit" | "debit";
   amount: number;
   balance_after: number;
@@ -83,7 +84,9 @@ export type WalletTransactionRow = {
   reference_id: string;
   payment_method?: string;
   api_endpoint?: string;
-  status: "success" | "pending" | "failed";
+  status: "success" | "pending" | "rejected";
+  utr_number?: string;
+  admin_notes?: string;
   created_at: string;
 };
 
@@ -703,6 +706,105 @@ export async function topupWallet(input: { amount: number; paymentMethod: string
   });
 
   return { ok: true as const, transaction: row, newBalance };
+}
+
+export async function submitRechargeRequest(input: {
+  amount: number;
+  utr_number: string;
+  paymentMethod: string;
+}) {
+  const state = read();
+  const current = typeof state.wallet_balance === "number" ? state.wallet_balance : 0.00;
+  const cleanUtr = input.utr_number.trim().replace(/[\s-]/g, "");
+  const txnId = `txn_w_${randomHex(8)}`;
+
+  const row: WalletTransactionRow = {
+    id: txnId,
+    type: "credit",
+    amount: input.amount,
+    balance_after: current, // Balance does NOT change yet!
+    description: `Wallet recharge via ${input.paymentMethod} (UTR: ${cleanUtr})`,
+    category: "topup",
+    reference_id: `utr_${cleanUtr}`,
+    payment_method: input.paymentMethod,
+    status: "pending",
+    utr_number: cleanUtr,
+    created_at: new Date().toISOString(),
+  };
+
+  if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
+    try {
+      const { apiClient } = await import("./api-client");
+      const backendRes = await apiClient.submitRechargeRequest({
+        amount: input.amount,
+        utr_number: cleanUtr,
+        method: input.paymentMethod,
+      });
+      if (backendRes) {
+        row.id = backendRes.transaction_id;
+        row.numeric_id = backendRes.numeric_id;
+      }
+    } catch (err) {
+      console.warn("Backend recharge request sync error:", err);
+      throw err;
+    }
+  }
+
+  update((s) => {
+    s.wallet_transactions = [row, ...(s.wallet_transactions || getDefaultWalletTransactions())];
+    logAudit(s, "wallet.utr_submitted", `₹${input.amount.toFixed(2)}`, `Submitted UTR ${cleanUtr} for Admin Verification`);
+  });
+
+  return { ok: true as const, transaction: row };
+}
+
+export async function approveRechargeRequest(transactionId: string, amount: number) {
+  if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
+    try {
+      const { apiClient } = await import("./api-client");
+      await apiClient.approveRecharge(transactionId);
+    } catch (err) {
+      console.warn("Backend approve recharge error:", err);
+      throw err;
+    }
+  }
+
+  update((s) => {
+    const list = s.wallet_transactions || [];
+    const target = list.find((t) => t.id === transactionId || String(t.numeric_id) === transactionId);
+    if (target) {
+      target.status = "success";
+      s.wallet_balance = Number(((s.wallet_balance || 0) + amount).toFixed(2));
+      target.balance_after = s.wallet_balance;
+      logAudit(s, "admin.wallet_approved", `₹${amount.toFixed(2)}`, `Recharge ${transactionId} approved`);
+    }
+  });
+
+  return { ok: true as const };
+}
+
+export async function rejectRechargeRequest(transactionId: string, reason = "Invalid UTR") {
+  if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
+    try {
+      const { apiClient } = await import("./api-client");
+      await apiClient.rejectRecharge(transactionId, { reason });
+    } catch (err) {
+      console.warn("Backend reject recharge error:", err);
+      throw err;
+    }
+  }
+
+  update((s) => {
+    const list = s.wallet_transactions || [];
+    const target = list.find((t) => t.id === transactionId || String(t.numeric_id) === transactionId);
+    if (target) {
+      target.status = "rejected";
+      target.admin_notes = reason;
+      logAudit(s, "admin.wallet_rejected", reason, `Recharge ${transactionId} rejected`);
+    }
+  });
+
+  return { ok: true as const };
 }
 
 export async function saveProfile(input: {

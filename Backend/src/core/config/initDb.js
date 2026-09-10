@@ -88,8 +88,14 @@ export const initDatabase = async () => {
         category ENUM('topup', 'api_usage', 'refund', 'bonus') DEFAULT 'api_usage',
         description VARCHAR(255) NOT NULL,
         reference_id VARCHAR(64) DEFAULT NULL,
+        status ENUM('pending', 'success', 'rejected') DEFAULT 'success',
+        utr_number VARCHAR(64) DEFAULT NULL,
+        admin_notes VARCHAR(255) DEFAULT NULL,
+        approved_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_txn_utr (utr_number),
+        INDEX idx_txn_status (status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
@@ -98,6 +104,28 @@ export const initDatabase = async () => {
     await dbPool.query(createApiHitLogsTableQuery);
     await dbPool.query(createIpWhitelistTableQuery);
     await dbPool.query(createWalletTransactionsTableQuery);
+
+    // Safely verify columns on existing wallet_transactions table
+    try {
+      const [statusCol] = await dbPool.query("SHOW COLUMNS FROM wallet_transactions LIKE 'status'");
+      if (!statusCol || statusCol.length === 0) {
+        await dbPool.query("ALTER TABLE wallet_transactions ADD COLUMN status ENUM('pending', 'success', 'rejected') DEFAULT 'success'");
+      }
+      const [utrCol] = await dbPool.query("SHOW COLUMNS FROM wallet_transactions LIKE 'utr_number'");
+      if (!utrCol || utrCol.length === 0) {
+        await dbPool.query("ALTER TABLE wallet_transactions ADD COLUMN utr_number VARCHAR(64) DEFAULT NULL");
+      }
+      const [notesCol] = await dbPool.query("SHOW COLUMNS FROM wallet_transactions LIKE 'admin_notes'");
+      if (!notesCol || notesCol.length === 0) {
+        await dbPool.query("ALTER TABLE wallet_transactions ADD COLUMN admin_notes VARCHAR(255) DEFAULT NULL");
+      }
+      const [apprCol] = await dbPool.query("SHOW COLUMNS FROM wallet_transactions LIKE 'approved_at'");
+      if (!apprCol || apprCol.length === 0) {
+        await dbPool.query("ALTER TABLE wallet_transactions ADD COLUMN approved_at TIMESTAMP NULL");
+      }
+    } catch (migErr) {
+      console.warn('Column migration note:', migErr.message);
+    }
 
     console.log('✅ Database tables verified/initialized successfully (users, api_credentials, hit_logs, ip_whitelist, wallet_transactions).');
     return true;
