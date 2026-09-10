@@ -234,7 +234,7 @@ export function DashboardLayout({
               active={activeTab === "logs" || currentPath.startsWith("/dashboard/logs")}
               icon={<Activity className="h-4 w-4" />}
               label="API Hit Logs"
-              badge={`${data.apiHitLogs.length}`}
+              badge={data.apiHitLogs.length > 0 ? `${data.apiHitLogs.length}` : undefined}
             />
             <NavRouteLink
               to="/dashboard/webhooks"

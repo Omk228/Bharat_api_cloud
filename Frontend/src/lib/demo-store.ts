@@ -160,228 +160,15 @@ type DemoState = {
 const STORAGE_KEY = "bharatapi.console.v1";
 
 function getDefaultWalletTransactions(): WalletTransactionRow[] {
-  const now = Date.now();
-  return [
-    {
-      id: "txn_w_106",
-      type: "debit",
-      amount: 1.00,
-      balance_after: 4993.40,
-      description: "Account Aggregator Consent API (/v1/aa/consent)",
-      category: "api_usage",
-      reference_id: "req_aa_88eb",
-      api_endpoint: "/v1/aa/consent",
-      status: "success",
-      created_at: new Date(now - 15 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "txn_w_105",
-      type: "debit",
-      amount: 0.80,
-      balance_after: 4994.40,
-      description: "GSTIN Business Verification API (/v1/verify/gstin)",
-      category: "api_usage",
-      reference_id: "req_gst_31da",
-      api_endpoint: "/v1/verify/gstin",
-      status: "success",
-      created_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "txn_w_104",
-      type: "debit",
-      amount: 1.50,
-      balance_after: 4995.20,
-      description: "Bank Account Penny Drop Verification (/v1/bank/penny-drop)",
-      category: "api_usage",
-      reference_id: "req_bnk_42fa",
-      api_endpoint: "/v1/bank/penny-drop",
-      status: "success",
-      created_at: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "txn_w_103",
-      type: "debit",
-      amount: 2.10,
-      balance_after: 4996.70,
-      description: "Aadhaar OTP Generation API (/v1/verify/aadhaar/otp)",
-      category: "api_usage",
-      reference_id: "req_adh_71cd",
-      api_endpoint: "/v1/verify/aadhaar/otp",
-      status: "success",
-      created_at: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "txn_w_102",
-      type: "debit",
-      amount: 1.20,
-      balance_after: 4998.80,
-      description: "PAN Card Verification API (/v1/verify/pan)",
-      category: "api_usage",
-      reference_id: "req_pan_9a81",
-      api_endpoint: "/v1/verify/pan",
-      status: "success",
-      created_at: new Date(now - 28 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "txn_w_101",
-      type: "credit",
-      amount: 5000.00,
-      balance_after: 5000.00,
-      description: "Wallet recharge via UPI Instant Transfer",
-      category: "topup",
-      reference_id: "pay_upi_91823a",
-      payment_method: "UPI (bharatpe@hdfc)",
-      status: "success",
-      created_at: new Date(now - 48 * 60 * 60 * 1000).toISOString(),
-    },
-  ];
+  return [];
 }
 
 function getDefaultApiHitLogs(): ApiHitLogRow[] {
-  const now = Date.now();
-  return [
-    {
-      id: "log_hit_101",
-      request_id: "req_aa_88eb",
-      service_name: "Create Consent Request",
-      endpoint: "/v1/aa/consent",
-      method: "POST",
-      group: "Account Aggregator",
-      status_code: 200,
-      response_time_ms: 110,
-      cost_deducted: 1.00,
-      api_key_used: "sk_live_••••3f2c",
-      key_label: "Production Server Key",
-      environment: "live",
-      ip_address: "103.21.244.12",
-      request_payload: { customer_mobile: "9876543210", fi_types: ["DEPOSIT"], purpose_code: "101", duration_days: 30 },
-      response_payload: { status: "PENDING", consent_handle: "cn_8f2a1b7c", expires_at: "2026-09-30T08:00:00Z" },
-      created_at: new Date(now - 15 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "log_hit_102",
-      request_id: "req_gst_31da",
-      service_name: "Verify GSTIN",
-      endpoint: "/v1/verify/gstin",
-      method: "POST",
-      group: "KYC",
-      status_code: 200,
-      response_time_ms: 95,
-      cost_deducted: 0.80,
-      api_key_used: "sk_live_••••3f2c",
-      key_label: "Production Server Key",
-      environment: "live",
-      ip_address: "103.21.244.12",
-      request_payload: { gstin: "27AAECV1234C1ZP" },
-      response_payload: { status: "verified", legal_name: "Bharat API Cloud Technologies Pvt Ltd", gst_status: "Active" },
-      created_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "log_hit_103",
-      request_id: "req_bnk_42fa",
-      service_name: "Bank Verification (Penny Drop)",
-      endpoint: "/v1/bank/penny-drop",
-      method: "POST",
-      group: "Banking",
-      status_code: 200,
-      response_time_ms: 1240,
-      cost_deducted: 1.50,
-      api_key_used: "sk_live_••••3f2c",
-      key_label: "Production Server Key",
-      environment: "live",
-      ip_address: "103.21.244.12",
-      request_payload: { account_number: "50100234567890", ifsc: "HDFC0000123", name: "Aarav Sharma" },
-      response_payload: { status: "verified", account_exists: true, beneficiary_name: "AARAV SHARMA", rrn: "421908123456" },
-      created_at: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "log_hit_104",
-      request_id: "req_adh_71cd",
-      service_name: "Aadhaar OTP (DigiLocker)",
-      endpoint: "/v1/verify/aadhaar/otp",
-      method: "POST",
-      group: "KYC",
-      status_code: 200,
-      response_time_ms: 480,
-      cost_deducted: 2.10,
-      api_key_used: "sk_live_••••3f2c",
-      key_label: "Production Server Key",
-      environment: "live",
-      ip_address: "103.21.244.12",
-      request_payload: { aadhaar_number: "999999991234", consent: true, consent_id: "cns_9f21" },
-      response_payload: { txn_id: "txn_digilocker_9a81f2", otp_sent: true, mobile_hint: "XXXXXX78XX" },
-      created_at: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "log_hit_105",
-      request_id: "req_pan_9a81",
-      service_name: "Verify PAN",
-      endpoint: "/v1/verify/pan",
-      method: "POST",
-      group: "KYC",
-      status_code: 200,
-      response_time_ms: 240,
-      cost_deducted: 1.20,
-      api_key_used: "sk_live_••••3f2c",
-      key_label: "Production Server Key",
-      environment: "live",
-      ip_address: "103.21.244.12",
-      request_payload: { pan: "ABCDE1234F", name: "Aarav Sharma", dob: "1990-04-12" },
-      response_payload: { status: "verified", pan_valid: true, name_match: "exact", match_score: 0.98 },
-      created_at: new Date(now - 28 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "log_hit_106",
-      request_id: "req_pan_err2",
-      service_name: "Verify PAN",
-      endpoint: "/v1/verify/pan",
-      method: "POST",
-      group: "KYC",
-      status_code: 400,
-      response_time_ms: 45,
-      cost_deducted: 0.00,
-      api_key_used: "sk_test_••••881a",
-      key_label: "Sandbox Test Key",
-      environment: "sandbox",
-      ip_address: "49.36.120.4",
-      request_payload: { pan: "INVALID_PAN" },
-      response_payload: { error: "Invalid PAN format. Must be 10 alphanumeric characters." },
-      created_at: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  ];
+  return [];
 }
 
 function getDefaultIpWhitelist(): IpWhitelistRow[] {
-  const now = Date.now();
-  return [
-    {
-      id: "ip_wl_101",
-      ip_address: "49.36.120.89",
-      label: "Primary Production API Gateway",
-      environment: "live",
-      status: "active",
-      created_at: new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      last_used_at: new Date(now - 15 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "ip_wl_102",
-      ip_address: "13.233.190.52",
-      label: "AWS Mumbai Backend Cluster (ECS)",
-      environment: "live",
-      status: "active",
-      created_at: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      last_used_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "ip_wl_103",
-      ip_address: "192.168.1.0/24",
-      label: "Office VPN Staging Subnet",
-      environment: "sandbox",
-      status: "active",
-      created_at: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      last_used_at: new Date(now - 28 * 60 * 60 * 1000).toISOString(),
-    },
-  ];
+  return [];
 }
 
 function emptyState(): DemoState {
@@ -396,11 +183,11 @@ function emptyState(): DemoState {
       onboarded: true,
     },
     keys: [],
-    wallet_balance: 4993.40,
-    wallet_transactions: getDefaultWalletTransactions(),
-    api_hit_logs: getDefaultApiHitLogs(),
-    ip_whitelist: getDefaultIpWhitelist(),
-    ip_enforcement_enabled: true,
+    wallet_balance: 0.00,
+    wallet_transactions: [],
+    api_hit_logs: [],
+    ip_whitelist: [],
+    ip_enforcement_enabled: false,
     usage: [],
     audit: [],
     webhooks: [],
@@ -413,6 +200,15 @@ function read(): DemoState {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyState();
     const parsed = JSON.parse(raw) as DemoState;
+    if (parsed.api_hit_logs) {
+      parsed.api_hit_logs = parsed.api_hit_logs.filter((l) => !l.id?.startsWith("log_hit_10"));
+    }
+    if (parsed.wallet_transactions) {
+      parsed.wallet_transactions = parsed.wallet_transactions.filter((t) => !t.id?.startsWith("txn_w_10"));
+    }
+    if (parsed.ip_whitelist) {
+      parsed.ip_whitelist = parsed.ip_whitelist.filter((w) => !w.id?.startsWith("ip_wl_10"));
+    }
     return { ...emptyState(), ...parsed };
   } catch {
     return emptyState();
@@ -504,6 +300,7 @@ export function signIn(email: string, password: string, displayName?: string): S
 export function signOut() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("bharat_api_token");
+    localStorage.removeItem(STORAGE_KEY);
   }
   update((state) => {
     logAudit(state, "auth.sign_out", state.session?.email ?? "unknown", "Signed out");
@@ -537,18 +334,20 @@ export async function getDashboard(): Promise<DashboardData> {
   const since = monthStart();
 
   let liveBalance = typeof state.wallet_balance === "number" ? state.wallet_balance : 0.00;
-  let liveTransactions: WalletTransactionRow[] = state.wallet_transactions?.length ? state.wallet_transactions : [];
-  let liveHitLogs: ApiHitLogRow[] = state.api_hit_logs?.length ? state.api_hit_logs : [];
+  let liveTransactions: WalletTransactionRow[] = Array.isArray(state.wallet_transactions) ? state.wallet_transactions : [];
+  let liveHitLogs: ApiHitLogRow[] = Array.isArray(state.api_hit_logs) ? state.api_hit_logs : [];
+  let liveKeys: ApiKeyRow[] = Array.isArray(state.keys) ? state.keys : [];
   let isSuspended = Boolean(state.profile?.is_suspended || state.profile?.is_active === false);
 
   if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
     try {
       const { apiClient } = await import("./api-client");
-      const [profileRes, walletRes, txsRes, logsRes] = await Promise.allSettled([
+      const [profileRes, walletRes, txsRes, logsRes, credsRes] = await Promise.allSettled([
         apiClient.getProfile(),
         apiClient.getWalletBalance(),
         apiClient.getWalletTransactions({ limit: 100 }),
         apiClient.getApiHitLogs({ limit: 100 }),
+        apiClient.getCredentials(),
       ]);
 
       if (profileRes.status === "fulfilled" && profileRes.value) {
@@ -556,9 +355,10 @@ export async function getDashboard(): Promise<DashboardData> {
         if (p.is_suspended || p.is_active === false) {
           isSuspended = true;
         }
-        state.profile.display_name = p.name || state.profile.display_name;
-        state.profile.company_name = p.company_name || state.profile.company_name;
-        state.profile.contact_email = p.email || state.profile.contact_email;
+        state.profile.display_name = p.name || state.profile.display_name || "";
+        state.profile.company_name = p.company_name || state.profile.company_name || "";
+        state.profile.contact_email = p.email || state.profile.contact_email || "";
+        state.profile.plan = (p.plan as PlanId) || state.profile.plan || "free";
         state.profile.is_suspended = isSuspended;
         state.profile.is_active = !isSuspended;
       } else if (profileRes.status === "rejected") {
@@ -571,13 +371,30 @@ export async function getDashboard(): Promise<DashboardData> {
       }
 
       if (walletRes.status === "fulfilled" && walletRes.value) {
-        liveBalance = walletRes.value.wallet_balance;
+        const wb = walletRes.value.wallet_balance;
+        liveBalance = typeof wb === "number" ? wb : parseFloat(String(wb) || "0") || 0;
       }
-      if (txsRes.status === "fulfilled" && txsRes.value?.length) {
+      if (txsRes.status === "fulfilled" && Array.isArray(txsRes.value)) {
         liveTransactions = txsRes.value as WalletTransactionRow[];
       }
-      if (logsRes.status === "fulfilled" && logsRes.value?.length) {
+      if (logsRes.status === "fulfilled" && Array.isArray(logsRes.value)) {
         liveHitLogs = logsRes.value as ApiHitLogRow[];
+      }
+      if (credsRes.status === "fulfilled" && Array.isArray(credsRes.value)) {
+        liveKeys = credsRes.value.map((c: any) => ({
+          id: String(c.id),
+          label: c.label || "API Key",
+          environment: c.environment === "production" ? "live" : "sandbox",
+          key_prefix: (c.api_key || "").slice(0, 7),
+          last_four: (c.api_key || "").slice(-4),
+          secret: c.api_key,
+          webhook_secret: "",
+          revoked: c.status === "revoked",
+          revoked_at: null,
+          rotated_at: null,
+          last_used_at: c.last_used_at,
+          created_at: c.created_at,
+        }));
       }
     } catch (err) {
       console.warn("Backend live wallet sync notice:", err);
@@ -588,18 +405,18 @@ export async function getDashboard(): Promise<DashboardData> {
     session: state.session,
     profile: state.profile,
     isSuspended,
-    keys: state.keys,
+    keys: liveKeys,
     limits,
     allLimits: PLAN_LIMITS,
-    monthlyUsage: liveHitLogs.filter((u) => u.created_at >= since).length || state.usage.filter((u) => u.created_at >= since).length,
+    monthlyUsage: liveHitLogs.filter((u) => u.created_at >= since).length,
     walletBalance: liveBalance,
     walletTransactions: liveTransactions,
     apiHitLogs: liveHitLogs,
-    ipWhitelist: state.ip_whitelist?.length ? state.ip_whitelist : getDefaultIpWhitelist(),
-    ipEnforcementEnabled: state.ip_enforcement_enabled ?? true,
-    usage: state.usage,
-    audit: state.audit,
-    webhooks: state.webhooks,
+    ipWhitelist: state.ip_whitelist || [],
+    ipEnforcementEnabled: state.ip_enforcement_enabled ?? false,
+    usage: state.usage || [],
+    audit: state.audit || [],
+    webhooks: state.webhooks || [],
   };
 }
 
@@ -623,7 +440,7 @@ export function addIpWhitelist(input: {
   };
 
   update((s) => {
-    const list = s.ip_whitelist?.length ? s.ip_whitelist : getDefaultIpWhitelist();
+    const list = s.ip_whitelist || [];
     s.ip_whitelist = [row, ...list];
     logAudit(s, "ip_whitelist.added", trimmedIp, `${input.label} (${input.environment})`);
   });
@@ -633,7 +450,7 @@ export function addIpWhitelist(input: {
 
 export function deleteIpWhitelist(id: string) {
   update((s) => {
-    const list = s.ip_whitelist?.length ? s.ip_whitelist : getDefaultIpWhitelist();
+    const list = s.ip_whitelist || [];
     const target = list.find((x) => x.id === id);
     s.ip_whitelist = list.filter((x) => x.id !== id);
     if (target) {
@@ -645,7 +462,7 @@ export function deleteIpWhitelist(id: string) {
 
 export function toggleIpWhitelist(id: string, newStatus: "active" | "disabled") {
   update((s) => {
-    const list = s.ip_whitelist?.length ? s.ip_whitelist : getDefaultIpWhitelist();
+    const list = s.ip_whitelist || [];
     const item = list.find((x) => x.id === id);
     if (item) {
       item.status = newStatus;
@@ -701,7 +518,7 @@ export async function topupWallet(input: { amount: number; paymentMethod: string
 
   update((s) => {
     s.wallet_balance = newBalance;
-    s.wallet_transactions = [row, ...(s.wallet_transactions || getDefaultWalletTransactions())];
+    s.wallet_transactions = [row, ...(s.wallet_transactions || [])];
     logAudit(s, "wallet.recharge", `₹${input.amount.toFixed(2)}`, `Recharge via ${input.paymentMethod}. New balance: ₹${newBalance.toFixed(2)}`);
   });
 
@@ -751,7 +568,7 @@ export async function submitRechargeRequest(input: {
   }
 
   update((s) => {
-    s.wallet_transactions = [row, ...(s.wallet_transactions || getDefaultWalletTransactions())];
+    s.wallet_transactions = [row, ...(s.wallet_transactions || [])];
     logAudit(s, "wallet.utr_submitted", `₹${input.amount.toFixed(2)}`, `Submitted UTR ${cleanUtr} for Admin Verification`);
   });
 
