@@ -1892,6 +1892,19 @@ function TestApiPage() {
                   )}
                 </div>
 
+                {/* Unassigned Warning Banner */}
+                {isServiceRevoked && (
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-xs text-amber-300 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-amber-400">API Not Assigned by Admin</p>
+                      <p className="mt-0.5 text-muted-foreground">
+                        You can view the parameters and request schema, but live requests are disabled until the administrator assigns access to your account.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Send & Report Buttons */}
                 <div className="flex gap-2">
                   <button
@@ -1899,7 +1912,7 @@ function TestApiPage() {
                     disabled={loading || isServiceRevoked}
                     className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all shadow-md active:scale-[0.99] ${
                       isServiceRevoked
-                        ? "bg-red-500/15 border border-red-500/30 text-red-400 cursor-not-allowed hover:bg-red-500/15"
+                        ? "bg-amber-500/15 border border-amber-500/30 text-amber-400 cursor-not-allowed hover:bg-amber-500/15"
                         : "bg-emerald-600 text-white hover:bg-emerald-500 hover:shadow-lg disabled:opacity-60"
                     }`}
                   >
@@ -1909,7 +1922,7 @@ function TestApiPage() {
                       </>
                     ) : isServiceRevoked ? (
                       <>
-                        <AlertCircle className="h-4 w-4 text-red-400" /> Access Revoked by Admin
+                        <AlertCircle className="h-4 w-4 text-amber-400" /> 🔒 API Not Assigned (Contact Admin)
                       </>
                     ) : (
                       <>

@@ -29,17 +29,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/apis")({
 
 function ApisPage() {
   const [selectedGroup, setSelectedGroup] = useState<ApiGroup | "All">("All");
+  const [assignmentFilter, setAssignmentFilter] = useState<"all" | "assigned" | "not_assigned">("all");
   const [query, setQuery] = useState("");
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return endpoints.filter((e) => {
-      if (selectedGroup !== "All" && e.group !== selectedGroup) return false;
-      if (!q) return true;
-      const haystack = [e.title, e.desc, e.path, e.group, ...e.tags].join(" ").toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [selectedGroup, query]);
 
   const userEmail = getStoredUserEmail();
 
@@ -58,17 +49,40 @@ function ApisPage() {
       return {
         price: catalogItem.effective_price,
         isCustom: catalogItem.is_custom,
-        isAssigned: catalogItem.is_assigned !== false,
+        isAssigned: catalogItem.is_assigned === true,
       };
     }
     // Fallback by ID
     if (ep.id === "verify-pan" && pricingData?.pricing?.["pan"]) {
-      const isAssigned = pricingData?.assigned?.["pan"] !== false;
+      const isAssigned = pricingData?.assigned?.["pan"] === true;
       const panPrice = pricingData.pricing["pan"] ?? 1.1;
       return { price: panPrice, isCustom: panPrice !== 1.1, isAssigned };
     }
-    return { price: 2.0, isCustom: false, isAssigned: true };
+    return { price: 2.0, isCustom: false, isAssigned: false };
   };
+
+  const assignedCount = useMemo(() => {
+    return endpoints.filter((e) => getEndpointPrice(e).isAssigned).length;
+  }, [pricingData]);
+
+  const unassignedCount = useMemo(() => {
+    return endpoints.filter((e) => !getEndpointPrice(e).isAssigned).length;
+  }, [pricingData]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return endpoints.filter((e) => {
+      if (selectedGroup !== "All" && e.group !== selectedGroup) return false;
+
+      const { isAssigned } = getEndpointPrice(e);
+      if (assignmentFilter === "assigned" && !isAssigned) return false;
+      if (assignmentFilter === "not_assigned" && isAssigned) return false;
+
+      if (!q) return true;
+      const haystack = [e.title, e.desc, e.path, e.group, ...e.tags].join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [selectedGroup, query, assignmentFilter, pricingData]);
 
   return (
     <DashboardLayout activeTab="apis">
@@ -77,7 +91,7 @@ function ApisPage() {
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
               <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-                <Layers className="h-5 w-5 text-primary" /> API Catalog & Services
+                <Layers className="h-5 w-5 text-primary" /> API Catalog &amp; Services
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Explore 350+ Banking, KYC verification, Account Aggregator, and Payout APIs.
@@ -92,19 +106,74 @@ function ApisPage() {
             </Link>
           </div>
 
-          {/* Filter and Search Bar */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Filter Bar: Status Filters + Category Filters + Search */}
+          <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              {/* Assignment Status Filter (All / Assigned / Not Assigned) */}
+              <div className="flex items-center gap-1.5 rounded-xl border border-border bg-secondary/30 p-1">
+                <button
+                  type="button"
+                  onClick={() => setAssignmentFilter("all")}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                    assignmentFilter === "all"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                  }`}
+                >
+                  All APIs ({endpoints.length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAssignmentFilter("assigned")}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                    assignmentFilter === "assigned"
+                      ? "bg-emerald-500 text-white shadow-sm"
+                      : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                  }`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  ✓ Assigned ({assignedCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAssignmentFilter("not_assigned")}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                    assignmentFilter === "not_assigned"
+                      ? "bg-amber-500 text-black shadow-sm font-bold"
+                      : "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                  }`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-amber-400" />
+                  🔒 Not Assigned ({unassignedCount})
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative min-w-[260px]">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search API name, path, tag..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-primary transition-colors"
+                />
+              </div>
+            </div>
+
             {/* Category Pills */}
-            <div className="flex overflow-x-auto gap-1.5 pb-1">
+            <div className="flex overflow-x-auto gap-1.5 pt-2 border-t border-border/60">
               <button
                 onClick={() => setSelectedGroup("All")}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                className={`rounded-lg px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
                   selectedGroup === "All"
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                    ? "bg-secondary text-foreground font-semibold border border-primary/40"
+                    : "border border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                 }`}
               >
-                All Categories ({endpoints.length})
+                All Categories
               </button>
               {API_GROUPS.map((g) => {
                 const count = endpoints.filter((e) => e.group === g).length;
@@ -112,28 +181,16 @@ function ApisPage() {
                   <button
                     key={g}
                     onClick={() => setSelectedGroup(g)}
-                    className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                    className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
                       selectedGroup === g
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                        ? "bg-secondary text-foreground font-semibold border border-primary/40"
+                        : "border border-border/60 bg-secondary/30 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }`}
                   >
                     {g} ({count})
                   </button>
                 );
               })}
-            </div>
-
-            {/* Search Bar */}
-            <div className="relative min-w-[240px]">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search API name, path, tag..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full rounded-lg border border-border bg-card py-1.5 pl-9 pr-3 text-xs outline-none focus:border-primary"
-              />
             </div>
           </div>
 
@@ -163,8 +220,8 @@ function ApisPage() {
                         const { price, isCustom, isAssigned } = getEndpointPrice(ep);
                         if (!isAssigned) {
                           return (
-                            <span className="rounded px-2 py-0.5 font-mono text-[11px] font-semibold bg-red-500/15 text-red-400 border border-red-500/30">
-                              Access Revoked
+                            <span className="rounded px-2 py-0.5 font-mono text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              🔒 Not Assigned
                             </span>
                           );
                         }
@@ -173,10 +230,10 @@ function ApisPage() {
                             className={`rounded px-2 py-0.5 font-mono text-[11px] font-semibold ${
                               isCustom
                                 ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                                : "bg-secondary text-foreground"
+                                : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                             }`}
                           >
-                            ₹{price.toFixed(2)}
+                            ✓ ₹{price.toFixed(2)}
                           </span>
                         );
                       })()}

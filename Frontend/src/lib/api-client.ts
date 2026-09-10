@@ -776,6 +776,7 @@ export const apiClient = {
   }): Promise<Array<{
     id: string;
     request_id: string;
+    service_name?: string;
     endpoint: string;
     method: string;
     group: string;

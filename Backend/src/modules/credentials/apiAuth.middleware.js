@@ -101,7 +101,7 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
           client_ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
         };
 
-        // Check Admin API Revocation / Access Control for this user & endpoint
+        // 1. Check Admin API Assignment for this user & endpoint
         const endpointPath = req.originalUrl || req.path || req.baseUrl;
         const access = await PricingService.checkApiAccess(endpointPath, req.apiClient.user_id);
         if (!access.isAllowed) {
@@ -110,8 +110,24 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
             result_code: 103,
             request_id: `req_${Date.now()}`,
             client_ref_num: req.body?.client_ref_num || null,
-            message: access.reason || 'Access Denied: Access to this API has been revoked by Administrator for your account.',
-            status_message: 'Access Revoked',
+            message: access.reason || 'Access Denied: This API has not been assigned to your account by the Administrator yet. Please contact admin to enable access.',
+            status_message: 'API Not Assigned',
+            result: null
+          });
+        }
+
+        // 2. Check Wallet Balance against effective price
+        const effectivePrice = await PricingService.getEffectivePrice(endpointPath, req.apiClient.user_id);
+        req.apiClient.effective_price = effectivePrice;
+
+        if (req.apiClient.wallet_balance < effectivePrice) {
+          return res.status(402).json({
+            http_response_code: 402,
+            result_code: 103,
+            request_id: `req_${Date.now()}`,
+            client_ref_num: req.body?.client_ref_num || null,
+            message: `Insufficient wallet balance (₹${effectivePrice.toFixed(2)} required, current balance: ₹${req.apiClient.wallet_balance.toFixed(2)}). Please recharge your wallet.`,
+            status_message: 'Insufficient Balance',
             result: null
           });
         }
@@ -144,7 +160,7 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
     // Attach client & credential details to request
     req.apiClient = clientPayload;
 
-    // Check Admin API Revocation / Access Control for this user & endpoint
+    // 1. Check Admin API Assignment for this user & endpoint
     const endpointPath = req.originalUrl || req.path || req.baseUrl;
     const access = await PricingService.checkApiAccess(endpointPath, req.apiClient.user_id);
     if (!access.isAllowed) {
@@ -153,8 +169,24 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
         result_code: 103,
         request_id: `req_${Date.now()}`,
         client_ref_num: req.body?.client_ref_num || null,
-        message: access.reason || 'Access Denied: Access to this API has been revoked by Administrator for your account.',
-        status_message: 'Access Revoked',
+        message: access.reason || 'Access Denied: This API has not been assigned to your account by the Administrator yet. Please contact admin to enable access.',
+        status_message: 'API Not Assigned',
+        result: null
+      });
+    }
+
+    // 2. Check Wallet Balance against effective price
+    const effectivePrice = await PricingService.getEffectivePrice(endpointPath, req.apiClient.user_id);
+    req.apiClient.effective_price = effectivePrice;
+
+    if (req.apiClient.wallet_balance < effectivePrice) {
+      return res.status(402).json({
+        http_response_code: 402,
+        result_code: 103,
+        request_id: `req_${Date.now()}`,
+        client_ref_num: req.body?.client_ref_num || null,
+        message: `Insufficient wallet balance (₹${effectivePrice.toFixed(2)} required, current balance: ₹${req.apiClient.wallet_balance.toFixed(2)}). Please recharge your wallet.`,
+        status_message: 'Insufficient Balance',
         result: null
       });
     }

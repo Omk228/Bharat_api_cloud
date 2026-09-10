@@ -88,6 +88,7 @@ export type WalletTransactionRow = {
 export type ApiHitLogRow = {
   id: string;
   request_id: string;
+  service_name?: string;
   endpoint: string;
   method: "GET" | "POST" | "PUT" | "DELETE";
   group: string;
@@ -237,6 +238,7 @@ function getDefaultApiHitLogs(): ApiHitLogRow[] {
     {
       id: "log_hit_101",
       request_id: "req_aa_88eb",
+      service_name: "Create Consent Request",
       endpoint: "/v1/aa/consent",
       method: "POST",
       group: "Account Aggregator",
@@ -254,6 +256,7 @@ function getDefaultApiHitLogs(): ApiHitLogRow[] {
     {
       id: "log_hit_102",
       request_id: "req_gst_31da",
+      service_name: "Verify GSTIN",
       endpoint: "/v1/verify/gstin",
       method: "POST",
       group: "KYC",
@@ -271,6 +274,7 @@ function getDefaultApiHitLogs(): ApiHitLogRow[] {
     {
       id: "log_hit_103",
       request_id: "req_bnk_42fa",
+      service_name: "Bank Verification (Penny Drop)",
       endpoint: "/v1/bank/penny-drop",
       method: "POST",
       group: "Banking",
@@ -288,6 +292,7 @@ function getDefaultApiHitLogs(): ApiHitLogRow[] {
     {
       id: "log_hit_104",
       request_id: "req_adh_71cd",
+      service_name: "Aadhaar OTP (DigiLocker)",
       endpoint: "/v1/verify/aadhaar/otp",
       method: "POST",
       group: "KYC",
@@ -305,6 +310,7 @@ function getDefaultApiHitLogs(): ApiHitLogRow[] {
     {
       id: "log_hit_105",
       request_id: "req_pan_9a81",
+      service_name: "Verify PAN",
       endpoint: "/v1/verify/pan",
       method: "POST",
       group: "KYC",
@@ -322,6 +328,7 @@ function getDefaultApiHitLogs(): ApiHitLogRow[] {
     {
       id: "log_hit_106",
       request_id: "req_pan_err2",
+      service_name: "Verify PAN",
       endpoint: "/v1/verify/pan",
       method: "POST",
       group: "KYC",

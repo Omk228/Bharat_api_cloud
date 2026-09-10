@@ -301,10 +301,12 @@ export class PricingService {
             reason: `The service '${row.service_name || cleanEndpoint}' is currently disabled for maintenance.`,
             catalogId: row.catalog_id
           };
-        } else if (userId && row.is_assigned === 0) {
+        } else if (userId && row.is_assigned !== 1) {
+          // If is_assigned is 0 or NULL (new user), access is restricted until assigned by Admin
           result = {
             isAllowed: false,
-            reason: `Access to '${row.service_name || cleanEndpoint}' has been revoked by Administrator for your account.`,
+            reason: `Access Denied: This API has not been assigned to your account by the Administrator yet. Please contact the administrator to enable access.`,
+            notAssigned: true,
             catalogId: row.catalog_id
           };
         } else {
@@ -313,6 +315,13 @@ export class PricingService {
             catalogId: row.catalog_id
           };
         }
+      } else if (userId) {
+        // Unmapped or uncataloged endpoint for authenticated user - require assignment
+        result = {
+          isAllowed: false,
+          reason: `Access Denied: This API has not been assigned to your account by the Administrator yet. Please contact the administrator to enable access.`,
+          notAssigned: true
+        };
       }
 
       // Cache for 60 seconds
@@ -322,8 +331,8 @@ export class PricingService {
 
       return result;
     } catch (error) {
-      console.error('⚠️ [PricingService.checkApiAccess] DB error, allowing request:', error.message);
-      return { isAllowed: true };
+      console.error('⚠️ [PricingService.checkApiAccess] DB error:', error.message);
+      return { isAllowed: false, reason: 'Database error verifying API assignment. Please try again.' };
     }
   }
 
@@ -372,7 +381,7 @@ export class PricingService {
             c.status AS catalog_status,
             c.current_price AS default_price,
             NULL AS custom_price,
-            1 AS is_assigned,
+            0 AS is_assigned,
             c.current_price AS effective_price
           FROM catalog c
           ORDER BY c.service_name ASC;
@@ -384,8 +393,8 @@ export class PricingService {
       // Build a catalog lookup by ID and endpoint_path
       const catalogMapById = new Map();
       const catalogList = catalogRows.map((row) => {
-        // If row.is_assigned is explicitly 0, it is revoked. If null or 1, it is allowed.
-        const isAssigned = row.is_assigned === null || row.is_assigned === undefined ? true : Boolean(row.is_assigned);
+        // API is only assigned if is_assigned === 1 (explicitly assigned by admin)
+        const isAssigned = userId ? (row.is_assigned === 1 && row.catalog_status !== 'Disabled') : false;
         const item = {
           id: row.id,
           service_name: row.service_name,
@@ -395,7 +404,7 @@ export class PricingService {
           catalog_status: row.catalog_status,
           default_price: parseFloat(row.default_price || 0),
           custom_price: row.custom_price != null ? parseFloat(row.custom_price) : null,
-          is_assigned: isAssigned && row.catalog_status !== 'Disabled',
+          is_assigned: Boolean(isAssigned),
           effective_price: parseFloat(row.effective_price || row.default_price || 0),
           is_custom: Boolean(row.is_assigned === 1 && row.custom_price != null),
         };
@@ -418,7 +427,8 @@ export class PricingService {
           }
         } else {
           pricing[serviceKey] = API_PRICING[serviceKey] ?? 2.00;
-          assigned[serviceKey] = true;
+          assigned[serviceKey] = false;
+          revoked.push(serviceKey);
         }
       }
 
@@ -433,12 +443,64 @@ export class PricingService {
       // Fallback
       const pricing = {};
       const assigned = {};
+      const revoked = [];
       for (const key of Object.keys(SERVICE_KEY_TO_CATALOG_ID)) {
         pricing[key] = API_PRICING[key] ?? 2.00;
-        assigned[key] = true;
+        assigned[key] = false;
+        revoked.push(key);
       }
-      return { pricing, assigned, revoked: [], catalog: [] };
+      return { pricing, assigned, revoked, catalog: [] };
     }
+  }
+
+  /**
+   * Admin: Assign or unassign an API to a user, with optional custom pricing
+   */
+  static async assignApi({ userId, catalogId, customPrice = null, isAssigned = 1 }) {
+    if (!userId || !catalogId) {
+      throw new Error('userId and catalogId are required.');
+    }
+
+    const assignedVal = isAssigned ? 1 : 0;
+    const priceVal = customPrice !== null && customPrice !== undefined && customPrice !== '' ? parseFloat(customPrice) : null;
+
+    const query = `
+      INSERT INTO user_api_pricing (user_id, catalog_id, custom_price, is_assigned, updated_at)
+      VALUES (?, ?, ?, ?, NOW())
+      ON DUPLICATE KEY UPDATE 
+        custom_price = VALUES(custom_price),
+        is_assigned = VALUES(is_assigned),
+        updated_at = NOW();
+    `;
+
+    await dbPool.query(query, [userId, catalogId, priceVal, assignedVal]);
+
+    // Clear caches for this user
+    try {
+      await CacheService.flushAll?.();
+    } catch (e) {}
+
+    return { success: true, userId, catalogId, isAssigned: Boolean(assignedVal), customPrice: priceVal };
+  }
+
+  /**
+   * Admin: Bulk assign/unassign multiple APIs to a user
+   */
+  static async bulkAssign({ userId, assignments }) {
+    if (!userId || !Array.isArray(assignments) || assignments.length === 0) {
+      throw new Error('userId and non-empty assignments array are required.');
+    }
+
+    for (const item of assignments) {
+      if (item.catalogId || item.catalog_id) {
+        const catalogId = item.catalogId || item.catalog_id;
+        const isAssigned = item.isAssigned !== undefined ? item.isAssigned : (item.is_assigned !== undefined ? item.is_assigned : 1);
+        const customPrice = item.customPrice !== undefined ? item.customPrice : item.custom_price;
+        await this.assignApi({ userId, catalogId, customPrice, isAssigned });
+      }
+    }
+
+    return { success: true, count: assignments.length };
   }
 }
 

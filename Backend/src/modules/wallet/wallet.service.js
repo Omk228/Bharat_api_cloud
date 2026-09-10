@@ -111,9 +111,11 @@ export const walletService = {
       SELECT l.id, l.user_id, l.credential_id, l.endpoint, l.method, l.request_id,
              l.client_ref_num, l.status_code, l.result_code, l.latency_ms,
              l.client_ip, l.cost, l.environment, l.created_at,
-             c.api_key, c.api_id, c.label as credential_label
+             c.api_key, c.api_id, c.label as credential_label,
+             cat.service_name as catalog_service_name, cat.category as catalog_category
       FROM api_hit_logs l
       LEFT JOIN api_credentials c ON l.credential_id = c.id
+      LEFT JOIN catalog cat ON (cat.endpoint_path = l.endpoint OR cat.id = l.endpoint)
       WHERE l.user_id = ?
     `;
     const params = [userId];
@@ -127,8 +129,8 @@ export const walletService = {
     }
 
     if (search && search.trim()) {
-      query += ' AND (l.request_id LIKE ? OR l.endpoint LIKE ? OR l.client_ref_num LIKE ? OR c.api_key LIKE ? OR c.api_id LIKE ?)';
-      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
+      query += ' AND (l.request_id LIKE ? OR l.endpoint LIKE ? OR l.client_ref_num LIKE ? OR c.api_key LIKE ? OR c.api_id LIKE ? OR cat.service_name LIKE ?)';
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
     query += ' ORDER BY l.created_at DESC LIMIT ? OFFSET ?';
@@ -136,11 +138,84 @@ export const walletService = {
 
     const [rows] = await dbPool.query(query, params);
 
+    const ENDPOINT_SERVICE_MAP = {
+      '/srv2/validation/pan': 'Verify PAN',
+      '/verify/pan': 'Verify PAN',
+      '/pan': 'Verify PAN',
+      '/srv2/validation/pan/plus': 'Pan Details Plus',
+      '/srv3/verification/aadhar': 'Aadhar Fetch (Without OTP)',
+      '/verify/aadhar': 'Aadhar Fetch (Without OTP)',
+      '/srv2/validation/digilocker-digital-kyc': 'Digi Locker Digital KYC',
+      '/bank/verify/penny-less': 'Bank Verification Penny Less V2',
+      '/idfc/beneficiary': 'Bank Verification Penny Less V2',
+      '/api/v1/validate_bank_account': 'Bank Account Validation',
+      '/validate_bank_account': 'Bank Account Validation',
+      '/srv3/mobile-to-bank/advance': 'Mobile To Bank Advance',
+      '/ifsc': 'IFSC Lookup',
+      '/bank/ifsc': 'IFSC Lookup',
+      '/srv2/mobile-upi-lookup/enhanced': 'Mobile to UPI Lookup Advance',
+      '/srv4/credit-report/prefill': 'Mobile to Prefill',
+      '/kyc/mobile-prefill': 'Mobile to Prefill',
+      '/srv2/mobile-name-finder': 'Mobile To Name Finder',
+      '/api/v1/srv3/uan-mobile': 'Mobile to UAN V2',
+      '/srv3/uan-mobile': 'Mobile to UAN V2',
+      '/api/v1/srv3/uan-direct': 'UAN to Employment History V2',
+      '/srv3/uan-direct': 'UAN to Employment History V2',
+      '/dosvak/domain-age': 'Domain Age Verification API',
+      '/check': 'Requester IP Lookup',
+      '/reverse': 'Reverse Geocoding',
+      '/reverse-geocode': 'Reverse Geocoding',
+      '/verify/aadhaar/otp': 'Aadhaar OTP (DigiLocker)',
+      '/verify/aadhaar/otp/confirm': 'Confirm Aadhaar OTP',
+      '/verify/gstin': 'Verify GSTIN',
+      '/verify/cin': 'Verify CIN (MCA)',
+      '/kyc/ocr': 'Document OCR',
+      '/kyc/face-match': 'Face Match & Liveness',
+      '/verify/voter-id': 'Verify Voter ID',
+      '/verify/driving-licence': 'Verify Driving Licence',
+      '/verify/passport': 'Verify Passport',
+      '/kyc/aml-screen': 'AML / PEP Screening',
+      '/bank/verify': 'Bank Verification (Penny Drop)',
+      '/bank/penny-drop': 'Bank Verification (Penny Drop)',
+      '/bank/reverse-penny-drop': 'Reverse Penny Drop',
+      '/bank/upi/validate': 'Validate UPI VPA',
+      '/bank/statement/analyse': 'Bank Statement Analysis',
+      '/aa/consent': 'Create Consent Request',
+      '/v1/aa/consent': 'Create Consent Request',
+      '/payouts': 'Create Payout',
+      '/virtual-accounts': 'Create Virtual Account',
+    };
+
     return rows.map((row) => {
-      let group = 'KYC';
-      if (row.endpoint.includes('idfc') || row.endpoint.includes('bank')) group = 'Banking';
+      let serviceName = row.catalog_service_name || '';
+      if (!serviceName) {
+        const cleanEp = (row.endpoint || '').split('?')[0].trim();
+        serviceName = ENDPOINT_SERVICE_MAP[cleanEp];
+        if (!serviceName) {
+          for (const [key, name] of Object.entries(ENDPOINT_SERVICE_MAP)) {
+            if (cleanEp.endsWith(key) || cleanEp.includes(key)) {
+              serviceName = name;
+              break;
+            }
+          }
+        }
+      }
+      if (!serviceName) {
+        const parts = (row.endpoint || '').split('?')[0].split('/').filter(Boolean);
+        if (parts.length > 0) {
+          serviceName = parts[parts.length - 1]
+            .replace(/[-_]/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+        } else {
+          serviceName = row.endpoint || 'API Request';
+        }
+      }
+
+      let group = row.catalog_category || 'KYC';
+      if (row.endpoint.includes('idfc') || row.endpoint.includes('bank') || row.endpoint.includes('ifsc')) group = 'Banking';
       else if (row.endpoint.includes('prefill') || row.endpoint.includes('credit-report')) group = 'KYC';
-      else if (row.endpoint.includes('pan') || row.endpoint.includes('aadhar')) group = 'KYC';
+      else if (row.endpoint.includes('pan') || row.endpoint.includes('aadhar') || row.endpoint.includes('kyc')) group = 'KYC';
+      else if (row.endpoint.includes('upi') || row.endpoint.includes('payout')) group = 'Payments';
 
       // Mask the assigned API key: e.g. 663e••••650d
       const rawKey = row.api_key || userDefaultCred?.api_key || '';
@@ -157,6 +232,7 @@ export const walletService = {
       return {
         id: `log_hit_${row.id}`,
         request_id: row.request_id,
+        service_name: serviceName,
         endpoint: row.endpoint,
         method: row.method,
         group,

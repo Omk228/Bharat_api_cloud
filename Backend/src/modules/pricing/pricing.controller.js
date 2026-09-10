@@ -80,6 +80,61 @@ export class PricingController {
       'Pricing catalog retrieved successfully'
     );
   });
+
+  /**
+   * POST /api/v1/pricing/assign
+   * Admin: Assign / unassign an API to a user with optional custom price
+   */
+  static assignApi = asyncHandler(async (req, res) => {
+    const { user_id, userId, catalog_id, catalogId, custom_price, customPrice, is_assigned, isAssigned } = req.body;
+    const targetUserId = user_id || userId;
+    const targetCatalogId = catalog_id || catalogId;
+    const targetCustomPrice = custom_price !== undefined ? custom_price : customPrice;
+    const targetIsAssigned = is_assigned !== undefined ? is_assigned : (isAssigned !== undefined ? isAssigned : 1);
+
+    if (!targetUserId || !targetCatalogId) {
+      return res.status(400).json({
+        http_response_code: 400,
+        result_code: 102,
+        message: 'user_id and catalog_id are required.',
+        result: null
+      });
+    }
+
+    const result = await PricingService.assignApi({
+      userId: targetUserId,
+      catalogId: targetCatalogId,
+      customPrice: targetCustomPrice,
+      isAssigned: targetIsAssigned
+    });
+
+    return ApiResponse.success(res, result, 'API assignment updated successfully');
+  });
+
+  /**
+   * POST /api/v1/pricing/bulk-assign
+   * Admin: Bulk assign/unassign APIs to a user
+   */
+  static bulkAssign = asyncHandler(async (req, res) => {
+    const { user_id, userId, assignments } = req.body;
+    const targetUserId = user_id || userId;
+
+    if (!targetUserId || !Array.isArray(assignments)) {
+      return res.status(400).json({
+        http_response_code: 400,
+        result_code: 102,
+        message: 'user_id and assignments array are required.',
+        result: null
+      });
+    }
+
+    const result = await PricingService.bulkAssign({
+      userId: targetUserId,
+      assignments
+    });
+
+    return ApiResponse.success(res, result, 'Bulk API assignments updated successfully');
+  });
 }
 
 export default PricingController;

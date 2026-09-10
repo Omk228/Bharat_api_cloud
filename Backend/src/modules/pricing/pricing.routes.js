@@ -7,4 +7,8 @@ const router = Router();
 router.get('/', PricingController.getPricing);
 router.get('/my-pricing', PricingController.getPricing);
 
+// Admin assignment endpoints
+router.post('/assign', PricingController.assignApi);
+router.post('/bulk-assign', PricingController.bulkAssign);
+
 export default router;
