@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
+import QRCode from "qrcode";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import {
@@ -74,9 +75,10 @@ function WalletPage() {
   const [gstin, setGstin] = useState<string>("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isQrGenerated, setIsQrGenerated] = useState(false);
+  const [isQrGenerated, setIsQrGenerated] = useState(true); // Default true so QR is ready instantly
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
   const [generatedAmount, setGeneratedAmount] = useState<number>(1000);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [utrNumber, setUtrNumber] = useState<string>("");
   const [qrExpirySeconds, setQrExpirySeconds] = useState(900); // 15 mins
   const [lastSubmittedUtr, setLastSubmittedUtr] = useState<{
@@ -105,6 +107,41 @@ function WalletPage() {
   const activeQrAmount = isQrGenerated ? generatedAmount : effectiveAmount;
   const upiPayUri = `upi://pay?pa=${upiId}&pn=Bharat%20API%20Cloud&am=${activeQrAmount}&cu=INR&tn=Prepaid%20Wallet%20Topup`;
 
+  // Generate QR code client-side whenever amount or URI changes
+  useEffect(() => {
+    let isSubscribed = true;
+    const renderQr = async () => {
+      try {
+        const url = await QRCode.toDataURL(upiPayUri, {
+          width: 320,
+          margin: 1,
+          color: {
+            dark: "#0a0f1d",
+            light: "#ffffff",
+          },
+          errorCorrectionLevel: "M",
+        });
+        if (isSubscribed) {
+          setQrDataUrl(url);
+        }
+      } catch (err) {
+        console.error("Failed to generate local QR code:", err);
+      }
+    };
+    renderQr();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [upiPayUri]);
+
+  // Sync generated amount when effective amount changes
+  useEffect(() => {
+    if (effectiveAmount >= 100) {
+      setGeneratedAmount(effectiveAmount);
+      setIsQrGenerated(true);
+    }
+  }, [effectiveAmount]);
+
   // Countdown timer for dynamic QR code
   useEffect(() => {
     if (!isQrGenerated) return;
@@ -127,19 +164,28 @@ function WalletPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleGenerateQr = () => {
+  const handleGenerateQr = async () => {
     if (effectiveAmount < 100) {
       toast.error("Minimum recharge amount is ₹100");
       return;
     }
     setIsGeneratingQr(true);
-    setTimeout(() => {
+    try {
+      const url = await QRCode.toDataURL(upiPayUri, {
+        width: 320,
+        margin: 1,
+        color: { dark: "#0a0f1d", light: "#ffffff" },
+      });
+      setQrDataUrl(url);
       setGeneratedAmount(effectiveAmount);
       setIsQrGenerated(true);
       setQrExpirySeconds(900);
+      toast.success(`Dynamic UPI QR refreshed for ₹${effectiveAmount.toLocaleString("en-IN")}`);
+    } catch (err) {
+      toast.error("Failed to generate QR code");
+    } finally {
       setIsGeneratingQr(false);
-      toast.success(`Dynamic UPI QR generated for ₹${effectiveAmount.toLocaleString("en-IN")}`);
-    }, 400);
+    }
   };
 
   // Fetch Admin Requests if admin
@@ -642,13 +688,21 @@ function WalletPage() {
 
                           {/* Generated Visual QR Code Box */}
                           <div className="relative rounded-2xl border-2 border-primary/40 bg-white p-3 shadow-md">
-                            <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                                upiPayUri
-                              )}&margin=4`}
-                              alt="Scan UPI QR Code"
-                              className="h-44 w-44 rounded-lg"
-                            />
+                            {qrDataUrl ? (
+                              <img
+                                src={qrDataUrl}
+                                alt="Scan UPI QR Code"
+                                className="h-48 w-48 rounded-lg"
+                              />
+                            ) : (
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                                  upiPayUri
+                                )}&margin=4`}
+                                alt="Scan UPI QR Code"
+                                className="h-48 w-48 rounded-lg"
+                              />
+                            )}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="rounded-full bg-white p-1 shadow-md border border-slate-200">
                                 <ShieldCheck className="h-5 w-5 text-emerald-600" />
@@ -662,6 +716,14 @@ function WalletPage() {
                           <p className="mt-0.5 text-[11px] text-muted-foreground">
                             UPI ID: <span className="font-mono font-semibold text-foreground">{upiId}</span>
                           </p>
+                          <a
+                            href={upiPayUri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                          >
+                            <Sparkles className="h-3 w-3" /> Tap to Pay via UPI App on Mobile
+                          </a>
 
                           {/* Payment Instructions Badge */}
                           <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-left text-[11px] text-muted-foreground space-y-1 w-full">
