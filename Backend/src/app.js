@@ -66,6 +66,9 @@ if (ENV.NODE_ENV !== 'test') {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Serve static uploads (payment receipts, screenshots, docs)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 // Root Health / Info Endpoint
 app.get('/', (req, res) => {
   res.json({

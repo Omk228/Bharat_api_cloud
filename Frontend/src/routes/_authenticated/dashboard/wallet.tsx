@@ -40,7 +40,7 @@ import {
   rejectRechargeRequest,
   type WalletTransactionRow,
 } from "@/lib/demo-store";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, resolveMediaUrl } from "@/lib/api-client";
 
 export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
   head: () => ({
@@ -64,12 +64,12 @@ const RECHARGE_PACKS = [
 ];
 
 const BANK_DETAILS = {
-  beneficiaryName: "Bharat API Cloud Technologies Pvt Ltd",
-  bankName: "YES Bank Ltd",
-  accountNumber: "BAC99210488",
-  ifscCode: "YESB0CMSNOC",
+  beneficiaryName: "Technosys Future",
+  bankName: "Indusind Bank",
+  accountNumber: "258964362910",
+  ifscCode: "INDB0001032",
   accountType: "Current Account",
-  branch: "CMS Hub Mumbai",
+  branch: "IndusInd Bank",
   supportedRails: "IMPS / NEFT / RTGS (24x7 Instant Settlement)",
 };
 
@@ -637,7 +637,7 @@ function WalletPage() {
                       <input
                         type="text"
                         maxLength={26}
-                        placeholder="e.g. YESBH24251098234 or 425109823456"
+                        placeholder="e.g. INDB24251098234 or 258964362910"
                         value={utrNumber}
                         onChange={(e) => setUtrNumber(e.target.value.trim().toUpperCase())}
                         className="w-full rounded-xl border-2 border-primary/40 bg-background px-3.5 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary text-foreground shadow-sm transition-colors"
@@ -1122,17 +1122,17 @@ function WalletPage() {
                   </div>
 
                   <div className="flex-1 overflow-auto rounded-xl bg-black/20 flex items-center justify-center p-2 min-h-[300px]">
-                    {previewImage.src.startsWith("data:image/") ? (
-                      <img
-                        src={previewImage.src}
-                        alt="Payment Receipt Slip"
-                        className="max-h-[70vh] max-w-full rounded-lg object-contain shadow-md"
-                      />
-                    ) : (
+                    {previewImage.src.endsWith(".pdf") || previewImage.src.startsWith("data:application/pdf") ? (
                       <iframe
-                        src={previewImage.src}
+                        src={resolveMediaUrl(previewImage.src)}
                         title="Receipt PDF"
                         className="w-full h-[70vh] rounded-lg"
+                      />
+                    ) : (
+                      <img
+                        src={resolveMediaUrl(previewImage.src)}
+                        alt="Payment Receipt Slip"
+                        className="max-h-[70vh] max-w-full rounded-lg object-contain shadow-md"
                       />
                     )}
                   </div>

@@ -1,6 +1,53 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { dbPool } from '../../core/config/db.config.js';
 import { ApiError } from '../../core/utils/apiError.js';
 import CacheService from '../../core/cache/cache.service.js';
+
+/**
+ * Helper to save Base64 screenshot/receipt to server disk storage (/uploads/receipts/)
+ */
+async function saveScreenshotFile(screenshotBase64, userId, utr) {
+  if (!screenshotBase64 || typeof screenshotBase64 !== 'string') return null;
+
+  // If already an HTTP URL or local static path, return as is
+  if (
+    screenshotBase64.startsWith('http://') ||
+    screenshotBase64.startsWith('https://') ||
+    screenshotBase64.startsWith('/uploads/')
+  ) {
+    return screenshotBase64;
+  }
+
+  // Check if it's a data URL (e.g. data:image/png;base64,....)
+  const matches = screenshotBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  if (!matches || matches.length !== 3) {
+    return screenshotBase64; // fallback to storing string
+  }
+
+  const mimeType = matches[1];
+  const base64Data = matches[2];
+  let ext = 'png';
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg';
+  else if (mimeType.includes('webp')) ext = 'webp';
+  else if (mimeType.includes('pdf')) ext = 'pdf';
+  else if (mimeType.includes('png')) ext = 'png';
+
+  const cleanUtr = String(utr || 'receipt').replace(/[^a-zA-Z0-9]/g, '');
+  const fileName = `receipt_u${userId}_${cleanUtr}_${Date.now()}.${ext}`;
+  const uploadDir = path.join(process.cwd(), 'uploads', 'receipts');
+
+  try {
+    await fs.promises.mkdir(uploadDir, { recursive: true });
+    const filePath = path.join(uploadDir, fileName);
+    const buffer = Buffer.from(base64Data, 'base64');
+    await fs.promises.writeFile(filePath, buffer);
+    return `/uploads/receipts/${fileName}`;
+  } catch (err) {
+    console.error('Failed to save screenshot file to disk:', err);
+    return screenshotBase64; // fallback to raw string
+  }
+}
 
 export const walletService = {
   /**
@@ -116,11 +163,9 @@ export const walletService = {
       SELECT l.id, l.user_id, l.credential_id, l.endpoint, l.method, l.request_id,
              l.client_ref_num, l.status_code, l.result_code, l.latency_ms,
              l.client_ip, l.cost, l.environment, l.created_at,
-             c.api_key, c.api_id, c.label as credential_label,
-             cat.service_name as catalog_service_name, cat.category as catalog_category
+             c.api_key, c.api_id, c.label as credential_label
       FROM api_hit_logs l
       LEFT JOIN api_credentials c ON l.credential_id = c.id
-      LEFT JOIN catalog cat ON (cat.endpoint_path = l.endpoint OR cat.id = l.endpoint)
       WHERE l.user_id = ?
     `;
     const params = [userId];
@@ -134,8 +179,8 @@ export const walletService = {
     }
 
     if (search && search.trim()) {
-      query += ' AND (l.request_id LIKE ? OR l.endpoint LIKE ? OR l.client_ref_num LIKE ? OR c.api_key LIKE ? OR c.api_id LIKE ? OR cat.service_name LIKE ?)';
-      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
+      query += ' AND (l.request_id LIKE ? OR l.endpoint LIKE ? OR l.client_ref_num LIKE ? OR c.api_key LIKE ? OR c.api_id LIKE ?)';
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
     query += ' ORDER BY l.created_at DESC LIMIT ? OFFSET ?';
@@ -296,6 +341,9 @@ export const walletService = {
     const currentBalance = parseFloat(user.wallet_balance || '0.00');
     const ref = `req_utr_${Date.now()}`;
 
+    // Save screenshot file to server disk uploads if provided
+    const savedScreenshot = await saveScreenshotFile(screenshot, userId, cleanUtr);
+
     // Record pending transaction with optional payment screenshot
     const [result] = await dbPool.query(
       `INSERT INTO wallet_transactions (
@@ -308,7 +356,7 @@ export const walletService = {
         `Wallet Recharge via ${method} (UTR: ${cleanUtr})`,
         ref,
         cleanUtr,
-        screenshot || null
+        savedScreenshot || null
       ]
     );
 

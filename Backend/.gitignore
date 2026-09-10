@@ -22,3 +22,6 @@ Thumbs.db
 # Editor directories
 .vscode/
 .idea/
+
+# Uploads
+uploads/

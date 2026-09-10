@@ -3,6 +3,15 @@ const API_BASE =
   (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] ||
   'https://brown-goldfish-546701.hostingersite.com/api/v1';
 
+export function resolveMediaUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const serverOrigin = API_BASE.replace(/\/api\/v1\/?$/, '');
+  return `${serverOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export type UserPayload = {
   id: number;
   name: string;
