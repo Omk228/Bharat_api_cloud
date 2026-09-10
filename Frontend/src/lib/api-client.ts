@@ -12,6 +12,8 @@ export type UserPayload = {
   role: 'client' | 'admin';
   wallet_balance: number | string;
   onboarded: boolean;
+  is_active?: boolean;
+  is_suspended?: boolean;
 };
 
 export type ApiCredential = {

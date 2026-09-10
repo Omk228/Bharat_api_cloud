@@ -32,6 +32,8 @@ export type Profile = {
   contact_email: string;
   plan: PlanId;
   onboarded: boolean;
+  is_active?: boolean;
+  is_suspended?: boolean;
 };
 
 export type ApiKeyRow = {
@@ -511,6 +513,7 @@ export function signOut() {
 export type DashboardData = {
   session: Session | null;
   profile: Profile;
+  isSuspended: boolean;
   keys: ApiKeyRow[];
   limits: PlanLimit;
   allLimits: PlanLimit[];
@@ -533,15 +536,36 @@ export async function getDashboard(): Promise<DashboardData> {
   let liveBalance = typeof state.wallet_balance === "number" ? state.wallet_balance : 0.00;
   let liveTransactions: WalletTransactionRow[] = state.wallet_transactions?.length ? state.wallet_transactions : [];
   let liveHitLogs: ApiHitLogRow[] = state.api_hit_logs?.length ? state.api_hit_logs : [];
+  let isSuspended = Boolean(state.profile?.is_suspended || state.profile?.is_active === false);
 
   if (typeof window !== "undefined" && localStorage.getItem("bharat_api_token")) {
     try {
       const { apiClient } = await import("./api-client");
-      const [walletRes, txsRes, logsRes] = await Promise.allSettled([
+      const [profileRes, walletRes, txsRes, logsRes] = await Promise.allSettled([
+        apiClient.getProfile(),
         apiClient.getWalletBalance(),
         apiClient.getWalletTransactions({ limit: 100 }),
         apiClient.getApiHitLogs({ limit: 100 }),
       ]);
+
+      if (profileRes.status === "fulfilled" && profileRes.value) {
+        const p = profileRes.value;
+        if (p.is_suspended || p.is_active === false) {
+          isSuspended = true;
+        }
+        state.profile.display_name = p.name || state.profile.display_name;
+        state.profile.company_name = p.company_name || state.profile.company_name;
+        state.profile.contact_email = p.email || state.profile.contact_email;
+        state.profile.is_suspended = isSuspended;
+        state.profile.is_active = !isSuspended;
+      } else if (profileRes.status === "rejected") {
+        const errMsg = String((profileRes.reason as { message?: string })?.message || "");
+        if (errMsg.toLowerCase().includes("suspended") || errMsg.toLowerCase().includes("deactivated")) {
+          isSuspended = true;
+          state.profile.is_suspended = true;
+          state.profile.is_active = false;
+        }
+      }
 
       if (walletRes.status === "fulfilled" && walletRes.value) {
         liveBalance = walletRes.value.wallet_balance;
@@ -560,6 +584,7 @@ export async function getDashboard(): Promise<DashboardData> {
   return {
     session: state.session,
     profile: state.profile,
+    isSuspended,
     keys: state.keys,
     limits,
     allLimits: PLAN_LIMITS,

@@ -12,6 +12,9 @@ import {
   Layers,
   Webhook,
   Terminal,
+  ShieldAlert,
+  Ban,
+  Mail,
 } from "lucide-react";
 import React from "react";
 
@@ -45,6 +48,100 @@ export function DashboardLayout({
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Account Suspension Enforcement Screen
+  if (data.isSuspended || data.profile?.is_suspended || data.profile?.is_active === false) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col">
+        {/* Top Header */}
+        <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
+          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-6 w-6 text-primary" />
+              <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
+              <span className="rounded-md bg-destructive/15 px-2 py-0.5 text-xs font-bold text-destructive border border-destructive/30">
+                Account Suspended
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <button
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" /> Sign out
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Suspended Lock Banner / Screen */}
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="mx-auto max-w-xl w-full rounded-2xl border border-destructive/40 bg-card p-8 shadow-2xl text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            {/* Glowing Red Badge Icon */}
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10 text-destructive border-2 border-destructive/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+              <ShieldAlert className="h-10 w-10 animate-pulse" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-destructive border border-destructive/30">
+                <Ban className="h-3.5 w-3.5" /> Access Restricted
+              </span>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                Your Account is Suspended by Admin
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Your account access, developer console, API keys, test consoles, and live verification services have been suspended by the Bharat API Cloud administration.
+              </p>
+            </div>
+
+            {/* Account Metadata Card */}
+            <div className="rounded-xl border border-border bg-secondary/30 p-4 text-left space-y-2.5 text-xs">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Account Name:</span>
+                <span className="font-semibold text-foreground">{data.profile.display_name || "Developer"}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Registered Email:</span>
+                <span className="font-mono font-medium text-foreground">{data.profile.contact_email || data.session?.email}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Account Status:</span>
+                <span className="font-bold text-destructive flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-destructive animate-ping" /> Suspended by Admin
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground border-t border-border/60 pt-2">
+                <span>Support Reference ID:</span>
+                <span className="font-mono text-muted-foreground">ACC-SUSP-{(data.session?.email || data.profile?.contact_email)?.split('@')[0]?.toUpperCase() || 'USER'}</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <a
+                href="mailto:support@bharatapicloud.io?subject=Account%20Reactivation%20Request"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 active:scale-[0.99]"
+              >
+                <Mail className="h-4 w-4" /> Contact Support Team
+              </a>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold text-muted-foreground transition-all hover:text-foreground hover:bg-secondary"
+              >
+                <LogOut className="h-4 w-4" /> Sign Out
+              </button>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              If you believe this suspension is an error, please reach out to <span className="font-mono text-primary">support@bharatapicloud.io</span>.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

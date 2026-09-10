@@ -73,8 +73,8 @@ export const authService = {
       throw ApiError.unauthorized('Invalid email or password');
     }
 
-    if (!user.is_active) {
-      throw ApiError.forbidden('Your account has been deactivated. Please contact support.');
+    if (user.is_active === 0 || user.is_active === false || user.status === 'suspended' || user.status === 'inactive') {
+      throw ApiError.forbidden('Your account is suspended by admin. Please contact support.');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -89,6 +89,8 @@ export const authService = {
       { expiresIn: ENV.JWT.EXPIRES_IN }
     );
 
+    const isSuspended = Boolean(user.is_active === 0 || user.is_active === false || user.status === 'suspended');
+
     return {
       user: {
         id: user.id,
@@ -99,6 +101,8 @@ export const authService = {
         role: user.role,
         wallet_balance: user.wallet_balance,
         onboarded: Boolean(user.onboarded),
+        is_active: !isSuspended,
+        is_suspended: isSuspended,
       },
       token,
     };
@@ -112,6 +116,7 @@ export const authService = {
     if (!user) {
       throw ApiError.notFound('User not found');
     }
+    const isSuspended = Boolean(user.is_active === 0 || user.is_active === false || user.status === 'suspended');
     return {
       id: user.id,
       name: user.name,
@@ -121,6 +126,8 @@ export const authService = {
       role: user.role,
       wallet_balance: user.wallet_balance,
       onboarded: Boolean(user.onboarded),
+      is_active: !isSuspended,
+      is_suspended: isSuspended,
       created_at: user.created_at,
     };
   },

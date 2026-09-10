@@ -119,7 +119,7 @@ export class CredentialService {
     }
 
     if (!cred.user_active) {
-      throw new ApiError(403, 'Account is suspended or deactivated.');
+      throw new ApiError(403, 'Your account is suspended by admin. Please contact support.');
     }
 
     // Compare Token ID in constant time

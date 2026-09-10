@@ -77,8 +77,8 @@ export const verifyApiClientCredentials = asyncHandler(async (req, res, next) =>
           result_code: 103,
           request_id: `req_${Date.now()}`,
           client_ref_num: req.body.client_ref_num || null,
-          message: 'Account is suspended or deactivated.',
-          status_message: 'Authentication failed',
+          message: 'Your account is suspended by admin. Please contact support.',
+          status_message: 'Account Suspended',
           result: null
         });
       }

@@ -18,10 +18,19 @@ export const verifyJwt = asyncHandler(async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, ENV.JWT.SECRET);
     
-    // Optional: fetch user from DB if needed
+    // Fetch user from DB
     const user = await userModel.findById(decoded.id);
     if (!user) {
       throw ApiError.unauthorized('User associated with this token no longer exists');
+    }
+
+    const isSuspended = Boolean(user.is_active === 0 || user.is_active === false || user.status === 'suspended' || user.status === 'inactive');
+
+    // Allow /auth/me so frontend can get profile status and display the suspension lock screen
+    const isProfileRoute = (req.path === '/me' || req.originalUrl?.includes('/auth/me'));
+
+    if (isSuspended && !isProfileRoute) {
+      throw ApiError.forbidden('Your account is suspended by admin. Please contact support.');
     }
 
     req.user = user;
