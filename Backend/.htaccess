@@ -1,0 +1,22 @@
+# Enable CORS Headers at Web Server Level
+<IfModule mod_headers.c>
+    SetEnvIf Origin "^(https?://.+)$" HTTP_ORIGIN=$1
+    Header always set Access-Control-Allow-Origin "%{HTTP_ORIGIN}e" env=HTTP_ORIGIN
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+    Header always set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Api-Id, X-Api-Key, X-Token-Id, x-api-id, x-api-key, x-token-id, x-user-email, X-User-Email, Cache-Control, Pragma"
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Max-Age "86400"
+</IfModule>
+
+# Handle Preflight OPTIONS requests directly
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=204,L]
+</IfModule>
+
+# Node.js Passenger / Proxy Entry
+PassengerAppRoot "."
+PassengerAppType node
+PassengerStartupFile "src/server.js"
+PassengerNodejs "/usr/bin/node"
