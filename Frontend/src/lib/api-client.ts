@@ -989,6 +989,110 @@ export const apiClient = {
     }
     return res.json();
   },
+
+  async verifyStatementAnalyzer(data: {
+    method?: string;
+    acceptance_policy?: string;
+    token?: string;
+    request_id?: string;
+    file?: string;
+    txn_id?: string;
+    report_type?: string;
+    report_subtype?: string;
+    client_ref_num?: string;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${host}/srv2/statement-upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        ...data,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
+  async verifyTransunion(data: {
+    forename: string;
+    surname: string;
+    phone_number: string;
+    gender: string;
+    pan_id: string;
+    date_of_birth?: string;
+    client_ref_num?: string;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${host}/srv5/transunion-Score-Hybrid`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        ...data,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
+  async verifyCrifScore(data: {
+    mobile_no: string;
+    first_name: string;
+    last_name: string;
+    name_lookup?: number;
+    api_id?: string;
+    api_key?: string;
+    token_id?: string;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${host}/crif/Credit-ScoreV4`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        ...data,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
 };
 
 export default apiClient;

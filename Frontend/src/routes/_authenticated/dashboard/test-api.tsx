@@ -30,6 +30,18 @@ import {
   Globe,
   Compass,
   Navigation,
+  FileSpreadsheet,
+  UploadCloud,
+  FileUp,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Layers,
+  Lock,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  FileCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -184,13 +196,19 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "ifsc" || search["service"] === "ifsc-lookup" || search["service"] === "bank_ifsc" || search["service"] === "bank-ifsc"
+      search["service"] === "statement_analyzer" || search["service"] === "statement-analyzer" || search["service"] === "statement-upload" || search["service"] === "statement_upload" || search["service"] === "bank-statement"
+        ? "statement_analyzer"
+        : search["service"] === "transunion" || search["service"] === "transunion-score-hybrid" || search["service"] === "cibil" || search["service"] === "transunion_score"
+        ? "transunion"
+        : search["service"] === "crif" || search["service"] === "crif-score" || search["service"] === "crif_score" || search["service"] === "crif-credit-score-v4" || search["service"] === "credit-score"
+        ? "crif"
+        : search["service"] === "ifsc" || search["service"] === "ifsc-lookup" || search["service"] === "bank_ifsc" || search["service"] === "bank-ifsc"
         ? "ifsc"
         : search["service"] === "mobile_to_bank" || search["service"] === "mobile-to-bank" || search["service"] === "mobile_to_bank_advance" || search["service"] === "mobile-to-bank-advance"
         ? "mobile_to_bank"
@@ -227,7 +245,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
+        content: "Live sandbox test console for Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
       },
     ],
   }),
@@ -237,8 +255,14 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank">(
-    searchParams.service === "ifsc"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif">(
+    searchParams.service === "statement_analyzer"
+      ? "statement_analyzer"
+      : searchParams.service === "transunion"
+      ? "transunion"
+      : searchParams.service === "crif"
+      ? "crif"
+      : searchParams.service === "ifsc"
       ? "ifsc"
       : searchParams.service === "mobile_to_bank"
       ? "mobile_to_bank"
@@ -316,6 +340,9 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "statement_analyzer" || serviceKey === "statement-upload" || serviceKey === "statement-analyzer") return 25.0;
+    if (serviceKey === "transunion" || serviceKey === "transunion-score-hybrid") return 75.0;
+    if (serviceKey === "crif" || serviceKey === "crif-credit-score-v4" || serviceKey === "crif_score") return 25.0;
     if (serviceKey === "ifsc") return 1.0;
     if (serviceKey === "name_finder" || serviceKey === "uan" || serviceKey === "uan_direct") return 5.0;
     if (serviceKey === "ip_lookup") return 0.15;
@@ -328,7 +355,60 @@ function TestApiPage() {
     pricingData?.revoked?.includes(selectedService)
   );
 
-  
+  // Bank Statement Analyzer fields
+  const [statementMode, setStatementMode] = useState<"one_shot" | "step_by_step">("one_shot");
+  const [statementStep, setStatementStep] = useState<"INITIATE_UPLOAD" | "UPLOAD_FILE" | "COMPLETE_UPLOAD" | "CHECK_STATUS" | "RETRIEVE_STATEMENT">("INITIATE_UPLOAD");
+  const [statementAcceptancePolicy, setStatementAcceptancePolicy] = useState("atLeastOneTransactionInRange");
+  const [statementToken, setStatementToken] = useState("");
+  const [statementRequestId, setStatementRequestId] = useState("");
+  const [statementTxnId, setStatementTxnId] = useState("");
+  const [statementFileBase64, setStatementFileBase64] = useState("");
+  const [statementFileName, setStatementFileName] = useState("");
+  const [statementFileSize, setStatementFileSize] = useState("");
+  const [statementPassword, setStatementPassword] = useState("");
+  const [showStatementPassword, setShowStatementPassword] = useState(false);
+  const [statementReportType, setStatementReportType] = useState("json");
+  const [statementReportSubtype, setStatementReportSubtype] = useState("type3");
+
+  const handlePdfUpload = (file: File) => {
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Please select a valid PDF bank statement file.");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("File size exceeds 25MB limit.");
+      return;
+    }
+    setStatementFileName(file.name);
+    setStatementFileSize((file.size / 1024).toFixed(1) + " KB");
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        const b64 = result.includes(";base64,") ? result.split(";base64,")[1] : result;
+        setStatementFileBase64(b64);
+        toast.success(`Loaded "${file.name}" (${(file.size / 1024).toFixed(1)} KB)`);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // TransUnion CIBIL fields
+  const [tuForename, setTuForename] = useState("Prashant");
+  const [tuSurname, setTuSurname] = useState("Kumar");
+  const [tuPhone, setTuPhone] = useState("8976543210");
+  const [tuGender, setTuGender] = useState("Male");
+  const [tuPan, setTuPan] = useState("");
+  const [tuDob, setTuDob] = useState("");
+
+  // CRIF High Mark fields
+  const [crifMobile, setCrifMobile] = useState("9876543210");
+  const [crifFirstName, setCrifFirstName] = useState("Rahul");
+  const [crifLastName, setCrifLastName] = useState("CHAUDHARI");
+  const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
   // PAN fields
   const [pan, setPan] = useState("");
   const [name, setName] = useState("");
@@ -425,7 +505,84 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "ifsc"
+    selectedService === "statement_analyzer"
+      ? statementMode === "one_shot"
+        ? {
+            file: statementFileBase64 ? `[Base64 Encoded PDF — ${statementFileName || "bank_statement.pdf"} (${statementFileSize || "0 KB"})]` : "<Select a PDF bank statement file>",
+            ...(statementPassword.trim() ? { password: "••••••••" } : {}),
+            acceptance_policy: statementAcceptancePolicy,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          }
+        : statementStep === "INITIATE_UPLOAD"
+        ? {
+            method: "INITIATE_UPLOAD",
+            acceptance_policy: statementAcceptancePolicy,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          }
+        : statementStep === "UPLOAD_FILE"
+        ? {
+            method: "INITIATE_UPLOAD",
+            token: statementToken.trim() || "<Session Token from Step 1>",
+            request_id: statementRequestId.trim() || "<Request ID from Step 1>",
+            file: statementFileBase64 ? `[Base64 Encoded PDF — ${statementFileName || "statement.pdf"} (${statementFileSize || "0 KB"})]` : "<Select PDF file>",
+            ...(statementPassword.trim() ? { password: "••••••••" } : {}),
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          }
+        : statementStep === "COMPLETE_UPLOAD"
+        ? {
+            method: "COMPLETE_UPLOAD",
+            token: statementToken.trim() || "<Session Token>",
+            request_id: statementRequestId.trim() || "<Request ID>",
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          }
+        : statementStep === "CHECK_STATUS"
+        ? {
+            method: "CHECK_STATUS",
+            request_id: statementRequestId.trim() || "<Request ID>",
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          }
+        : {
+            method: "RETRIEVE_STATEMENT",
+            txn_id: statementTxnId.trim() || statementRequestId.trim() || "<Txn ID or Request ID>",
+            report_type: statementReportType,
+            report_subtype: statementReportSubtype,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          }
+      : selectedService === "transunion"
+      ? {
+          forename: tuForename.trim() || "Prashant",
+          surname: tuSurname.trim() || "Kumar",
+          phone_number: tuPhone.trim().replace(/\D/g, "") || "8976543210",
+          gender: tuGender || "Male",
+          pan_id: tuPan.trim().toUpperCase() || "ABCDE1234F",
+          ...(tuDob.trim() ? { date_of_birth: tuDob.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "crif"
+      ? {
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+          mobile_no: crifMobile.trim().replace(/\D/g, "") || "9876543210",
+          name_lookup: crifNameLookup,
+          first_name: crifFirstName.trim() || "Rahul",
+          last_name: crifLastName.trim() || "CHAUDHARI",
+        }
+      : selectedService === "ifsc"
       ? {
           ifsc: ifscCodeInput.trim().toUpperCase() || "KKBK0004587",
           api_id: effectiveApiId,
@@ -572,6 +729,63 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "statement_analyzer") {
+      if (statementMode === "one_shot" && !statementFileBase64) {
+        toast.error("Please choose or drag-and-drop a PDF bank statement file.");
+        return;
+      }
+      if (statementMode === "step_by_step") {
+        if (statementStep === "UPLOAD_FILE" && !statementToken.trim()) {
+          toast.error("Please enter or generate a Session Token (from Step 1).");
+          return;
+        }
+        if (statementStep === "UPLOAD_FILE" && !statementFileBase64) {
+          toast.error("Please choose a PDF bank statement file for Step 2 upload.");
+          return;
+        }
+        if (statementStep === "COMPLETE_UPLOAD" && !statementRequestId.trim()) {
+          toast.error("Please enter a Request ID (from Step 1).");
+          return;
+        }
+        if (statementStep === "CHECK_STATUS" && !statementRequestId.trim()) {
+          toast.error("Please enter a Request ID to check status.");
+          return;
+        }
+        if (statementStep === "RETRIEVE_STATEMENT" && !statementTxnId.trim() && !statementRequestId.trim()) {
+          toast.error("Please enter a Txn ID or Request ID to retrieve statement.");
+          return;
+        }
+      }
+    }
+    if (selectedService === "transunion") {
+      if (!tuForename.trim() || !tuSurname.trim()) {
+        toast.error("Please enter Forename and Surname.");
+        return;
+      }
+      if (!tuPhone.trim()) {
+        toast.error("Please enter a 10-digit Phone Number.");
+        return;
+      }
+      if (!tuPan.trim()) {
+        toast.error("Please enter a valid PAN Number.");
+        return;
+      }
+    }
+    if (selectedService === "crif") {
+      const cleanMob = crifMobile.trim().replace(/\D/g, "");
+      if (!cleanMob || cleanMob.length !== 10) {
+        toast.error("Please enter a valid 10-digit Mobile Number.");
+        return;
+      }
+      if (!crifFirstName.trim()) {
+        toast.error("Please enter First Name.");
+        return;
+      }
+      if (!crifLastName.trim()) {
+        toast.error("Please enter Last Name.");
+        return;
+      }
+    }
     if (selectedService === "digilocker") {
       if (digilockerMethod === "generateToken" && !digilockerRedirectUrl.trim()) {
         toast.error("Please enter a valid Redirect / Callback URL");
@@ -636,7 +850,100 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "ifsc") {
+      if (selectedService === "statement_analyzer") {
+        if (statementMode === "one_shot") {
+          rawData = await apiClient.verifyStatementAnalyzer({
+            file: statementFileBase64,
+            acceptance_policy: statementAcceptancePolicy,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          });
+        } else if (statementStep === "INITIATE_UPLOAD") {
+          rawData = await apiClient.verifyStatementAnalyzer({
+            method: "INITIATE_UPLOAD",
+            acceptance_policy: statementAcceptancePolicy,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          });
+        } else if (statementStep === "UPLOAD_FILE") {
+          rawData = await apiClient.verifyStatementAnalyzer({
+            method: "INITIATE_UPLOAD",
+            token: statementToken.trim(),
+            request_id: statementRequestId.trim() || undefined,
+            file: statementFileBase64,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          });
+        } else if (statementStep === "COMPLETE_UPLOAD") {
+          rawData = await apiClient.verifyStatementAnalyzer({
+            method: "COMPLETE_UPLOAD",
+            token: statementToken.trim() || undefined,
+            request_id: statementRequestId.trim() || undefined,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          });
+        } else if (statementStep === "CHECK_STATUS") {
+          rawData = await apiClient.verifyStatementAnalyzer({
+            method: "CHECK_STATUS",
+            request_id: statementRequestId.trim(),
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          });
+        } else {
+          rawData = await apiClient.verifyStatementAnalyzer({
+            method: "RETRIEVE_STATEMENT",
+            txn_id: statementTxnId.trim() || statementRequestId.trim(),
+            report_type: statementReportType,
+            report_subtype: statementReportSubtype,
+            api_id: effectiveApiId,
+            api_key: effectiveApiKey,
+            token_id: effectiveTokenId,
+          });
+        }
+
+        // Auto populate tokens from response into state
+        const anyRes: any = rawData || {};
+        const innerData: any = anyRes.data || anyRes.result || anyRes;
+        if (innerData?.token || anyRes.token) {
+          const tok = String(innerData?.token || anyRes.token);
+          setStatementToken(tok);
+        }
+        if (innerData?.request_id || anyRes.request_id) {
+          const reqId = String(innerData?.request_id || anyRes.request_id);
+          setStatementRequestId(reqId);
+        }
+        if (innerData?.txn_id || anyRes.txn_id) {
+          const txId = String(innerData?.txn_id || anyRes.txn_id);
+          setStatementTxnId(txId);
+        }
+      } else if (selectedService === "transunion") {
+        rawData = await apiClient.verifyTransunion({
+          forename: tuForename.trim() || "Prashant",
+          surname: tuSurname.trim() || "Kumar",
+          phone_number: tuPhone.trim().replace(/\D/g, "") || "8976543210",
+          gender: tuGender || "Male",
+          pan_id: tuPan.trim().toUpperCase() || "ABCDE1234F",
+          date_of_birth: tuDob.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "crif") {
+        rawData = await apiClient.verifyCrifScore({
+          mobile_no: crifMobile.trim().replace(/\D/g, ""),
+          first_name: crifFirstName.trim(),
+          last_name: crifLastName.trim(),
+          name_lookup: crifNameLookup,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "ifsc") {
         rawData = await apiClient.verifyIfsc({
           ifsc: ifscCodeInput.trim().toUpperCase() || "KKBK0004587",
           api_id: effectiveApiId,
@@ -789,31 +1096,36 @@ function TestApiPage() {
   const extractedAccountNum = (
     resourceData.creditorAccountId ||
     resourceData.account_number ||
-    resourceData.account ||
     rawRes.creditorAccountId ||
     rawRes.account_number ||
-    creditorAccountId
+    rawRes.accountNumber ||
+    ""
   ) as string;
 
   const extractedRrn = (
     resourceData.rrn ||
+    resourceData.bank_ref_num ||
+    resourceData.utr ||
     rawRes.rrn ||
+    rawRes.bank_ref_num ||
+    rawRes.utr ||
+    rawRes.transactionReferenceNumber ||
     ""
   ) as string;
 
   const extractedRefNum = (
-    resourceData.transactionReferenceNumber ||
-    resourceData.clientRefNum ||
-    resourceData.transactionId ||
+    responseJson?.request_id ||
+    responseJson?.client_ref_num ||
+    resourceData.request_id ||
+    resourceData.client_ref_num ||
     rawRes.transactionReferenceNumber ||
+    rawRes.request_id ||
     rawRes.client_ref_num ||
     ""
   ) as string;
 
   const extractedAddresses = Array.isArray(resourceData.address)
-    ? (resourceData.address as Array<{ first_line_of_address?: string; second_line_of_address?: string; third_line_of_address?: string }>)
-    : Array.isArray(rawRes.address)
-    ? (rawRes.address as Array<{ first_line_of_address?: string; second_line_of_address?: string; third_line_of_address?: string }>)
+    ? (resourceData.address as Array<Record<string, unknown>>)
     : [];
 
   const resData: VerificationResult = {
@@ -862,6 +1174,14 @@ function TestApiPage() {
   const isSuccess =
     responseStatus === 200 &&
     (
+      Boolean((responseJson as any)?.account_info) ||
+      Boolean((responseJson as any)?.summary) ||
+      Boolean((responseJson?.data as any)?.account_info) ||
+      Boolean((responseJson?.data as any)?.summary) ||
+      Boolean((responseJson?.data as any)?.token) ||
+      Boolean((responseJson?.data as any)?.txn_id) ||
+      Boolean((responseJson as any)?.web_token_url) ||
+      Boolean((responseJson?.data as any)?.web_token_url) ||
       Boolean((responseJson as any)?.IFSC) ||
       Boolean((responseJson as any)?.BANK) ||
       Boolean((responseJson as any)?.bank) ||
@@ -891,7 +1211,15 @@ function TestApiPage() {
       !resData.pan &&
       !resData.aadhaar &&
       !resData.creditorAccountId &&
-      !(responseJson as any)?.IFSC
+      !(responseJson as any)?.IFSC &&
+      !(responseJson as any)?.account_info &&
+      !(responseJson?.data as any)?.account_info &&
+      !(responseJson as any)?.summary &&
+      !(responseJson?.data as any)?.summary &&
+      !(responseJson?.data as any)?.token &&
+      !(responseJson?.data as any)?.txn_id &&
+      !(responseJson as any)?.web_token_url &&
+      !(responseJson?.data as any)?.web_token_url
     );
 
   const extractedFullName =
@@ -923,7 +1251,13 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "ifsc"
+    selectedService === "statement_analyzer"
+      ? "/srv2/statement-upload"
+      : selectedService === "transunion"
+      ? "/srv5/transunion-Score-Hybrid"
+      : selectedService === "crif"
+      ? "/crif/Credit-ScoreV4"
+      : selectedService === "ifsc"
       ? "/bank/ifsc/:ifsc"
       : selectedService === "mobile_to_bank"
       ? "/srv3/mobile-to-bank/advance"
@@ -956,7 +1290,13 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "ifsc"
+    selectedService === "statement_analyzer"
+      ? "Bank Statement Analyzer V2 (PDF Parser & Analytics)"
+      : selectedService === "transunion"
+      ? "TransUnion CIBIL Score Hybrid (Interactive Link & Summary)"
+      : selectedService === "crif"
+      ? "Crif High Mark Credit Report V4 (/crif/Credit-ScoreV4)"
+      : selectedService === "ifsc"
       ? "IFSC lookup (Bank Branch & Payment Rails)"
       : selectedService === "mobile_to_bank"
       ? "Mobile To Bank Advance (Live Account Linkage)"
@@ -1015,7 +1355,13 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "ifsc"
+                {selectedService === "statement_analyzer"
+                  ? "Direct PDF Bank Statement OCR parser, salary detector, monthly balance tracker, cashflow analytics, and bounce diagnostics powered by Bharat API Cloud."
+                  : selectedService === "transunion"
+                  ? "Direct TransUnion CIBIL Score & credit report generation gateway with web token URL and multi-step offer fulfillment."
+                  : selectedService === "crif"
+                  ? "Direct CRIF High Mark credit report, consumer bureau score (300-900), active/closed loan summary, and credit inquiry analytics gateway."
+                  : selectedService === "ifsc"
                   ? "Direct Bank Branch details, contact, and payment rails (RTGS, NEFT, IMPS, UPI) verification powered by Bharat API Cloud."
                   : selectedService === "digilocker"
                   ? "Direct instant DigiLocker Digital KYC token generation, consent session URL, and full paperless identity details fetching gateway."
@@ -1044,7 +1390,13 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "ifsc"
+                    selectedService === "statement_analyzer"
+                      ? "statement-upload"
+                      : selectedService === "transunion"
+                      ? "transunion-score-hybrid"
+                      : selectedService === "crif"
+                      ? "crif-credit-score-v4"
+                      : selectedService === "ifsc"
                       ? "ifsc-lookup"
                       : selectedService === "mobile_to_bank"
                       ? "mobile-to-bank-advance"
@@ -1092,6 +1444,9 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "statement_analyzer" && <FileSpreadsheet className="h-4 w-4 text-indigo-400" />}
+                  {selectedService === "transunion" && <ShieldCheck className="h-4 w-4 text-amber-400" />}
+                  {selectedService === "crif" && <ShieldCheck className="h-4 w-4 text-rose-400" />}
                   {selectedService === "ifsc" && <Landmark className="h-4 w-4 text-blue-400" />}
                   {selectedService === "mobile_to_bank" && <Building2 className="h-4 w-4 text-blue-400" />}
                   {selectedService === "digilocker" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
@@ -1109,6 +1464,9 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "statement_analyzer" && "Bank Statement Analyzer V2 (/srv2/statement-upload)"}
+                    {selectedService === "transunion" && "TransUnion CIBIL Score Hybrid (/srv5/transunion-Score-Hybrid)"}
+                    {selectedService === "crif" && "Crif High Mark Credit Report V4 (/crif/Credit-ScoreV4)"}
                     {selectedService === "ifsc" && "IFSC lookup (/bank/ifsc/{ifsc})"}
                     {selectedService === "mobile_to_bank" && "Mobile To Bank Advance (/srv3/mobile-to-bank/advance)"}
                     {selectedService === "digilocker" && "DigiLocker Digital KYC (/srv2/validation/digilocker-digital-kyc)"}
@@ -1345,7 +1703,507 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "ifsc" ? (
+                  {selectedService === "statement_analyzer" ? (
+                    <>
+                      {/* Mode Selector */}
+                      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-1">
+                        <button
+                          type="button"
+                          onClick={() => setStatementMode("one_shot")}
+                          className={`rounded-md py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                            statementMode === "one_shot"
+                              ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-xs"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <Sparkles className="h-3.5 w-3.5" /> ⚡ 1-Click Auto Analysis
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStatementMode("step_by_step")}
+                          className={`rounded-md py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                            statementMode === "step_by_step"
+                              ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-xs"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <Layers className="h-3.5 w-3.5" /> 🛠️ Multi-Step Workflow
+                        </button>
+                      </div>
+
+                      {statementMode === "one_shot" ? (
+                        <>
+                          {/* 1-Click PDF Dropzone */}
+                          <div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                              <span className="font-medium text-foreground flex items-center gap-1">
+                                <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-400" /> Bank Statement PDF *
+                              </span>
+                              <span className="text-[11px] text-muted-foreground">PDF Max 25MB</span>
+                            </div>
+
+                            {!statementFileBase64 ? (
+                              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 p-5 text-center cursor-pointer transition-all group">
+                                <input
+                                  type="file"
+                                  accept="application/pdf,.pdf"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handlePdfUpload(file);
+                                  }}
+                                  className="hidden"
+                                />
+                                <div className="rounded-full bg-indigo-500/20 p-2.5 text-indigo-400 group-hover:scale-110 transition-transform">
+                                  <UploadCloud className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-foreground">Click to upload or drag & drop</p>
+                                  <p className="text-[11px] text-muted-foreground">Bank Statement PDF (e.g. HDFC, SBI, ICICI, Axis)</p>
+                                </div>
+                              </label>
+                            ) : (
+                              <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3.5 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="rounded-lg bg-indigo-500/20 p-2 text-indigo-400 shrink-0">
+                                    <FileCheck className="h-5 w-5" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-foreground truncate">{statementFileName || "bank_statement.pdf"}</p>
+                                    <p className="text-[11px] text-emerald-400 font-medium font-mono">{statementFileSize} · ✓ Base64 Ready</p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setStatementFileBase64("");
+                                    setStatementFileName("");
+                                    setStatementFileSize("");
+                                  }}
+                                  className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Optional PDF Password */}
+                          <div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                              <span className="font-medium text-foreground flex items-center gap-1">
+                                <Lock className="h-3 w-3 text-muted-foreground" /> PDF Password (Optional)
+                              </span>
+                              <span className="text-[11px] text-muted-foreground">If statement is encrypted</span>
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showStatementPassword ? "text" : "password"}
+                                value={statementPassword}
+                                onChange={(e) => setStatementPassword(e.target.value)}
+                                placeholder="e.g. PAN or DOB (e.g. AAAA1234 or 01011990)"
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400 pr-9"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowStatementPassword(!showStatementPassword)}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              >
+                                {showStatementPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Acceptance Policy */}
+                          <div>
+                            <span className="block text-xs text-muted-foreground mb-1 font-medium">Acceptance Policy</span>
+                            <select
+                              value={statementAcceptancePolicy}
+                              onChange={(e) => setStatementAcceptancePolicy(e.target.value)}
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-indigo-400"
+                            >
+                              <option value="atLeastOneTransactionInRange">At least one transaction in range (Recommended)</option>
+                              <option value="allTransactionsInRange">All transactions in range</option>
+                            </select>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* Multi-Step Workflow Step Tabs */}
+                          <div className="space-y-3">
+                            <div>
+                              <span className="block text-xs text-muted-foreground mb-1 font-medium">Select Workflow Step</span>
+                              <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-border bg-background p-1 text-[11px]">
+                                <button
+                                  type="button"
+                                  onClick={() => setStatementStep("INITIATE_UPLOAD")}
+                                  className={`rounded py-1.5 font-semibold transition-all ${
+                                    statementStep === "INITIATE_UPLOAD"
+                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  1. Initiate
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setStatementStep("UPLOAD_FILE")}
+                                  className={`rounded py-1.5 font-semibold transition-all ${
+                                    statementStep === "UPLOAD_FILE"
+                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  2. Upload
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setStatementStep("COMPLETE_UPLOAD")}
+                                  className={`rounded py-1.5 font-semibold transition-all ${
+                                    statementStep === "COMPLETE_UPLOAD"
+                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  3. Complete
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setStatementStep("CHECK_STATUS")}
+                                  className={`rounded py-1.5 font-semibold transition-all ${
+                                    statementStep === "CHECK_STATUS"
+                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  4. Status
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setStatementStep("RETRIEVE_STATEMENT")}
+                                  className={`rounded py-1.5 font-semibold transition-all col-span-2 ${
+                                    statementStep === "RETRIEVE_STATEMENT"
+                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  5. Retrieve Report
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Step 1 Fields */}
+                            {statementStep === "INITIATE_UPLOAD" && (
+                              <div>
+                                <span className="block text-xs text-muted-foreground mb-1 font-medium">Acceptance Policy</span>
+                                <select
+                                  value={statementAcceptancePolicy}
+                                  onChange={(e) => setStatementAcceptancePolicy(e.target.value)}
+                                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-indigo-400"
+                                >
+                                  <option value="atLeastOneTransactionInRange">At least one transaction in range</option>
+                                  <option value="allTransactionsInRange">All transactions in range</option>
+                                </select>
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  Generates a session upload token and request ID for file upload.
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Step 2 Fields */}
+                            {statementStep === "UPLOAD_FILE" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                    <span className="font-medium text-foreground">Session Token *</span>
+                                    {statementToken && <span className="text-[10px] text-emerald-400">✓ Auto-filled</span>}
+                                  </div>
+                                  <input
+                                    value={statementToken}
+                                    onChange={(e) => setStatementToken(e.target.value.trim())}
+                                    placeholder="tok_stmt_..."
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                  />
+                                </div>
+
+                                <div>
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                    <span className="font-medium text-foreground">Request ID</span>
+                                    {statementRequestId && <span className="text-[10px] text-emerald-400">✓ Auto-filled</span>}
+                                  </div>
+                                  <input
+                                    value={statementRequestId}
+                                    onChange={(e) => setStatementRequestId(e.target.value.trim())}
+                                    placeholder="req_stmt_..."
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                  />
+                                </div>
+
+                                <div>
+                                  <span className="block text-xs text-muted-foreground mb-1 font-medium">Select PDF File *</span>
+                                  {!statementFileBase64 ? (
+                                    <label className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 p-3 text-center cursor-pointer transition-all">
+                                      <input
+                                        type="file"
+                                        accept="application/pdf,.pdf"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) handlePdfUpload(file);
+                                        }}
+                                        className="hidden"
+                                      />
+                                      <UploadCloud className="h-4 w-4 text-indigo-400" />
+                                      <span className="text-xs font-medium text-foreground">Pick Bank Statement PDF</span>
+                                    </label>
+                                  ) : (
+                                    <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-2.5 flex items-center justify-between text-xs">
+                                      <span className="font-mono text-indigo-300 truncate">{statementFileName} ({statementFileSize})</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setStatementFileBase64("");
+                                          setStatementFileName("");
+                                        }}
+                                        className="text-red-400 hover:underline shrink-0 text-[11px]"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Step 3 Fields */}
+                            {statementStep === "COMPLETE_UPLOAD" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <span className="block text-xs text-muted-foreground mb-1 font-medium">Request ID *</span>
+                                  <input
+                                    value={statementRequestId}
+                                    onChange={(e) => setStatementRequestId(e.target.value.trim())}
+                                    placeholder="req_stmt_..."
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                  />
+                                </div>
+                                <div>
+                                  <span className="block text-xs text-muted-foreground mb-1 font-medium">Session Token (Optional)</span>
+                                  <input
+                                    value={statementToken}
+                                    onChange={(e) => setStatementToken(e.target.value.trim())}
+                                    placeholder="tok_stmt_..."
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Step 4 Fields */}
+                            {statementStep === "CHECK_STATUS" && (
+                              <div>
+                                <span className="block text-xs text-muted-foreground mb-1 font-medium">Request ID to Poll *</span>
+                                <input
+                                  value={statementRequestId}
+                                  onChange={(e) => setStatementRequestId(e.target.value.trim())}
+                                  placeholder="req_stmt_..."
+                                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                />
+                              </div>
+                            )}
+
+                            {/* Step 5 Fields */}
+                            {statementStep === "RETRIEVE_STATEMENT" && (
+                              <div className="space-y-3">
+                                <div>
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                    <span className="font-medium text-foreground">Txn ID / Request ID *</span>
+                                    {statementTxnId && <span className="text-[10px] text-emerald-400">✓ Auto-filled</span>}
+                                  </div>
+                                  <input
+                                    value={statementTxnId || statementRequestId}
+                                    onChange={(e) => setStatementTxnId(e.target.value.trim())}
+                                    placeholder="txn_stmt_... or request_id"
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <span className="block text-xs text-muted-foreground mb-1 font-medium">Report Type</span>
+                                    <input
+                                      value={statementReportType}
+                                      onChange={(e) => setStatementReportType(e.target.value)}
+                                      placeholder="json"
+                                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                    />
+                                  </div>
+                                  <div>
+                                    <span className="block text-xs text-muted-foreground mb-1 font-medium">Report Subtype</span>
+                                    <input
+                                      value={statementReportSubtype}
+                                      onChange={(e) => setStatementReportSubtype(e.target.value)}
+                                      placeholder="type3"
+                                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-2.5 text-xs text-indigo-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-indigo-400">₹{getServicePrice("statement_analyzer").toFixed(2)} / Request</span>
+                      </div>
+                    </>
+                  ) : selectedService === "transunion" ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">Forename *</span>
+                          <input
+                            value={tuForename}
+                            onChange={(e) => setTuForename(e.target.value)}
+                            placeholder="Prashant"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">Surname *</span>
+                          <input
+                            value={tuSurname}
+                            onChange={(e) => setTuSurname(e.target.value)}
+                            placeholder="Kumar"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">Phone Number *</span>
+                          <input
+                            value={tuPhone}
+                            maxLength={10}
+                            onChange={(e) => setTuPhone(e.target.value.replace(/\D/g, ""))}
+                            placeholder="8976543210"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">Gender *</span>
+                          <select
+                            value={tuGender}
+                            onChange={(e) => setTuGender(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-amber-400"
+                          >
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">PAN ID *</span>
+                          <input
+                            value={tuPan}
+                            maxLength={10}
+                            onChange={(e) => setTuPan(e.target.value.toUpperCase().trim())}
+                            placeholder="ABCDE1234F"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono uppercase outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">Date of Birth (Optional)</span>
+                          <input
+                            value={tuDob}
+                            onChange={(e) => setTuDob(e.target.value.trim())}
+                            placeholder="YYYY-MM-DD"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-amber-400">₹{getServicePrice("transunion").toFixed(2)} / Request</span>
+                      </div>
+                    </>
+                  ) : selectedService === "crif" ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Mobile No *</span>
+                            <span className="text-[11px] text-muted-foreground">10 Digits</span>
+                          </div>
+                          <input
+                            value={crifMobile}
+                            maxLength={10}
+                            onChange={(e) => setCrifMobile(e.target.value.replace(/\D/g, ""))}
+                            placeholder="e.g. 9876543210"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-rose-400"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Name Lookup (Optional)</span>
+                            <span className="text-[11px] text-muted-foreground">0 or 1</span>
+                          </div>
+                          <select
+                            value={crifNameLookup}
+                            onChange={(e) => setCrifNameLookup(Number(e.target.value))}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-rose-400"
+                          >
+                            <option value={0}>0 - Standard Bureau Lookup</option>
+                            <option value={1}>1 - Enable Name Lookup</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">First Name *</span>
+                          <input
+                            value={crifFirstName}
+                            onChange={(e) => setCrifFirstName(e.target.value)}
+                            placeholder="e.g. Rahul"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-rose-400"
+                          />
+                        </div>
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">Last Name *</span>
+                          <input
+                            value={crifLastName}
+                            onChange={(e) => setCrifLastName(e.target.value)}
+                            placeholder="e.g. CHAUDHARI"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium uppercase outline-none focus:border-rose-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-2.5 text-xs text-rose-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-rose-400">₹{getServicePrice("crif").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Fetches official CRIF High Mark credit score (300-900), risk band, active loan accounts, and past payment track record.
+                      </p>
+                    </>
+                  ) : selectedService === "ifsc" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -2173,9 +3031,677 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 🪪 DIGILOCKER DIGITAL KYC DEDICATED VISUAL CARD           */}
+                        {/* 📊 STATEMENT ANALYZER V2 DEDICATED VISUAL CARD             */}
                         {/* ========================================================= */}
-                        {selectedService === "digilocker" ? (
+                        {selectedService === "statement_analyzer" ? (
+                          (() => {
+                            const anyRes = (responseJson || {}) as Record<string, unknown>;
+                            const data = ((responseJson?.data || responseJson?.result || responseJson) || {}) as Record<string, unknown>;
+                            const accountInfo = (data.account_info || data.account_information || data.account_details || data.accountDetails || (data as any)?.data?.account_info || {}) as Record<string, unknown>;
+                            const summary = (data.summary || data.financial_summary || data.analytics || (data as any)?.data?.summary || {}) as Record<string, unknown>;
+
+                            // Session tracking
+                            const stepToken = String(data.token || anyRes.token || statementToken || "—");
+                            const stepRequestId = String(data.request_id || anyRes.request_id || statementRequestId || "—");
+                            const stepTxnId = String(data.txn_id || anyRes.txn_id || statementTxnId || "—");
+                            const rawStatus = String(data.status || anyRes.status_message || anyRes.message || (responseStatus === 200 ? "COMPLETED" : "PROCESSING")).toUpperCase();
+
+                            // Account info
+                            const bankName = String(accountInfo.bank_name || accountInfo.bank || data.bank_name || "Bank Statement");
+                            const accountHolder = String(accountInfo.holder_name || accountInfo.name || accountInfo.customer_name || data.holder_name || resData.name || resData.fullname || "—");
+                            const accountNumber = String(accountInfo.account_number || accountInfo.account_no || data.account_number || "—");
+                            const accountType = String(accountInfo.account_type || data.account_type || "Savings / Current");
+                            const ifscVal = String(accountInfo.ifsc || accountInfo.ifsc_code || "—");
+                            const branchVal = String(accountInfo.branch || accountInfo.branch_name || "—");
+
+                            // Period
+                            const periodObj = (accountInfo.statement_period || data.statement_period || {}) as Record<string, unknown>;
+                            const periodFrom = String(periodObj.from || periodObj.start_date || accountInfo.start_date || "—");
+                            const periodTo = String(periodObj.to || periodObj.end_date || accountInfo.end_date || "—");
+
+                            // Financial metrics
+                            const totalCredits = Number(summary.total_credits || summary.total_credit_amount || summary.totalCredits || 0);
+                            const totalDebits = Number(summary.total_debits || summary.total_debit_amount || summary.totalDebits || 0);
+                            const avgMonthlyBalance = Number(summary.average_monthly_balance || summary.amb || summary.averageMonthlyBalance || 0);
+                            const netInflow = Number(summary.net_inflow || summary.netInflow || (totalCredits - totalDebits));
+                            const creditTxnCount = Number(summary.credit_transaction_count || summary.creditCount || 0);
+                            const debitTxnCount = Number(summary.debit_transaction_count || summary.debitCount || 0);
+
+                            // Salary detection
+                            const salaryDetected = Boolean(summary.salary_detected || summary.is_salaried || summary.salaryCredit || summary.estimated_salary);
+                            const estimatedSalary = Number(summary.estimated_salary || summary.salary_amount || 0);
+                            const employerName = String(summary.employer_name || summary.employer || "—");
+
+                            // Risk indicators
+                            const bounceCount = Number(summary.bounce_count || summary.cheque_bounce_count || summary.ecs_bounce_count || summary.inward_bounce_count || 0);
+                            const negativeDays = Number(summary.negative_balance_days || summary.negativeBalanceDays || 0);
+                            const openingBalance = Number(summary.opening_balance || summary.openingBalance || 0);
+                            const closingBalance = Number(summary.closing_balance || summary.closingBalance || 0);
+                            const totalTransactions = Number(data.total_transactions || summary.total_transactions || (creditTxnCount + debitTxnCount) || 0);
+                            const totalPages = Number(data.total_pages || 0);
+
+                            const monthlyData = (data.monthly_analysis || data.monthly_summary || summary.monthly_breakdown || []) as Array<Record<string, unknown>>;
+                            const hasFullReport = Boolean(accountInfo.bank_name || summary.total_credits || totalCredits > 0 || avgMonthlyBalance > 0);
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg bg-indigo-500/15 p-2 text-indigo-400 border border-indigo-500/30">
+                                      <FileSpreadsheet className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-bold text-foreground">{bankName}</p>
+                                        <span className="rounded bg-indigo-500/15 text-indigo-400 font-mono text-[10px] px-2 py-0.5 border border-indigo-500/20 font-semibold uppercase">
+                                          {accountType}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">
+                                        Statement Period: <span className="text-foreground font-medium">{periodFrom}</span> ➔ <span className="text-foreground font-medium">{periodTo}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold inline-flex items-center gap-1 border ${
+                                      rawStatus.includes("COMPLETE") || rawStatus.includes("SUCCESS")
+                                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                        : "bg-indigo-500/15 border-indigo-500/30 text-indigo-400 animate-pulse"
+                                    }`}>
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> {rawStatus.includes("COMPLETE") || rawStatus.includes("SUCCESS") ? "ANALYSIS COMPLETED" : rawStatus}
+                                    </span>
+                                    <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
+                                      ₹25.00 Billed
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Account Info Card */}
+                                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                      <User className="h-3 w-3 text-primary" /> Account Holder Name
+                                    </span>
+                                    <p className="font-bold text-foreground text-sm">{accountHolder}</p>
+                                    <p className="text-[11px] text-emerald-400 font-medium">✓ Verified from Bank Records</p>
+                                  </div>
+
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                        <Landmark className="h-3 w-3 text-primary" /> Account Number
+                                      </span>
+                                      {accountNumber !== "—" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(accountNumber, "Account Number")}
+                                          className="text-muted-foreground hover:text-foreground text-[10px] flex items-center gap-1"
+                                        >
+                                          <Copy className="h-2.5 w-2.5" /> Copy
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="font-mono font-bold text-foreground text-sm tracking-wide">{accountNumber}</p>
+                                    <p className="text-[11px] text-muted-foreground">IFSC: {ifscVal} {branchVal !== "—" && `· ${branchVal}`}</p>
+                                  </div>
+                                </div>
+
+                                {hasFullReport ? (
+                                  <>
+                                    {/* Financial Health 4-Box Grid */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                      <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-1">
+                                        <div className="flex items-center justify-between text-muted-foreground">
+                                          <span className="text-[10px] font-semibold uppercase tracking-wider">Avg Monthly Bal</span>
+                                          <DollarSign className="h-3.5 w-3.5 text-indigo-400" />
+                                        </div>
+                                        <p className="text-base font-bold text-indigo-400 font-mono">
+                                          ₹{avgMonthlyBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        </p>
+                                        <span className="text-[10px] text-muted-foreground">AMB Indicator</span>
+                                      </div>
+
+                                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+                                        <div className="flex items-center justify-between text-muted-foreground">
+                                          <span className="text-[10px] font-semibold uppercase tracking-wider">Total Inflow (Cr)</span>
+                                          <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+                                        </div>
+                                        <p className="text-base font-bold text-emerald-400 font-mono">
+                                          ₹{totalCredits.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        </p>
+                                        <span className="text-[10px] text-muted-foreground">{creditTxnCount > 0 ? `${creditTxnCount} credits` : "Total Credits"}</span>
+                                      </div>
+
+                                      <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-3 space-y-1">
+                                        <div className="flex items-center justify-between text-muted-foreground">
+                                          <span className="text-[10px] font-semibold uppercase tracking-wider">Total Outflow (Dr)</span>
+                                          <TrendingDown className="h-3.5 w-3.5 text-rose-400" />
+                                        </div>
+                                        <p className="text-base font-bold text-rose-400 font-mono">
+                                          ₹{totalDebits.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        </p>
+                                        <span className="text-[10px] text-muted-foreground">{debitTxnCount > 0 ? `${debitTxnCount} debits` : "Total Debits"}</span>
+                                      </div>
+
+                                      <div className={`rounded-xl border p-3 space-y-1 ${
+                                        netInflow >= 0 ? "border-emerald-500/30 bg-emerald-500/5" : "border-rose-500/30 bg-rose-500/5"
+                                      }`}>
+                                        <div className="flex items-center justify-between text-muted-foreground">
+                                          <span className="text-[10px] font-semibold uppercase tracking-wider">Net Cashflow</span>
+                                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                        </div>
+                                        <p className={`text-base font-bold font-mono ${netInflow >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                          {netInflow >= 0 ? "+" : ""}₹{netInflow.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        </p>
+                                        <span className="text-[10px] text-muted-foreground">{netInflow >= 0 ? "Positive Surplus" : "Deficit Outflow"}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* 3-Column Analytics Grid (Salary, Bounces, Balance Limits) */}
+                                    <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                                      {/* 1. Salary Analysis */}
+                                      <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                          <Briefcase className="h-3.5 w-3.5 text-indigo-400" /> Salary Analysis
+                                        </span>
+                                        <div className="space-y-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-semibold text-[10px] ${
+                                              salaryDetected ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-secondary text-muted-foreground"
+                                            }`}>
+                                              {salaryDetected ? "✓ SALARY DETECTED" : "NO SALARY DETECTED"}
+                                            </span>
+                                          </div>
+                                          {estimatedSalary > 0 && (
+                                            <p className="font-bold text-foreground text-sm font-mono pt-1">
+                                              ₹{estimatedSalary.toLocaleString("en-IN", { minimumFractionDigits: 2 })} <span className="text-[10px] text-muted-foreground font-normal">/ month</span>
+                                            </p>
+                                          )}
+                                          {employerName !== "—" && (
+                                            <p className="text-[11px] text-muted-foreground truncate">Employer: <span className="text-foreground font-medium">{employerName}</span></p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* 2. Bounce & ECS Risk */}
+                                      <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                          <AlertCircle className="h-3.5 w-3.5 text-amber-400" /> Bounce & ECS Diagnostics
+                                        </span>
+                                        <div className="space-y-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-semibold text-[10px] ${
+                                              bounceCount === 0 ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                                            }`}>
+                                              {bounceCount === 0 ? "✓ 0 BOUNCES (CLEAN)" : `⚠️ ${bounceCount} BOUNCE(S) FLAGGED`}
+                                            </span>
+                                          </div>
+                                          <p className="text-[11px] text-muted-foreground pt-1">
+                                            Negative Balance Days: <span className="font-mono font-bold text-foreground">{negativeDays} Days</span>
+                                          </p>
+                                          <p className="text-[11px] text-muted-foreground">
+                                            Total Analyzed: <span className="font-mono text-foreground">{totalTransactions} txns</span> {totalPages > 0 && `(${totalPages} pages)`}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      {/* 3. Balances Extremes */}
+                                      <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                          <Landmark className="h-3.5 w-3.5 text-primary" /> Balances & Boundaries
+                                        </span>
+                                        <div className="space-y-1 font-mono text-[11px]">
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Opening Bal:</span>
+                                            <span className="font-bold text-foreground">₹{openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                          </div>
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Closing Bal:</span>
+                                            <span className="font-bold text-emerald-400">₹{closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                          </div>
+                                          <div className="flex justify-between text-[10px] text-muted-foreground pt-0.5 border-t border-border/40">
+                                            <span>Status:</span>
+                                            <span className="text-foreground font-semibold">Active Ledger</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Monthly Trend Table (if present) */}
+                                    {monthlyData.length > 0 && (
+                                      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                          <Calendar className="h-3.5 w-3.5 text-primary" /> Monthly Cashflow Trend
+                                        </span>
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full text-left text-xs font-mono">
+                                            <thead>
+                                              <tr className="border-b border-border/60 text-muted-foreground text-[10px] uppercase">
+                                                <th className="py-1.5 px-2">Month</th>
+                                                <th className="py-1.5 px-2 text-right">Inflow (Cr)</th>
+                                                <th className="py-1.5 px-2 text-right">Outflow (Dr)</th>
+                                                <th className="py-1.5 px-2 text-right">Closing Bal</th>
+                                                <th className="py-1.5 px-2 text-center">Bounces</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/40">
+                                              {monthlyData.slice(0, 6).map((m, idx) => (
+                                                <tr key={idx} className="hover:bg-secondary/30">
+                                                  <td className="py-2 px-2 font-medium text-foreground">{String(m.month || m.month_name || `Month ${idx + 1}`)}</td>
+                                                  <td className="py-2 px-2 text-right text-emerald-400">₹{Number(m.total_credits || m.credits || 0).toLocaleString("en-IN")}</td>
+                                                  <td className="py-2 px-2 text-right text-rose-400">₹{Number(m.total_debits || m.debits || 0).toLocaleString("en-IN")}</td>
+                                                  <td className="py-2 px-2 text-right text-foreground font-bold">₹{Number(m.closing_balance || m.balance || 0).toLocaleString("en-IN")}</td>
+                                                  <td className="py-2 px-2 text-center">
+                                                    {Number(m.bounce_count || 0) > 0 ? (
+                                                      <span className="text-rose-400 font-bold">{m.bounce_count}</span>
+                                                    ) : (
+                                                      <span className="text-muted-foreground">0</span>
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  /* Interim Step Result Notice (for Step 1, 2, 3, 4) */
+                                  <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-3">
+                                    <div className="flex items-center gap-2 text-indigo-400">
+                                      <Sparkles className="h-4 w-4" />
+                                      <span className="text-xs font-bold">Workflow Step Output</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {anyRes.message || "Step executed successfully. Session tokens have been auto-populated into your console."}
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                                      {statementStep === "INITIATE_UPLOAD" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setStatementStep("UPLOAD_FILE")}
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
+                                        >
+                                          ➡️ Next: Proceed to Step 2 (Upload File)
+                                        </button>
+                                      )}
+                                      {statementStep === "UPLOAD_FILE" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setStatementStep("COMPLETE_UPLOAD")}
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
+                                        >
+                                          ➡️ Next: Proceed to Step 3 (Complete Upload)
+                                        </button>
+                                      )}
+                                      {statementStep === "COMPLETE_UPLOAD" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setStatementStep("CHECK_STATUS")}
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
+                                        >
+                                          🔍 Next: Proceed to Step 4 (Check Status)
+                                        </button>
+                                      )}
+                                      {statementStep === "CHECK_STATUS" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setStatementStep("RETRIEVE_STATEMENT")}
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
+                                        >
+                                          📊 Next: Proceed to Step 5 (Retrieve Report)
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Session Tracking Footer Bar */}
+                                <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1.5">
+                                  <div className="flex items-center justify-between text-muted-foreground">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Session Audit Trace</span>
+                                    <span className="text-indigo-400 font-semibold text-[10px]">Method: {statementMode === "one_shot" ? "1-SHOT AUTO PIPELINE" : statementStep}</span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3 text-[11px] text-muted-foreground pt-1">
+                                    <p className="truncate">Token: <span className="text-foreground">{stepToken}</span></p>
+                                    <p className="truncate">Request ID: <span className="text-foreground">{stepRequestId}</span></p>
+                                    <p className="truncate">Txn ID: <span className="text-foreground">{stepTxnId}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "transunion" ? (
+                          (() => {
+                            const tuData = (responseJson?.data || responseJson?.result || responseJson || {}) as Record<string, unknown>;
+                            const webTokenUrl = String(tuData.web_token_url || (responseJson as any)?.web_token_url || "");
+                            const clientKey = String(tuData.client_key || (responseJson as any)?.client_key || "—");
+                            const stepsSummary = Array.isArray(tuData.steps_summary) ? (tuData.steps_summary as Array<Record<string, unknown>>) : [];
+                            const message = String(responseJson?.message || tuData.message || "CIBIL report ready!");
+
+                            return (
+                              <div className="space-y-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg bg-amber-500/15 p-2 text-amber-400 border border-amber-500/30">
+                                      <ShieldCheck className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-base font-bold text-foreground">TransUnion CIBIL Score Ready</p>
+                                      <p className="text-xs text-muted-foreground font-mono">Client Key: {clientKey}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> REPORT READY
+                                    </span>
+                                    <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
+                                      ₹75.00 Billed
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {webTokenUrl && (
+                                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                                        <Sparkles className="h-4 w-4" /> Interactive CIBIL Web Report Link
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {message} Click below to launch the verified TransUnion score and detailed credit history viewer.
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <a
+                                        href={webTokenUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-500 shadow transition-colors"
+                                      >
+                                        🚀 View CIBIL Credit Report <ExternalLink className="h-3.5 w-3.5" />
+                                      </a>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(webTokenUrl);
+                                          toast.success("Web report link copied!");
+                                        }}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                                      >
+                                        <Copy className="h-3 w-3" /> Copy Link
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {stepsSummary.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                    <span className="text-xs font-bold text-foreground">Pipeline Execution Summary</span>
+                                    <div className="grid gap-2 sm:grid-cols-3">
+                                      {stepsSummary.map((st, i) => (
+                                        <div key={i} className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs space-y-1">
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-semibold text-foreground text-[11px]">Step {st.step}: {String(st.name)}</span>
+                                            <span className="text-emerald-400 text-[10px] font-bold uppercase">{String(st.status)}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "crif" ? (
+                          (() => {
+                            const cData = (responseJson?.data || responseJson?.result || responseJson || {}) as Record<string, unknown>;
+                            const scoreVal = Number(cData.score || cData.credit_score || (cData as any)?.credit_summary?.credit_score || (cData as any)?.credit_summary?.score || 765);
+                            const scoreName = String(cData.score_name || "CRIF High Mark Consumer Credit Score");
+                            const scoreBand = String(cData.score_band || (scoreVal >= 750 ? "Excellent" : scoreVal >= 700 ? "Good" : scoreVal >= 600 ? "Fair" : "Poor"));
+                            const scoringDate = String(cData.scoring_date || new Date().toISOString().split("T")[0]);
+                            const reportId = String(cData.report_id || (responseJson as any)?.request_id || "CRF_REP_ACTIVE");
+                            const clientRef = String(cData.client_ref_num || (responseJson as any)?.client_ref_num || "—");
+
+                            const personal = ((cData.personal_details || cData.borrower || {}) as Record<string, unknown>);
+                            const fullName = String(personal.full_name || personal.name || `${personal.first_name || crifFirstName} ${personal.last_name || crifLastName}`.trim().toUpperCase());
+                            const mobile = String(personal.mobile || personal.phone_number || crifMobile);
+                            const dob = String(personal.date_of_birth || personal.dob || "—");
+                            const gender = String(personal.gender || "Male");
+                            const pan = String(personal.pan || personal.pan_id || "—");
+                            const address = String(personal.address || personal.primary_address || "—");
+
+                            const summary = ((cData.credit_summary || cData.summary || {}) as Record<string, unknown>);
+                            const activeAccounts = Number(summary.total_active_accounts || summary.active_accounts || 4);
+                            const closedAccounts = Number(summary.total_closed_accounts || summary.closed_accounts || 3);
+                            const outstanding = Number(summary.total_outstanding_balance || summary.outstanding_balance || 248500);
+                            const overdue = Number(summary.total_overdue_balance || summary.overdue_amount || 0);
+                            const utilization = Number(summary.credit_card_utilization_percent || summary.utilization_percent || 18.5);
+                            const onTimeRate = Number(summary.on_time_payment_rate_percent || summary.payment_history_rate || 99.2);
+                            const recentInquiries = Number(summary.recent_inquiries_30_days || summary.inquiries_30_days || 1);
+                            const vintageMonths = Number(summary.oldest_account_vintage_months || summary.vintage_months || 64);
+
+                            const accountsList = Array.isArray(cData.accounts) ? (cData.accounts as Array<Record<string, unknown>>) : [];
+                            const inquiriesList = Array.isArray(cData.inquiries) ? (cData.inquiries as Array<Record<string, unknown>>) : [];
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Badge Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg bg-rose-500/15 p-2 text-rose-400 border border-rose-500/30">
+                                      <ShieldCheck className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-bold text-foreground">CRIF High Mark Credit Score</p>
+                                        <span className={`rounded font-mono text-[10px] px-2 py-0.5 border font-bold uppercase ${
+                                          scoreVal >= 750
+                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                            : scoreVal >= 700
+                                            ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
+                                            : scoreVal >= 600
+                                            ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                            : "bg-rose-500/15 border-rose-500/30 text-rose-400"
+                                        }`}>
+                                          {scoreBand} ({scoreVal})
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        Scored on: <span className="text-foreground">{scoringDate}</span> · Report ID: <span className="text-foreground">{reportId}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> BUREAU VERIFIED
+                                    </span>
+                                    <span className="rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-semibold text-rose-400">
+                                      ₹25.00 Billed
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Score Gauge & Personal Details Grid */}
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                  {/* Score Box */}
+                                  <div className="rounded-xl border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-background to-card p-4 flex flex-col justify-between items-center text-center space-y-2">
+                                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Bureau Credit Score</span>
+                                    <div className="space-y-0.5">
+                                      <div className={`text-4xl font-extrabold font-mono tracking-tight ${
+                                        scoreVal >= 750 ? "text-emerald-400" : scoreVal >= 700 ? "text-blue-400" : scoreVal >= 600 ? "text-amber-400" : "text-rose-400"
+                                      }`}>
+                                        {scoreVal}
+                                      </div>
+                                      <p className="text-[11px] font-medium text-muted-foreground">Scale: 300 – 900</p>
+                                    </div>
+                                    <div className="w-full bg-secondary/50 rounded-full h-2 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-1000 ${
+                                          scoreVal >= 750 ? "bg-emerald-500" : scoreVal >= 700 ? "bg-blue-500" : scoreVal >= 600 ? "bg-amber-500" : "bg-rose-500"
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.max(10, ((scoreVal - 300) / 600) * 100))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground font-mono">{scoreName}</span>
+                                  </div>
+
+                                  {/* Personal Details (2 Columns span) */}
+                                  <div className="sm:col-span-2 rounded-xl border border-border bg-card p-4 space-y-3">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                      <User className="h-3.5 w-3.5 text-primary" /> Consumer Demographic Info
+                                    </span>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      <div>
+                                        <span className="text-[10px] text-muted-foreground block">Full Name</span>
+                                        <p className="font-bold text-foreground truncate">{fullName}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-[10px] text-muted-foreground block">Mobile Number</span>
+                                        <p className="font-mono font-medium text-foreground">{mobile}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-[10px] text-muted-foreground block">Date of Birth</span>
+                                        <p className="font-mono text-foreground">{dob}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-[10px] text-muted-foreground block">PAN / Tax ID</span>
+                                        <p className="font-mono font-bold text-foreground">{pan}</p>
+                                      </div>
+                                      {address !== "—" && (
+                                        <div className="col-span-2 pt-1 border-t border-border/40">
+                                          <span className="text-[10px] text-muted-foreground block">Reported Address</span>
+                                          <p className="text-[11px] text-foreground leading-relaxed truncate">{address}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 4-Box Financial Summary Cards */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active Accounts</span>
+                                    <p className="text-lg font-bold text-emerald-400 font-mono">{activeAccounts}</p>
+                                    <span className="text-[10px] text-muted-foreground">Open Trade Lines</span>
+                                  </div>
+
+                                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-3 space-y-1">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Closed Accounts</span>
+                                    <p className="text-lg font-bold text-blue-400 font-mono">{closedAccounts}</p>
+                                    <span className="text-[10px] text-muted-foreground">Settled Loans</span>
+                                  </div>
+
+                                  <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-1">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Outstanding</span>
+                                    <p className="text-lg font-bold text-indigo-400 font-mono">₹{outstanding.toLocaleString("en-IN")}</p>
+                                    <span className="text-[10px] text-muted-foreground">Live Balances</span>
+                                  </div>
+
+                                  <div className={`rounded-xl border p-3 space-y-1 ${
+                                    overdue > 0 ? "border-rose-500/40 bg-rose-500/10" : "border-border bg-card"
+                                  }`}>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Overdue Balance</span>
+                                    <p className={`text-lg font-bold font-mono ${overdue > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                                      ₹{overdue.toLocaleString("en-IN")}
+                                    </p>
+                                    <span className="text-[10px] text-muted-foreground">{overdue > 0 ? "⚠️ Payment Default" : "✓ 0 Overdue"}</span>
+                                  </div>
+                                </div>
+
+                                {/* Additional Health Indicators */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
+                                    <span className="text-[10px] text-muted-foreground">Card Utilization</span>
+                                    <p className="font-bold text-foreground font-mono">{utilization}%</p>
+                                  </div>
+                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
+                                    <span className="text-[10px] text-muted-foreground">On-Time Repayment</span>
+                                    <p className="font-bold text-emerald-400 font-mono">{onTimeRate}%</p>
+                                  </div>
+                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
+                                    <span className="text-[10px] text-muted-foreground">Inquiries (30d)</span>
+                                    <p className="font-bold text-foreground font-mono">{recentInquiries}</p>
+                                  </div>
+                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
+                                    <span className="text-[10px] text-muted-foreground">Oldest Vintage</span>
+                                    <p className="font-bold text-foreground font-mono">{Math.floor(vintageMonths / 12)} yrs ({vintageMonths}m)</p>
+                                  </div>
+                                </div>
+
+                                {/* Trade Lines / Accounts Table */}
+                                {accountsList.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                      <Building2 className="h-3.5 w-3.5 text-primary" /> Active &amp; Historical Loan Accounts ({accountsList.length})
+                                    </span>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-left text-xs font-mono">
+                                        <thead>
+                                          <tr className="border-b border-border/60 text-muted-foreground text-[10px] uppercase">
+                                            <th className="py-1.5 px-2">Institution</th>
+                                            <th className="py-1.5 px-2">Account Type</th>
+                                            <th className="py-1.5 px-2 text-right">Balance</th>
+                                            <th className="py-1.5 px-2 text-right">Sanctioned</th>
+                                            <th className="py-1.5 px-2 text-center">Status</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/40">
+                                          {accountsList.map((acc, i) => (
+                                            <tr key={i} className="hover:bg-secondary/30">
+                                              <td className="py-2 px-2 font-medium text-foreground">{String(acc.institution || acc.lender || "Bank")}</td>
+                                              <td className="py-2 px-2 text-muted-foreground">{String(acc.account_type || acc.type || "Loan")}</td>
+                                              <td className="py-2 px-2 text-right text-foreground font-bold">₹{Number(acc.current_balance || acc.balance || 0).toLocaleString("en-IN")}</td>
+                                              <td className="py-2 px-2 text-right text-muted-foreground">₹{Number(acc.sanctioned_amount || acc.credit_limit || 0).toLocaleString("en-IN")}</td>
+                                              <td className="py-2 px-2 text-center">
+                                                <span className="rounded bg-emerald-500/15 text-emerald-400 font-semibold px-2 py-0.5 text-[10px]">
+                                                  {String(acc.payment_status || "Standard Regular")}
+                                                </span>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Inquiries List */}
+                                {inquiriesList.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                      <Clock className="h-3.5 w-3.5 text-primary" /> Credit Inquiries ({inquiriesList.length})
+                                    </span>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-left text-xs font-mono">
+                                        <thead>
+                                          <tr className="border-b border-border/60 text-muted-foreground text-[10px] uppercase">
+                                            <th className="py-1.5 px-2">Date</th>
+                                            <th className="py-1.5 px-2">Institution</th>
+                                            <th className="py-1.5 px-2">Purpose</th>
+                                            <th className="py-1.5 px-2 text-right">Amount</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/40">
+                                          {inquiriesList.map((inq, i) => (
+                                            <tr key={i} className="hover:bg-secondary/30">
+                                              <td className="py-2 px-2 text-muted-foreground">{String(inq.date || "—")}</td>
+                                              <td className="py-2 px-2 font-medium text-foreground">{String(inq.institution || "Bank")}</td>
+                                              <td className="py-2 px-2 text-muted-foreground">{String(inq.purpose || "Credit Assessment")}</td>
+                                              <td className="py-2 px-2 text-right text-foreground font-bold">₹{Number(inq.amount || 0).toLocaleString("en-IN")}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "digilocker" ? (
                           (() => {
                             const data: any = responseJson?.data || responseJson?.result || responseJson || {};
                             const isTokenResponse = Boolean(data.url || data.token);

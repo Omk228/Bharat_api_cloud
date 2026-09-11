@@ -112,6 +112,13 @@ const ENDPOINT_CATALOG_MAP = {
   '/srv2/statement-upload': ['api_bank_statement', '/bank/statement/analyse'],
   '/bank/statement/analyse': ['api_bank_statement', '/bank/statement/analyse'],
   'statement_analyzer': ['api_bank_statement', '/bank/statement/analyse'],
+
+  // CRIF High Mark Credit Score V4
+  '/crif/Credit-ScoreV4': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
+  '/api/v1/crif/Credit-ScoreV4': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
+  '/Credit-ScoreV4': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
+  'crif': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
+  'crif_score': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -133,6 +140,8 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   reverse_geocode: 'api_reverse_geocoding',
   mobile_to_bank: 'api_mobile_to_bank_advance',
   transunion: 'api_transunion_cibil_v5',
+  statement_analyzer: 'api_bank_statement',
+  crif: 'api_crif_credit_score_v4',
 };
 
 export const GST_RATE = 0.18;

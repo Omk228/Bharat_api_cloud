@@ -64,6 +64,10 @@ function ApisPage() {
         ? "api_cat_01"
         : ep.id === "transunion-score-hybrid"
         ? "api_transunion_cibil_v5"
+        : ep.id === "statement-upload"
+        ? "api_bank_statement"
+        : ep.id === "crif-credit-score-v4"
+        ? "api_crif_credit_score_v4"
         : ep.id.startsWith("api_")
         ? ep.id
         : `api_${ep.id.replace(/-/g, "_")}`;
@@ -73,7 +77,9 @@ function ApisPage() {
       (c) =>
         c.id === canonicalCatalogId ||
         c.id === ep.id ||
-        (ep.id === "verify-pan" && c.id === "api_verify_pan")
+        (ep.id === "verify-pan" && c.id === "api_verify_pan") ||
+        (ep.id === "statement-upload" && (c.id === "api_bank_statement" || c.id === "api_statement_upload")) ||
+        (ep.id === "crif-credit-score-v4" && (c.id === "api_crif_credit_score_v4" || c.id === "api_crif"))
     );
 
     // 3. Find by exact endpoint path (strict equality, avoiding false substring overlaps)
@@ -98,6 +104,14 @@ function ApisPage() {
       } else if (ep.id === "transunion-score-hybrid") {
         catalogItem = pricingData.catalog.find(
           (c) => c.id === "api_transunion_cibil_v5" || c.endpoint_path === "/srv5/transunion-Score-Hybrid"
+        );
+      } else if (ep.id === "statement-upload") {
+        catalogItem = pricingData.catalog.find(
+          (c) => c.id === "api_bank_statement" || c.endpoint_path === "/bank/statement/analyse" || c.endpoint_path === "/srv2/statement-upload"
+        );
+      } else if (ep.id === "crif-credit-score-v4") {
+        catalogItem = pricingData.catalog.find(
+          (c) => c.id === "api_crif_credit_score_v4" || c.endpoint_path === "/crif/Credit-ScoreV4"
         );
       }
     }
@@ -484,6 +498,33 @@ function ApisPage() {
                         to="/dashboard/test-api"
                         search={{ service: "ifsc" }}
                         className="inline-flex items-center gap-1 rounded bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 font-medium text-blue-400 hover:bg-blue-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {ep.id === "statement-upload" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "statement_analyzer" }}
+                        className="inline-flex items-center gap-1 rounded bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 font-medium text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {ep.id === "transunion-score-hybrid" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "transunion" }}
+                        className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {ep.id === "crif-credit-score-v4" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "crif" }}
+                        className="inline-flex items-center gap-1 rounded bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 font-medium text-rose-400 hover:bg-rose-500/20 transition-colors"
                       >
                         ⚡ Test In Console
                       </Link>
