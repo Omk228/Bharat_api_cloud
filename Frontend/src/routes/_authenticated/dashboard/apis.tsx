@@ -5,12 +5,15 @@ import {
   Clock,
   ExternalLink,
   BookOpen,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { useQuery } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { endpoints, API_GROUPS, type ApiGroup, type ApiEndpoint } from "@/lib/api-catalog";
+import { endpoints, API_GROUPS, BASE_URL, type ApiGroup, type ApiEndpoint } from "@/lib/api-catalog";
 import { apiClient } from "@/lib/api-client";
 import { getStoredUserEmail } from "@/lib/demo-store";
 
@@ -28,6 +31,14 @@ export const Route = createFileRoute("/_authenticated/dashboard/apis")({
 });
 
 function ApisPage() {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyEndpoint = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Endpoint path copied to clipboard");
+    setTimeout(() => setCopiedId(null), 1800);
+  };
   const [selectedGroup, setSelectedGroup] = useState<ApiGroup | "All">("All");
   const [assignmentFilter, setAssignmentFilter] = useState<"all" | "assigned" | "not_assigned">("all");
   const [query, setQuery] = useState("");
@@ -41,10 +52,50 @@ function ApisPage() {
   });
 
   const getEndpointPrice = (ep: ApiEndpoint): { price: number; isCustom: boolean; isAssigned: boolean } => {
-    // Check catalog items
-    const catalogItem = pricingData?.catalog?.find(
-      (c) => c.endpoint_path === ep.path || ep.path.includes(c.endpoint_path) || c.endpoint_path.includes(ep.path)
+    if (!pricingData?.catalog || pricingData.catalog.length === 0) {
+      return { price: 2.0, isCustom: false, isAssigned: false };
+    }
+
+    // 1. Map endpoint ID to canonical database catalog ID
+    const canonicalCatalogId =
+      ep.id === "verify-pan"
+        ? "api_cat_03"
+        : ep.id === "ifsc-lookup"
+        ? "api_cat_01"
+        : ep.id.startsWith("api_")
+        ? ep.id
+        : `api_${ep.id.replace(/-/g, "_")}`;
+
+    // 2. Find by canonical catalog ID or raw ID
+    let catalogItem = pricingData.catalog.find(
+      (c) =>
+        c.id === canonicalCatalogId ||
+        c.id === ep.id ||
+        (ep.id === "verify-pan" && c.id === "api_verify_pan")
     );
+
+    // 3. Find by exact endpoint path (strict equality, avoiding false substring overlaps)
+    if (!catalogItem) {
+      catalogItem = pricingData.catalog.find((c) => c.endpoint_path === ep.path);
+    }
+
+    // 4. Resolve known alias routes
+    if (!catalogItem) {
+      if (ep.id === "mobile-to-prefill") {
+        catalogItem = pricingData.catalog.find(
+          (c) => c.id === "api_mobile_to_prefill" || c.endpoint_path === "/srv4/credit-report/prefill"
+        );
+      } else if (ep.id === "ifsc-lookup") {
+        catalogItem = pricingData.catalog.find(
+          (c) => c.id === "api_cat_01" || c.endpoint_path === "/ifsc" || c.endpoint_path === "/bank/ifsc/:code"
+        );
+      } else if (ep.id === "verify-pan") {
+        catalogItem = pricingData.catalog.find(
+          (c) => c.id === "api_cat_03" || c.id === "api_verify_pan" || c.endpoint_path === "/srv2/validation/pan"
+        );
+      }
+    }
+
     if (catalogItem) {
       return {
         price: catalogItem.effective_price,
@@ -52,12 +103,17 @@ function ApisPage() {
         isAssigned: catalogItem.is_assigned === true,
       };
     }
-    // Fallback by ID
-    if (ep.id === "verify-pan" && pricingData?.pricing?.["pan"]) {
-      const isAssigned = pricingData?.assigned?.["pan"] === true;
-      const panPrice = pricingData.pricing["pan"] ?? 1.1;
-      return { price: panPrice, isCustom: panPrice !== 1.1, isAssigned };
+
+    // Fallback by service key if catalog table lookup was empty
+    const serviceKey = ep.id.replace(/-/g, "_");
+    if (pricingData?.pricing?.[serviceKey] !== undefined) {
+      return {
+        price: pricingData.pricing[serviceKey] ?? 2.0,
+        isCustom: false,
+        isAssigned: pricingData.assigned?.[serviceKey] === true,
+      };
     }
+
     return { price: 2.0, isCustom: false, isAssigned: false };
   };
 
@@ -246,7 +302,21 @@ function ApisPage() {
                   <h3 className="mt-3 text-base font-semibold text-foreground group-hover:text-primary transition-colors">
                     {ep.title}
                   </h3>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground break-all">{ep.path}</p>
+                  <div className="mt-1.5 flex items-center justify-between gap-1.5 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1.5 font-mono text-xs">
+                    <span className="truncate text-muted-foreground select-all">{ep.path}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyEndpoint(ep.path, ep.id)}
+                      title="Copy Endpoint path"
+                      className="inline-flex shrink-0 items-center gap-1 rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      {copiedId === ep.id ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">{ep.desc}</p>
 
                   {/* Tags */}

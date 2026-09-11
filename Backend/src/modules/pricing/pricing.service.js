@@ -102,6 +102,7 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   pan: 'api_cat_03',
   pan_plus: 'api_verify_pan_plus',
   aadhaar: 'api_aadhaar_without_otp',
+  digilocker: 'api_digilocker_digital_kyc',
   bank: 'api_bank_penny_less',
   bank_validation: 'api_bank_validation',
   prefill: 'api_mobile_to_prefill',
@@ -113,6 +114,7 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   uan_direct: 'api_uan_to_employment',
   ip_lookup: 'api_requester_ip_lookup',
   reverse_geocode: 'api_reverse_geocoding',
+  mobile_to_bank: 'api_mobile_to_bank_advance',
 };
 
 export class PricingService {

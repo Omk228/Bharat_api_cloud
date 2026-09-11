@@ -36,6 +36,7 @@ import { toast } from "sonner";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiClient } from "@/lib/api-client";
+import { BASE_URL } from "@/lib/api-catalog";
 import { getStoredUserEmail } from "@/lib/demo-store";
 
 export type VerificationResult = {
@@ -1143,14 +1144,89 @@ function TestApiPage() {
             </div>
 
 
-            <div className="grid gap-2 sm:grid-cols-2 text-muted-foreground">
-              <div>
-                <span className="font-medium text-foreground">Base Gateway URL:</span>{" "}
-                <code className="font-mono text-primary">https://brown-goldfish-546701.hostingersite.com</code>
+            <div className="grid gap-2.5 sm:grid-cols-2 text-muted-foreground">
+              {/* Base Gateway URL */}
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border/80 bg-background/80 p-2.5 text-xs shadow-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-foreground shrink-0 text-[11px] sm:text-xs">Base Gateway URL:</span>
+                  <code
+                    onClick={() => handleCopyField(BASE_URL, "Base Gateway URL")}
+                    title="Click to copy Base Gateway URL"
+                    className="font-mono text-primary truncate select-all cursor-pointer hover:underline text-[11px] sm:text-xs"
+                  >
+                    {BASE_URL}
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyField(BASE_URL, "Base Gateway URL")}
+                  title="Copy Base Gateway URL"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground border border-border/60 hover:border-border transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  {copiedField === "Base Gateway URL" ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      <span className="text-emerald-400 font-semibold">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <div>
-                <span className="font-medium text-foreground">Endpoint:</span>{" "}
-                <code className="font-mono text-primary">{currentEndpoint}</code>
+
+              {/* Endpoint */}
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border/80 bg-background/80 p-2.5 text-xs shadow-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-foreground shrink-0 text-[11px] sm:text-xs">Endpoint:</span>
+                  <code
+                    onClick={() => handleCopyField(currentEndpoint, "Endpoint")}
+                    title="Click to copy Endpoint path"
+                    className="font-mono text-primary truncate select-all cursor-pointer hover:underline text-[11px] sm:text-xs"
+                  >
+                    {currentEndpoint}
+                  </code>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyField(currentEndpoint, "Endpoint")}
+                    title="Copy Endpoint Path"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground border border-border/60 hover:border-border transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    {copiedField === "Endpoint" ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                        <span className="text-emerald-400 font-semibold">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyField(`${BASE_URL}${currentEndpoint}`, "Full Endpoint URL")}
+                    title="Copy Full Endpoint URL (Base URL + Path)"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    {copiedField === "Full Endpoint URL" ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                        <span className="text-emerald-400 font-semibold">Copied Full</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Copy Full URL</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1957,11 +2033,23 @@ function TestApiPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-400">
-                      POST
+                      {selectedService === "reverse_geocode" ? "GET" : selectedService === "ip_lookup" ? "GET/POST" : "POST"}
                     </span>
                     <span className="font-mono text-xs text-foreground font-semibold">
                       {currentEndpoint}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyField(`${BASE_URL}${currentEndpoint}`, "Full Endpoint URL")}
+                      title="Copy Full Endpoint URL"
+                      className="inline-flex items-center gap-1 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      {copiedField === "Full Endpoint URL" ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                   </div>
 
                   {/* View Tabs */}
@@ -2046,7 +2134,7 @@ function TestApiPage() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">Querying Bharat API Cloud Gateway...</p>
                       <p className="mt-1 text-xs text-muted-foreground font-mono">
-                        POST https://brown-goldfish-546701.hostingersite.com{currentEndpoint}
+                        POST {BASE_URL}{currentEndpoint}
                       </p>
                     </div>
                   </div>

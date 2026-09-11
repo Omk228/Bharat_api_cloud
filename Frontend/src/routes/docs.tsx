@@ -12,6 +12,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import {
   API_GROUPS,
@@ -237,8 +238,19 @@ function DocsPage() {
             <h1 className="text-2xl font-bold tracking-tight">Bharat API Cloud reference</h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               REST over HTTPS, JSON in and out. Base URL{" "}
-              <code className="rounded bg-terminal px-1.5 py-0.5 font-mono text-xs">{BASE_URL}</code>.
-              Authenticate every request with{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(BASE_URL);
+                  toast.success("Base Gateway URL copied!");
+                }}
+                title="Click to copy Base Gateway URL"
+                className="inline-flex items-center gap-1 rounded bg-terminal px-2 py-0.5 font-mono text-xs text-primary hover:bg-secondary border border-border/60 transition-colors cursor-pointer"
+              >
+                {BASE_URL}
+                <Copy className="h-3 w-3 text-muted-foreground ml-0.5" />
+              </button>
+              . Authenticate every request with{" "}
               <code className="rounded bg-terminal px-1.5 py-0.5 font-mono text-xs">
                 Authorization: Bearer sk_test_…
               </code>
@@ -394,16 +406,61 @@ function DocsPage() {
 }
 
 function EndpointDetail({ endpoint }: { endpoint: ApiEndpoint }) {
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(label);
+    toast.success(`${label} copied to clipboard`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   return (
     <section className="space-y-4">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+          <span className="rounded-md bg-primary/10 px-2.5 py-1 font-mono text-xs font-bold text-primary">
             {endpoint.method}
           </span>
-          <code className="font-mono text-sm">{endpoint.path}</code>
+          <code className="font-mono text-sm bg-secondary/60 px-2.5 py-1 rounded border border-border/60">{endpoint.path}</code>
+          <button
+            type="button"
+            onClick={() => handleCopy(endpoint.path, "Endpoint Path")}
+            title="Copy Endpoint Path"
+            className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground border border-border/60 transition-colors cursor-pointer active:scale-95"
+          >
+            {copiedField === "Endpoint Path" ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-emerald-400 font-semibold text-[11px]">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                <span className="text-[11px]">Copy Path</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCopy(`${BASE_URL}${endpoint.path}`, "Full Endpoint URL")}
+            title="Copy Full Endpoint URL"
+            className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 transition-colors cursor-pointer active:scale-95"
+          >
+            {copiedField === "Full Endpoint URL" ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-emerald-400 font-semibold text-[11px]">Copied Full URL</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                <span className="text-[11px]">Copy Full URL</span>
+              </>
+            )}
+          </button>
           {endpoint.latency && (
-            <span className="text-xs text-muted-foreground">avg {endpoint.latency}</span>
+            <span className="text-xs text-muted-foreground ml-auto">avg {endpoint.latency}</span>
           )}
         </div>
         <h2 className="mt-3 text-2xl font-bold tracking-tight">{endpoint.title}</h2>
