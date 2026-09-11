@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { TransunionController } from './transunion.controller.js';
-import { verifyApiClientCredentials } from '../../../core/middlewares/auth.middleware.js';
+import verifyApiClientCredentials from '../../credentials/apiAuth.middleware.js';
 
 const router = Router();
 
