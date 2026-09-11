@@ -91,11 +91,35 @@ export const walletService = {
     );
     const totalHits = parseInt(hitsRow?.total_hits || 0, 10);
 
+    // Get today's API hits count
+    const [[todayHitsRow]] = await dbPool.query(
+      'SELECT COUNT(*) as today_hits FROM api_hit_logs WHERE user_id = ? AND created_at >= CURDATE()',
+      [userId]
+    );
+    const todayHits = parseInt(todayHitsRow?.today_hits || 0, 10);
+
+    // Get this month's API hits count
+    const [[monthHitsRow]] = await dbPool.query(
+      "SELECT COUNT(*) as month_hits FROM api_hit_logs WHERE user_id = ? AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')",
+      [userId]
+    );
+    const monthHits = parseInt(monthHitsRow?.month_hits || 0, 10);
+
+    // Get successful API hits count (status 200)
+    const [[successHitsRow]] = await dbPool.query(
+      'SELECT COUNT(*) as success_hits FROM api_hit_logs WHERE user_id = ? AND status_code = 200',
+      [userId]
+    );
+    const successHits = parseInt(successHitsRow?.success_hits || 0, 10);
+
     return {
       wallet_balance: balance,
       today_spend: todaySpend,
       month_spend: monthSpend,
       total_hits: totalHits,
+      today_hits: todayHits,
+      month_hits: monthHits,
+      success_hits: successHits,
       plan: user.plan || 'free',
     };
   },

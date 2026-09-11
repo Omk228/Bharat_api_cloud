@@ -734,6 +734,9 @@ export const apiClient = {
     today_spend: number;
     month_spend: number;
     total_hits: number;
+    today_hits?: number;
+    month_hits?: number;
+    success_hits?: number;
     plan: string;
   }> {
     const token = this.getToken();

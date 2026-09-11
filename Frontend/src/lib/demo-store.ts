@@ -319,6 +319,12 @@ export type DashboardData = {
   limits: PlanLimit;
   allLimits: PlanLimit[];
   monthlyUsage: number;
+  totalHits: number;
+  todayHits: number;
+  monthHits: number;
+  successHits: number;
+  todaySpend: number;
+  monthSpend: number;
   walletBalance: number;
   walletTransactions: WalletTransactionRow[];
   apiHitLogs: ApiHitLogRow[];
@@ -335,6 +341,12 @@ export async function getDashboard(): Promise<DashboardData> {
   const since = monthStart();
 
   let liveBalance = typeof state.wallet_balance === "number" ? state.wallet_balance : 0.00;
+  let liveTodaySpend = 0.00;
+  let liveMonthSpend = 0.00;
+  let liveTotalHits = 0;
+  let liveTodayHits = 0;
+  let liveMonthHits = 0;
+  let liveSuccessHits = 0;
   let liveTransactions: WalletTransactionRow[] = Array.isArray(state.wallet_transactions) ? state.wallet_transactions : [];
   let liveHitLogs: ApiHitLogRow[] = Array.isArray(state.api_hit_logs) ? state.api_hit_logs : [];
   let liveKeys: ApiKeyRow[] = Array.isArray(state.keys) ? state.keys : [];
@@ -374,6 +386,12 @@ export async function getDashboard(): Promise<DashboardData> {
       if (walletRes.status === "fulfilled" && walletRes.value) {
         const wb = walletRes.value.wallet_balance;
         liveBalance = typeof wb === "number" ? wb : parseFloat(String(wb) || "0") || 0;
+        liveTodaySpend = typeof walletRes.value.today_spend === "number" ? walletRes.value.today_spend : 0;
+        liveMonthSpend = typeof walletRes.value.month_spend === "number" ? walletRes.value.month_spend : 0;
+        liveTotalHits = typeof walletRes.value.total_hits === "number" ? walletRes.value.total_hits : 0;
+        liveTodayHits = typeof walletRes.value.today_hits === "number" ? walletRes.value.today_hits : 0;
+        liveMonthHits = typeof walletRes.value.month_hits === "number" ? walletRes.value.month_hits : 0;
+        liveSuccessHits = typeof walletRes.value.success_hits === "number" ? walletRes.value.success_hits : 0;
       }
       if (txsRes.status === "fulfilled" && Array.isArray(txsRes.value)) {
         liveTransactions = txsRes.value as WalletTransactionRow[];
@@ -402,6 +420,9 @@ export async function getDashboard(): Promise<DashboardData> {
     }
   }
 
+  const finalTotalHits = liveTotalHits || liveHitLogs.length;
+  const finalMonthHits = liveMonthHits || liveHitLogs.filter((u) => u.created_at >= since).length;
+
   return {
     session: state.session,
     profile: state.profile,
@@ -409,7 +430,13 @@ export async function getDashboard(): Promise<DashboardData> {
     keys: liveKeys,
     limits,
     allLimits: PLAN_LIMITS,
-    monthlyUsage: liveHitLogs.filter((u) => u.created_at >= since).length,
+    monthlyUsage: finalMonthHits,
+    totalHits: finalTotalHits,
+    todayHits: liveTodayHits,
+    monthHits: finalMonthHits,
+    successHits: liveSuccessHits,
+    todaySpend: liveTodaySpend,
+    monthSpend: liveMonthSpend,
     walletBalance: liveBalance,
     walletTransactions: liveTransactions,
     apiHitLogs: liveHitLogs,

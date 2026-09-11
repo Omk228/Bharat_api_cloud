@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   KeyRound,
   Plus,
@@ -9,13 +9,18 @@ import {
   Ban,
   Eye,
   EyeOff,
+  Activity,
+  Zap,
+  Calendar,
+  CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiClient } from "@/lib/api-client";
-import type { ApiKeyRow } from "@/lib/demo-store";
+import type { ApiKeyRow, DashboardData } from "@/lib/demo-store";
 
 export const Route = createFileRoute("/_authenticated/dashboard/")({
   head: () => ({
@@ -23,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/")({
       { title: "Developer Dashboard — Bharat API Cloud" },
       {
         name: "description",
-        content: "API keys, usage monitoring, and rate limits.",
+        content: "API credentials, live request hits, and usage analytics.",
       },
     ],
   }),
@@ -35,12 +40,131 @@ function DashboardOverviewPage() {
     <DashboardLayout activeTab="overview">
       {(data) => {
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
+            {/* Live API Hits & Usage Metrics */}
+            <LiveHitsOverview data={data} />
+
+            {/* API Credentials */}
             <ApiKeys keys={data.keys} />
           </div>
         );
       }}
     </DashboardLayout>
+  );
+}
+
+function LiveHitsOverview({ data }: { data: DashboardData }) {
+  const successRate =
+    data.totalHits > 0
+      ? ((data.successHits / data.totalHits) * 100).toFixed(1)
+      : "100.0";
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> Live API Traffic & Actual Hits
+          </h2>
+        </div>
+        <Link
+          to="/dashboard/logs"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+        >
+          View Full Hit Logs <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* Total Hits */}
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Total Hits (All-Time)
+            </span>
+            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+              <Zap className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-bold tracking-tight text-foreground">
+              {data.totalHits.toLocaleString("en-IN")}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Actual live API requests processed
+            </p>
+          </div>
+        </div>
+
+        {/* This Month Hits */}
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              This Month Hits
+            </span>
+            <div className="rounded-lg bg-blue-500/10 p-2 text-blue-400">
+              <Calendar className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-bold tracking-tight text-foreground">
+              {data.monthHits.toLocaleString("en-IN")}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Hits since 1st of this month
+            </p>
+          </div>
+        </div>
+
+        {/* Today's Hits */}
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Today's Hits
+            </span>
+            <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-400">
+              <Activity className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-bold tracking-tight text-foreground">
+              {data.todayHits.toLocaleString("en-IN")}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Requests recorded today (UTC/IST)
+            </p>
+          </div>
+        </div>
+
+        {/* Success Rate & Status */}
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Success Rate
+            </span>
+            <div className="rounded-lg bg-amber-500/10 p-2 text-amber-400">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight text-foreground">
+              {successRate}%
+            </span>
+            <span className="text-xs font-medium text-emerald-500">
+              ({data.successHits} OK)
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Successful 200 OK responses
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
