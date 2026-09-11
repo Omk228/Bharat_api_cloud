@@ -100,8 +100,18 @@ const ENDPOINT_CATALOG_MAP = {
   '/srv5/transunion-Score-Hybrid': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
   '/api/v1/srv5/transunion-Score-Hybrid': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
   '/transunion-Score-Hybrid': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
+  '/reports/cibil': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
+  '/api/v1/reports/cibil': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
   'transunion': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
   'cibil': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
+
+  // Statement Analyzer
+  '/statement-analyzer': ['api_bank_statement', '/bank/statement/analyse'],
+  '/srv2/statement-analyzer': ['api_bank_statement', '/bank/statement/analyse'],
+  '/statement-upload': ['api_bank_statement', '/bank/statement/analyse'],
+  '/srv2/statement-upload': ['api_bank_statement', '/bank/statement/analyse'],
+  '/bank/statement/analyse': ['api_bank_statement', '/bank/statement/analyse'],
+  'statement_analyzer': ['api_bank_statement', '/bank/statement/analyse'],
 };
 
 // UI Service Keys to Catalog IDs
