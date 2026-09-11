@@ -135,18 +135,20 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   transunion: 'api_transunion_cibil_v5',
 };
 
+export const GST_RATE = 0.18;
+
 export class PricingService {
   /**
    * Get effective price for an endpoint/service and specific user
-   * Looks up user_api_pricing table first. If custom_price assigned, returns custom_price.
-   * Otherwise falls back to catalog.current_price, then API_PRICING fallback.
+   * Looks up user_api_pricing table first. If custom_price assigned, returns custom_price + 18% GST.
+   * Otherwise falls back to catalog.current_price + 18% GST, then API_PRICING fallback + 18% GST.
    *
    * @param {string} endpoint - API route path or service key (e.g. '/srv2/validation/pan' or 'pan')
    * @param {number|null} [userId=null] - Authenticated user ID
-   * @returns {Promise<number>} Effective price in INR
+   * @returns {Promise<number>} Effective price in INR (Base Price + 18% GST)
    */
   static async getEffectivePrice(endpoint, userId = null) {
-    if (!endpoint) return 2.00;
+    if (!endpoint) return 2.36;
 
     const cleanEndpoint = endpoint.trim().toLowerCase();
 
@@ -213,27 +215,31 @@ export class PricingService {
 
       const [rows] = await dbPool.query(query, params);
 
-      let price;
+      let basePrice;
       if (rows && rows.length > 0 && rows[0].effective_price != null) {
-        price = parseFloat(rows[0].effective_price);
+        basePrice = parseFloat(rows[0].effective_price);
       } else {
         // Fallback to static pricing map
-        price = API_PRICING[cleanEndpoint] ?? API_PRICING.default ?? 2.00;
+        basePrice = API_PRICING[cleanEndpoint] ?? API_PRICING.default ?? 2.00;
       }
 
-      if (Number.isNaN(price)) {
-        price = 2.00;
+      if (Number.isNaN(basePrice)) {
+        basePrice = 2.00;
       }
+
+      // Add 18% GST (e.g. ₹1.00 -> ₹1.18, ₹2.00 -> ₹2.36, ₹5.00 -> ₹5.90, ₹75.00 -> ₹88.50)
+      const priceWithGst = parseFloat((basePrice * (1 + GST_RATE)).toFixed(2));
 
       // Cache effective price for 60 seconds
       try {
-        await CacheService.set(cacheKey, price, 60);
+        await CacheService.set(cacheKey, priceWithGst, 60);
       } catch (err) {}
 
-      return price;
+      return priceWithGst;
     } catch (dbErr) {
       console.error('⚠️ [PricingService] DB query failed, using static fallback:', dbErr.message);
-      return API_PRICING[cleanEndpoint] ?? API_PRICING.default ?? 2.00;
+      const fallbackBase = API_PRICING[cleanEndpoint] ?? API_PRICING.default ?? 2.00;
+      return parseFloat((fallbackBase * (1 + GST_RATE)).toFixed(2));
     }
   }
 
@@ -415,6 +421,8 @@ export class PricingService {
       const catalogList = catalogRows.map((row) => {
         // API is only assigned if is_assigned === 1 (explicitly assigned by admin)
         const isAssigned = userId ? (row.is_assigned === 1 && row.catalog_status !== 'Disabled') : false;
+        const basePrice = parseFloat(row.effective_price || row.default_price || 0);
+        const effectiveWithGst = parseFloat((basePrice * (1 + GST_RATE)).toFixed(2));
         const item = {
           id: row.id,
           service_name: row.service_name,
@@ -424,8 +432,9 @@ export class PricingService {
           catalog_status: row.catalog_status,
           default_price: parseFloat(row.default_price || 0),
           custom_price: row.custom_price != null ? parseFloat(row.custom_price) : null,
+          base_price: basePrice,
           is_assigned: Boolean(isAssigned),
-          effective_price: parseFloat(row.effective_price || row.default_price || 0),
+          effective_price: effectiveWithGst,
           is_custom: Boolean(row.is_assigned === 1 && row.custom_price != null),
         };
         catalogMapById.set(row.id, item);
