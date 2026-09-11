@@ -69,7 +69,7 @@ export class TransunionVerificationService {
     date_of_birth,
     client_ref_num,
     apiClient,
-    baseUrl = 'http://localhost:5002',
+    baseUrl = ENV.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com',
   }) {
     const startTime = Date.now();
     const cleanForename = String(forename || '').trim();

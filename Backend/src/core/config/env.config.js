@@ -4,6 +4,7 @@ dotenv.config();
 export const ENV = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '5002', 10),
+  APP_BASE_URL: process.env.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com',
   CORS_ORIGIN: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(url => url.trim()) : '*',
   
   DB: {

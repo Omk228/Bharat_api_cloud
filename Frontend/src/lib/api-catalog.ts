@@ -55,6 +55,159 @@ export const DEFAULT_ERROR_CODES: ApiErrorCode[] = [
 export const endpoints: ApiEndpoint[] = [
   /* ---------------- KYC ---------------- */
   {
+    id: "transunion-score-hybrid",
+    group: "KYC",
+    method: "POST",
+    path: "/srv5/transunion-Score-Hybrid",
+    title: "Transunion Credit Report V5",
+    desc: "Fetch TransUnion CIBIL credit score, detailed loan accounts, past repayment track record (STD/0/XXX), inquiry partitions, and instant viewable PDF report.",
+    tags: ["cibil", "transunion", "credit report", "credit score", "bureau", "loans"],
+    latency: "~1.2s",
+    params: [
+      { name: "forename", type: "string", required: true, desc: "First name of the borrower (e.g. Pramod)" },
+      { name: "surname", type: "string", required: true, desc: "Last name of the borrower (e.g. Kumar)" },
+      { name: "phone_number", type: "string", required: true, desc: "10-digit registered Indian Mobile Number" },
+      { name: "gender", type: "string", required: true, desc: "Gender of the borrower ('Male' or 'Female')" },
+      { name: "pan_id", type: "string", required: true, desc: "10-character Permanent Account Number (PAN)" },
+      { name: "date_of_birth", type: "string (YYYY-MM-DD)", required: false, desc: "Date of Birth in YYYY-MM-DD format" },
+      { name: "api_id", type: "string", desc: "Your Bharat API ID" },
+      { name: "api_key", type: "string", desc: "Your Bharat API Key" },
+      { name: "token_id", type: "string", desc: "Your Bharat API Token ID" },
+    ],
+    sampleBody: {
+      api_id: "APID2994",
+      api_key: "49034a5a-cee5-4562-947b-03cf06608d94",
+      token_id: "70Iy81LSYYp0VY1JnAyPNlioXKle2k5J",
+      forename: "Pramod",
+      surname: "Kumar",
+      phone_number: "9876543210",
+      gender: "Male",
+      pan_id: "ABCDE1234F",
+      date_of_birth: "1988-05-15",
+    },
+    sampleResponse: {
+      status: {
+        code: 200,
+        type: "success",
+        message: "CIBIL report ready! Click the link to view your score.",
+      },
+      message: "CIBIL report ready! Click the link to view your score.",
+      data: {
+        status: "success",
+        web_token_url: "https://brown-goldfish-546701.hostingersite.com/api/v1/reports/cibil/tu_b9524cc311cd459a9758.pdf",
+        client_key: "tu_b9524cc311cd459a9758",
+        steps_summary: [
+          { step: 1, name: "FulfillOffer", status: "success" },
+          { step: 2, name: "GetAuthenticationQuestions", status: "success" },
+          { step: 3, name: "GetCustomerAssets", status: "success" },
+          { step: 4, name: "GetProductWebToken", status: "success" },
+        ],
+        steps: [
+          {
+            step: 1,
+            name: "FulfillOffer",
+            status: "success",
+            http_code: 200,
+            response: {
+              FulfillOfferResponse: {
+                ResponseStatus: "Success",
+                ResponseKey: "e9f70877:-4302a953:19fa73705f7:-1f21",
+                FulfillOfferSuccess: { Status: "InProgress" },
+              },
+            },
+          },
+          {
+            step: 2,
+            name: "GetAuthenticationQuestions",
+            status: "success",
+            http_code: 200,
+            response: {
+              GetAuthenticationQuestionsResponse: {
+                ResponseStatus: "Success",
+                ResponseKey: "e9fb877:-4302a953:19fa73705f7:-1ed1",
+                GetAuthenticationQuestionsSuccess: {
+                  ChallengeConfigGUID: "2266339819",
+                  IVStatus: "Success",
+                },
+              },
+            },
+          },
+          {
+            step: 3,
+            name: "GetCustomerAssets",
+            status: "success",
+            http_code: 200,
+            response: {
+              GetCustomerAssetsResponse: {
+                ResponseStatus: "Success",
+                ResponseKey: "f51f3f:-19abcad8:19fa7317edb:19c5",
+                GetCustomerAssetsSuccess: {
+                  CreditSummaryData: {
+                    OldestCreditAccountPeriod: "242",
+                    Inquires: "5",
+                    OnTimePaymentHistory: "72.22",
+                    CreditCardUtilization: "0",
+                    CreditMix: "100",
+                  },
+                  Asset: {
+                    Status: "Active",
+                    SafetyCheckFailure: false,
+                    ExpirationDate: "2028-07-27T11:16:51.359+05:30",
+                    CreationDate: "2026-07-28T11:16:51.359+05:30",
+                    TrueLinkCreditReport: {
+                      ReferenceKey: "11373916056",
+                      currentversion: "5.0",
+                      Borrower: {
+                        Birth: {
+                          date: "1960-05-30+05:30",
+                          BirthDate: { month: "5", year: "1960", day: "30" },
+                        },
+                        borrowerKey: "462982312",
+                        CreditScore: {
+                          riskScore: "764",
+                          populationRank: "25",
+                          scoreName: "CIBILTransUnionScore3",
+                        },
+                        Gender: "Male",
+                        BorrowerName: {
+                          Name: { Surname: "Kumar", Forename: "Pramod" },
+                        },
+                      },
+                    },
+                    AssetId: "ASSET_99281",
+                    Type: "SingleCreditReport",
+                  },
+                },
+              },
+            },
+          },
+          {
+            step: 4,
+            name: "GetProductWebToken",
+            status: "success",
+            http_code: 200,
+            response: {
+              GetProductWebTokenResponse: {
+                ResponseKey: "c0d28c9d37c874dc:-7521aa68:19fa72ed000:14ce",
+                ResponseStatus: "Success",
+                GetProductWebTokenSuccess: {
+                  PartnerCustomerId: "tu_b9524cc311cd459a9758",
+                  WebToken: "bV0I36KDIoGL7RVdUWZ1I",
+                },
+              },
+            },
+          },
+        ],
+        report_url: "https://brown-goldfish-546701.hostingersite.com/api/v1/reports/cibil/tu_b9524cc311cd459a9758.pdf",
+        message: "CIBIL report ready! Click the link to view your score.",
+        credit_report_message: {
+          message: "CIBIL report ready! Click the link to view your score.",
+          message_code: "Message code not found",
+        },
+      },
+    },
+  },
+  {
     id: "digilocker-digital-kyc",
     group: "KYC",
     method: "POST",

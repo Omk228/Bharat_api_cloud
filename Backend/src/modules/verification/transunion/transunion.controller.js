@@ -3,6 +3,8 @@ import { generateCibilPdfReport } from './transunion-pdf.generator.js';
 import { asyncHandler } from '../../../core/utils/asyncHandler.js';
 import { ApiError } from '../../../core/utils/apiError.js';
 
+import { ENV } from '../../../core/config/env.config.js';
+
 export const TransunionController = {
   /**
    * TransUnion Score Hybrid CIBIL API
@@ -19,9 +21,7 @@ export const TransunionController = {
       client_ref_num,
     } = req.body || {};
 
-    const host = req.get('host') || 'localhost:5002';
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-    const baseUrl = `${protocol}://${host}`;
+    const baseUrl = ENV.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com';
 
     const result = await TransunionVerificationService.verifyTransunionScoreHybrid({
       forename,
