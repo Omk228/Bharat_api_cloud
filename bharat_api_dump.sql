@@ -1,6 +1,6 @@
 -- ========================================================
 -- Bharat API Cloud Complete MySQL Database Dump (phpMyAdmin / Hostinger Compatible)
--- Generated on: 2026-09-11T06:20:03.245Z
+-- Generated on: 2026-09-11T07:46:57.172Z
 -- Compatible with: Hostinger phpMyAdmin, MariaDB, MySQL 8.0+, TiDB, Aiven
 -- ========================================================
 

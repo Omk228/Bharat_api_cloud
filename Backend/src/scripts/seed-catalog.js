@@ -210,6 +210,19 @@ const CATALOG_ITEMS = [
     uptime_24h: 99.94,
     description: 'Resolve GPS coordinates (latitude & longitude) into full geographic address, road, landmark, city, state, postal code, and administrative boundaries using Bharat API Geocoding Engine.'
   },
+  {
+    id: 'api_transunion_cibil_v5',
+    service_name: 'Transunion Credit Report V5',
+    category: 'KYC & Verification',
+    method: 'POST',
+    endpoint_path: '/srv5/transunion-Score-Hybrid',
+    upstream_provider: 'TransUnion CIBIL',
+    current_price: 15.00,
+    status: 'Active',
+    latency_p95: 1200,
+    uptime_24h: 99.90,
+    description: 'Fetch TransUnion CIBIL credit score, detailed loan accounts, past repayment track record (STD/0/XXX), inquiry partitions, and instant viewable PDF report.'
+  },
 
   /* ---------------- 22 INACTIVE APIS (Catalog/Docs Only) ---------------- */
   {

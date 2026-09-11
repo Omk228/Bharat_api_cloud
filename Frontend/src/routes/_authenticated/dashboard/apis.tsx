@@ -62,6 +62,8 @@ function ApisPage() {
         ? "api_cat_03"
         : ep.id === "ifsc-lookup"
         ? "api_cat_01"
+        : ep.id === "transunion-score-hybrid"
+        ? "api_transunion_cibil_v5"
         : ep.id.startsWith("api_")
         ? ep.id
         : `api_${ep.id.replace(/-/g, "_")}`;
@@ -92,6 +94,10 @@ function ApisPage() {
       } else if (ep.id === "verify-pan") {
         catalogItem = pricingData.catalog.find(
           (c) => c.id === "api_cat_03" || c.id === "api_verify_pan" || c.endpoint_path === "/srv2/validation/pan"
+        );
+      } else if (ep.id === "transunion-score-hybrid") {
+        catalogItem = pricingData.catalog.find(
+          (c) => c.id === "api_transunion_cibil_v5" || c.endpoint_path === "/srv5/transunion-Score-Hybrid"
         );
       }
     }
