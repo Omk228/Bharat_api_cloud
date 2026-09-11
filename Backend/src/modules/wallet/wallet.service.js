@@ -230,6 +230,8 @@ export const walletService = {
       '/srv2/mobile-upi-lookup/enhanced': 'Mobile to UPI Lookup Advance',
       '/srv4/credit-report/prefill': 'Mobile to Prefill',
       '/kyc/mobile-prefill': 'Mobile to Prefill',
+      '/srv5/transunion-Score-Hybrid': 'Transunion Credit Report V5',
+      '/transunion-Score-Hybrid': 'Transunion Credit Report V5',
       '/srv2/mobile-name-finder': 'Mobile To Name Finder',
       '/api/v1/srv3/uan-mobile': 'Mobile to UAN V2',
       '/srv3/uan-mobile': 'Mobile to UAN V2',

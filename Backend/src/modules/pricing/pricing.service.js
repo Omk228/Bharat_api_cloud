@@ -95,6 +95,13 @@ const ENDPOINT_CATALOG_MAP = {
   '/reverse-geocode': ['api_reverse_geocoding', '/reverse'],
   '/geocode': ['api_reverse_geocoding', '/reverse'],
   'reverse_geocode': ['api_reverse_geocoding', '/reverse'],
+
+  // TransUnion CIBIL Hybrid
+  '/srv5/transunion-Score-Hybrid': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
+  '/api/v1/srv5/transunion-Score-Hybrid': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
+  '/transunion-Score-Hybrid': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
+  'transunion': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
+  'cibil': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -115,6 +122,7 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   ip_lookup: 'api_requester_ip_lookup',
   reverse_geocode: 'api_reverse_geocoding',
   mobile_to_bank: 'api_mobile_to_bank_advance',
+  transunion: 'api_transunion_cibil_v5',
 };
 
 export class PricingService {

@@ -36,6 +36,8 @@ export const API_PRICING = {
   '/ifsc': 1.00,
   '/:ifsc': 1.00,
   '/bank/ifsc': 1.00,
+  '/srv5/transunion-Score-Hybrid': 15.00,
+  '/transunion-Score-Hybrid': 15.00,
   default: 2.00,
 };
 
