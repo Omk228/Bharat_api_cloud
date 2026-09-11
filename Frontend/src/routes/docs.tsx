@@ -256,13 +256,6 @@ function DocsPage() {
               </code>
               .
             </p>
-            {account?.limits && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Your {account.profile?.plan} plan: {account.limits.monthly_requests.toLocaleString("en-IN")}{" "}
-                requests/month · {account.limits.rate_limit_per_minute} req/min ·{" "}
-                {account.monthlyUsage.toLocaleString("en-IN")} used so far.
-              </p>
-            )}
           </section>
 
           <section className="lg:hidden">
