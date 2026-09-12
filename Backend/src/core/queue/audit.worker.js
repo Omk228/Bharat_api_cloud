@@ -26,11 +26,11 @@ export async function processAuditJob(jobData) {
     isSuccess = false
   } = jobData;
 
-  try {
-    let finalCost = typeof cost === 'number' ? cost : parseFloat(cost || 0);
+    const isOkStatus = (statusCode === 200 || statusCode === '200' || isSuccess === true) && statusCode !== 404 && statusCode !== 422 && statusCode !== 500 && statusCode !== 400 && statusCode !== 401 && statusCode !== 403 && statusCode !== 429 && statusCode !== 502 && statusCode !== 503;
+    let finalCost = isOkStatus ? (typeof cost === 'number' ? cost : parseFloat(cost || 0)) : 0.00;
 
     // If cost was not passed or 0 on successful API hit, dynamically resolve effective price with 18% GST
-    if ((!finalCost || finalCost <= 0) && isSuccess && userId && endpoint) {
+    if (isOkStatus && (!finalCost || finalCost <= 0) && userId && endpoint) {
       try {
         const { PricingService } = await import('../../modules/pricing/pricing.service.js');
         finalCost = await PricingService.getEffectivePrice(endpoint, userId);
