@@ -152,6 +152,8 @@ export class PricingService {
    * Looks up user_api_pricing table first. If custom_price assigned, returns custom_price + 18% GST.
    * Otherwise falls back to catalog.current_price + 18% GST, then API_PRICING fallback + 18% GST.
    *
+   * Example: Assigned base ₹2.00 + 18% GST = ₹2.36 deduction
+   *
    * @param {string} endpoint - API route path or service key (e.g. '/srv2/validation/pan' or 'pan')
    * @param {number|null} [userId=null] - Authenticated user ID
    * @returns {Promise<number>} Effective price in INR (Base Price + 18% GST)
@@ -159,7 +161,8 @@ export class PricingService {
   static async getEffectivePrice(endpoint, userId = null) {
     if (!endpoint) return 2.36;
 
-    const cleanEndpoint = endpoint.trim().toLowerCase();
+    const cleanEndpoint = endpoint.trim().toLowerCase().split('?')[0];
+    const strippedEndpoint = cleanEndpoint.replace(/^\/api\/v1/, '');
 
     // 1. Try Redis cache if available and user is authenticated
     const cacheKey = userId ? `pricing:user:${userId}:${cleanEndpoint}` : `pricing:default:${cleanEndpoint}`;
@@ -172,11 +175,23 @@ export class PricingService {
       // cache miss / redis disabled, proceed to DB
     }
 
-    // 2. Resolve possible catalog identifiers
-    const lookupIdentifiers = ENDPOINT_CATALOG_MAP[cleanEndpoint] || [cleanEndpoint];
+    // 2. Resolve possible catalog identifiers and aliases
+    const candidateSet = new Set([cleanEndpoint, strippedEndpoint]);
+    if (ENDPOINT_CATALOG_MAP[cleanEndpoint]) {
+      ENDPOINT_CATALOG_MAP[cleanEndpoint].forEach((id) => candidateSet.add(id));
+    }
+    if (ENDPOINT_CATALOG_MAP[strippedEndpoint]) {
+      ENDPOINT_CATALOG_MAP[strippedEndpoint].forEach((id) => candidateSet.add(id));
+    }
+    for (const [pattern, aliases] of Object.entries(ENDPOINT_CATALOG_MAP)) {
+      if (cleanEndpoint.endsWith(pattern) || pattern.endsWith(strippedEndpoint)) {
+        candidateSet.add(pattern);
+        aliases.forEach((id) => candidateSet.add(id));
+      }
+    }
+    const lookupIdentifiers = Array.from(candidateSet);
 
     try {
-      // Build search placeholders
       const placeholders = lookupIdentifiers.map(() => '?').join(', ');
       
       let query;
@@ -224,19 +239,32 @@ export class PricingService {
 
       const [rows] = await dbPool.query(query, params);
 
-      let basePrice;
+      let basePrice = null;
       if (rows && rows.length > 0 && rows[0].effective_price != null) {
         basePrice = parseFloat(rows[0].effective_price);
-      } else {
-        // Fallback to static pricing map
-        basePrice = API_PRICING[cleanEndpoint] ?? API_PRICING.default ?? 2.00;
+      }
+
+      // If not resolved via catalog join, check user_api_pricing directly for custom assigned price
+      if ((basePrice === null || Number.isNaN(basePrice)) && userId) {
+        const [userPricingRows] = await dbPool.query(
+          `SELECT custom_price, is_assigned FROM user_api_pricing WHERE user_id = ? AND is_assigned = 1 AND catalog_id IN (${placeholders}) LIMIT 1`,
+          [userId, ...lookupIdentifiers]
+        );
+        if (userPricingRows && userPricingRows.length > 0 && userPricingRows[0].custom_price != null) {
+          basePrice = parseFloat(userPricingRows[0].custom_price);
+        }
+      }
+
+      // Fallback to static pricing map if not found in DB
+      if (basePrice === null || Number.isNaN(basePrice)) {
+        basePrice = API_PRICING[cleanEndpoint] ?? API_PRICING[strippedEndpoint] ?? API_PRICING.default ?? 2.00;
       }
 
       if (Number.isNaN(basePrice)) {
         basePrice = 2.00;
       }
 
-      // Add 18% GST (e.g. ₹1.00 -> ₹1.18, ₹2.00 -> ₹2.36, ₹5.00 -> ₹5.90, ₹75.00 -> ₹88.50)
+      // Add 18% GST (e.g. ₹2.00 -> ₹2.36, ₹75.00 -> ₹88.50, ₹25.00 -> ₹29.50)
       const priceWithGst = parseFloat((basePrice * (1 + GST_RATE)).toFixed(2));
 
       // Cache effective price for 60 seconds
@@ -247,7 +275,7 @@ export class PricingService {
       return priceWithGst;
     } catch (dbErr) {
       console.error('⚠️ [PricingService] DB query failed, using static fallback:', dbErr.message);
-      const fallbackBase = API_PRICING[cleanEndpoint] ?? API_PRICING.default ?? 2.00;
+      const fallbackBase = API_PRICING[cleanEndpoint] ?? API_PRICING[strippedEndpoint] ?? API_PRICING.default ?? 2.00;
       return parseFloat((fallbackBase * (1 + GST_RATE)).toFixed(2));
     }
   }

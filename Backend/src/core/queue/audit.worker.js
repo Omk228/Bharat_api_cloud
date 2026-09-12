@@ -27,6 +27,18 @@ export async function processAuditJob(jobData) {
   } = jobData;
 
   try {
+    let finalCost = typeof cost === 'number' ? cost : parseFloat(cost || 0);
+
+    // If cost was not passed or 0 on successful API hit, dynamically resolve effective price with 18% GST
+    if ((!finalCost || finalCost <= 0) && isSuccess && userId && endpoint) {
+      try {
+        const { PricingService } = await import('../../modules/pricing/pricing.service.js');
+        finalCost = await PricingService.getEffectivePrice(endpoint, userId);
+      } catch (err) {
+        finalCost = 2.36; // Base ₹2.00 + 18% GST fallback
+      }
+    }
+
     // 1. Insert Hit Log into MySQL
     const logQuery = `
       INSERT INTO api_hit_logs (
@@ -47,15 +59,15 @@ export async function processAuditJob(jobData) {
       resultCode || 101,
       durationMs || 0,
       clientIp || '127.0.0.1',
-      cost,
+      finalCost,
       environment
     ]);
 
     // 2. Wallet Balance Settlement (Atomic Debit from users.wallet_balance)
-    if (cost > 0 && isSuccess && userId) {
+    if (finalCost > 0 && isSuccess && userId) {
       await dbPool.query(
         'UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id = ?',
-        [cost, userId]
+        [finalCost, userId]
       );
     }
   } catch (error) {
