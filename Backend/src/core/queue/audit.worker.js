@@ -26,6 +26,7 @@ export async function processAuditJob(jobData) {
     isSuccess = false
   } = jobData;
 
+  try {
     const isOkStatus = (statusCode === 200 || statusCode === '200' || isSuccess === true) && statusCode !== 404 && statusCode !== 422 && statusCode !== 500 && statusCode !== 400 && statusCode !== 401 && statusCode !== 403 && statusCode !== 429 && statusCode !== 502 && statusCode !== 503;
     let finalCost = isOkStatus ? (typeof cost === 'number' ? cost : parseFloat(cost || 0)) : 0.00;
 
