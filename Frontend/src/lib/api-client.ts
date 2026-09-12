@@ -754,6 +754,7 @@ export const apiClient = {
     limit?: number;
     offset?: number;
     type?: string;
+    status?: string;
     search?: string;
   }): Promise<Array<{
     id: string;
@@ -761,12 +762,15 @@ export const apiClient = {
     type: 'credit' | 'debit';
     amount: number;
     balance_after: number;
+    payment_method?: string;
     category: string;
     description: string;
     reference_id: string;
     status: 'pending' | 'success' | 'rejected';
     utr_number?: string | null;
+    payment_screenshot?: string | null;
     admin_notes?: string | null;
+    approved_at?: string | null;
     created_at: string;
   }>> {
     const token = this.getToken();
@@ -774,6 +778,7 @@ export const apiClient = {
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.offset) query.set('offset', String(params.offset));
     if (params?.type && params.type !== 'all') query.set('type', params.type);
+    if (params?.status && params.status !== 'all') query.set('status', params.status);
     if (params?.search) query.set('search', params.search);
 
     const res = await fetch(`${API_BASE}/wallet/transactions?${query.toString()}`, {

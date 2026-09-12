@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Wallet,
@@ -108,8 +108,8 @@ function WalletPage() {
   const [processingAdminId, setProcessingAdminId] = useState<string | null>(null);
   const [activeAdminTab, setActiveAdminTab] = useState<"pending" | "all">("pending");
 
-  // Ledger filter state
-  const [filterType, setFilterType] = useState<"all" | "credit" | "debit">("all");
+  // Ledger filter state (Recharges only)
+  const [filterType, setFilterType] = useState<"all" | "success" | "pending" | "rejected">("all");
   const [search, setSearch] = useState("");
 
   const effectiveAmount = customAmount ? parseFloat(customAmount) || 0 : selectedPack;
@@ -267,14 +267,18 @@ function WalletPage() {
         const balance = data.walletBalance;
 
         const filteredTxns = transactions.filter((t) => {
-          if (filterType !== "all" && t.type !== filterType) return false;
+          if (filterType !== "all") {
+            if (filterType === "success" && t.status !== "success" && t.status !== undefined) return false;
+            if (filterType === "pending" && t.status !== "pending") return false;
+            if (filterType === "rejected" && t.status !== "rejected") return false;
+          }
           if (search.trim()) {
             const q = search.toLowerCase();
             return (
               t.id.toLowerCase().includes(q) ||
               t.description.toLowerCase().includes(q) ||
               (t.reference_id && t.reference_id.toLowerCase().includes(q)) ||
-              (t.api_endpoint && t.api_endpoint.toLowerCase().includes(q)) ||
+              (t.payment_method && t.payment_method.toLowerCase().includes(q)) ||
               (t.utr_number && t.utr_number.toLowerCase().includes(q))
             );
           }
@@ -282,11 +286,10 @@ function WalletPage() {
         });
 
         const totalCredits = transactions
-          .filter((t) => t.type === "credit")
+          .filter((t) => t.status === "success" || !t.status)
           .reduce((acc, curr) => acc + curr.amount, 0);
-        const totalDebits = transactions
-          .filter((t) => t.type === "debit")
-          .reduce((acc, curr) => acc + curr.amount, 0);
+        const successCount = transactions.filter((t) => t.status === "success" || !t.status).length;
+        const pendingCount = transactions.filter((t) => t.status === "pending").length;
 
         return (
           <div className="space-y-8">
@@ -317,16 +320,19 @@ function WalletPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium text-muted-foreground">API Consumption</p>
+                    <p className="text-[11px] font-medium text-muted-foreground">Approved Top-ups</p>
                     <p className="mt-0.5 font-mono text-sm font-bold text-foreground">
-                      -₹{totalDebits.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      {successCount} Success {pendingCount > 0 ? `· ${pendingCount} Pending` : ""}
                     </p>
                   </div>
                   <div className="col-span-2 sm:col-span-1">
-                    <p className="text-[11px] font-medium text-muted-foreground">Settlement SLA</p>
-                    <p className="mt-0.5 flex items-center gap-1 font-mono text-sm font-bold text-primary">
-                      <Zap className="h-3.5 w-3.5 text-primary" /> Instant (&lt;2s)
-                    </p>
+                    <p className="text-[11px] font-medium text-muted-foreground">API Hit Billing</p>
+                    <Link
+                      to="/dashboard/logs"
+                      className="mt-0.5 flex items-center gap-1 font-mono text-xs font-bold text-primary hover:underline"
+                    >
+                      <Zap className="h-3.5 w-3.5 text-primary" /> View API Hit Logs &rarr;
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -908,13 +914,21 @@ function WalletPage() {
             ) : null}
 
             {/* ========================================================================= */}
-            {/* 📜 TRANSACTION LEDGER & STATEMENT TABLE */}
+            {/* 📜 RECHARGE & PAYMENT HISTORY TABLE */}
             {/* ========================================================================= */}
             <section className="space-y-4 pt-4 border-t border-border">
               <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-                <div className="flex items-center gap-2">
-                  <History className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-bold">Wallet Transaction Ledger &amp; Invoices</h3>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <History className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-bold">Wallet Recharge &amp; Payment History</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    History of all wallet top-ups and bank transfer recharges. For API usage debits, visit the{" "}
+                    <Link to="/dashboard/logs" className="text-primary font-medium hover:underline inline-flex items-center gap-0.5">
+                      API Hit Logs &rarr;
+                    </Link>
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -923,7 +937,7 @@ function WalletPage() {
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Search Txn ID, UTR, ref..."
+                      placeholder="Search Txn ID, UTR, method..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="rounded-lg border border-border bg-card py-1.5 pl-9 pr-3 text-xs outline-none focus:border-primary"
@@ -941,21 +955,31 @@ function WalletPage() {
                       All ({transactions.length})
                     </button>
                     <button
-                      onClick={() => setFilterType("credit")}
+                      onClick={() => setFilterType("success")}
                       className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                        filterType === "credit" ? "bg-secondary text-success font-semibold" : "text-muted-foreground hover:text-foreground"
+                        filterType === "success" ? "bg-secondary text-success font-semibold" : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      Credits
+                      Success ({transactions.filter((t) => t.status === "success" || !t.status).length})
                     </button>
                     <button
-                      onClick={() => setFilterType("debit")}
+                      onClick={() => setFilterType("pending")}
                       className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                        filterType === "debit" ? "bg-secondary text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+                        filterType === "pending" ? "bg-secondary text-amber-500 font-semibold" : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      Debits
+                      Pending ({transactions.filter((t) => t.status === "pending").length})
                     </button>
+                    {transactions.some((t) => t.status === "rejected") && (
+                      <button
+                        onClick={() => setFilterType("rejected")}
+                        className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                          filterType === "rejected" ? "bg-secondary text-rose-500 font-semibold" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Rejected ({transactions.filter((t) => t.status === "rejected").length})
+                      </button>
+                    )}
                   </div>
 
                   {/* Export CSV */}
@@ -965,23 +989,24 @@ function WalletPage() {
                         const csv = toCsv(
                           transactions.map((t) => ({
                             id: t.id,
-                            type: t.type.toUpperCase(),
+                            type: (t.type || "CREDIT").toUpperCase(),
                             amount: t.amount,
                             balance_after: t.balance_after,
+                            payment_method: t.payment_method || "Bank Transfer",
                             description: t.description,
                             reference_id: t.reference_id,
                             utr_number: t.utr_number || "",
-                            status: t.status,
+                            status: t.status || "success",
                             created_at: t.created_at,
                           })),
-                          ["id", "type", "amount", "balance_after", "description", "reference_id", "utr_number", "status", "created_at"]
+                          ["id", "type", "amount", "balance_after", "payment_method", "description", "reference_id", "utr_number", "status", "created_at"]
                         );
-                        downloadCsv(`bharat-wallet-ledger-${Date.now()}.csv`, csv);
-                        toast.success("Transaction Ledger CSV downloaded.");
+                        downloadCsv(`bharat-recharge-history-${Date.now()}.csv`, csv);
+                        toast.success("Recharge History CSV downloaded.");
                       }}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary transition-colors cursor-pointer"
                     >
-                      <Download className="h-3.5 w-3.5 text-primary" /> Export Ledger CSV
+                      <Download className="h-3.5 w-3.5 text-primary" /> Export Recharge CSV
                     </button>
                   )}
                 </div>
@@ -989,7 +1014,7 @@ function WalletPage() {
 
               {filteredTxns.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
-                  No wallet transactions matching your search criteria.
+                  No recharge records matching your search criteria.
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
@@ -997,11 +1022,10 @@ function WalletPage() {
                     <thead className="border-b border-border bg-secondary/40 font-semibold text-muted-foreground">
                       <tr>
                         <th className="px-4 py-3.5">Date &amp; Time</th>
-                        <th className="px-4 py-3.5">Txn ID</th>
-                        <th className="px-4 py-3.5">Type</th>
-                        <th className="px-4 py-3.5">Description / UTR</th>
+                        <th className="px-4 py-3.5">Txn / Ref ID</th>
+                        <th className="px-4 py-3.5">Payment Details &amp; UTR</th>
                         <th className="px-4 py-3.5 text-center">Screenshot</th>
-                        <th className="px-4 py-3.5 text-right">Amount</th>
+                        <th className="px-4 py-3.5 text-right">Recharged Amount</th>
                         <th className="px-4 py-3.5 text-right">Balance After</th>
                         <th className="px-4 py-3.5 text-center">Status</th>
                       </tr>
@@ -1023,24 +1047,7 @@ function WalletPage() {
                             {txn.id}
                           </td>
                           <td className="px-4 py-3.5">
-                            {txn.type === "credit" ? (
-                              txn.status === "pending" ? (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-500">
-                                  <Clock className="h-3 w-3" /> Credit (Pending)
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">
-                                  <ArrowDownLeft className="h-3 w-3" /> Credit
-                                </span>
-                              )
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                <ArrowUpRight className="h-3 w-3" /> Debit
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <p className="font-medium text-foreground">{txn.description}</p>
+                            <p className="font-medium text-foreground">{txn.description || txn.payment_method || "Wallet Recharge"}</p>
                             {txn.utr_number ? (
                               <p className="mt-0.5 font-mono text-[11px] text-primary font-bold">
                                 UTR: {txn.utr_number}
@@ -1066,14 +1073,12 @@ function WalletPage() {
                           </td>
                           <td
                             className={`whitespace-nowrap px-4 py-3.5 text-right font-mono font-bold ${
-                              txn.type === "credit"
-                                ? txn.status === "pending"
-                                  ? "text-amber-500"
-                                  : "text-success"
-                                : "text-foreground"
+                              txn.status === "pending"
+                                ? "text-amber-500"
+                                : "text-success"
                             }`}
                           >
-                            {txn.type === "credit" ? "+" : "-"}₹{txn.amount.toFixed(2)}
+                            +₹{txn.amount.toFixed(2)}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3.5 text-right font-mono font-medium text-muted-foreground">
                             ₹{txn.balance_after.toFixed(2)}

@@ -15,14 +15,15 @@ export const walletController = {
    * Get Wallet Transactions
    */
   getTransactions: asyncHandler(async (req, res) => {
-    const { limit = 50, offset = 0, type, search } = req.query;
+    const { limit = 50, offset = 0, type, status, search } = req.query;
     const transactions = await walletService.getTransactions(req.user.id, {
       limit: parseInt(limit, 10),
       offset: parseInt(offset, 10),
       type,
+      status,
       search,
     });
-    return ApiResponse.success(res, transactions, 'Wallet transactions fetched successfully');
+    return ApiResponse.success(res, transactions, 'Wallet recharge transactions fetched successfully');
   }),
 
   /**

@@ -63,3 +63,6 @@ process.on('uncaughtException', (error) => {
   console.error('🚨 Uncaught Exception thrown:', error);
   process.exit(1);
 });
+
+export default server;
+

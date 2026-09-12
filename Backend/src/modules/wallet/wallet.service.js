@@ -125,26 +125,31 @@ export const walletService = {
   },
 
   /**
-   * Get paginated wallet transactions ledger (fetches directly from payment_history table)
+   * Get paginated wallet transactions ledger (fetches strictly recharge history from payment_history table)
    * @param {number} userId 
    * @param {object} options 
    */
-  async getTransactions(userId, { limit = 50, offset = 0, type = null, search = null } = {}) {
+  async getTransactions(userId, { limit = 50, offset = 0, type = null, status = null, search = null } = {}) {
     let query = `
-      SELECT id, user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, admin_notes, payment_screenshot, created_at
+      SELECT id, user_id, type, amount, balance_after, payment_method, category, description, reference_id, status, utr_number, admin_notes, payment_screenshot, approved_at, created_at
       FROM payment_history
       WHERE user_id = ?
     `;
     const params = [userId];
 
-    if (type && (type === 'credit' || type === 'debit')) {
+    if (type && type !== 'all') {
       query += ' AND type = ?';
       params.push(type);
     }
 
+    if (status && status !== 'all') {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+
     if (search && search.trim()) {
-      query += ' AND (description LIKE ? OR reference_id LIKE ? OR utr_number LIKE ?)';
-      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
+      query += ' AND (description LIKE ? OR reference_id LIKE ? OR utr_number LIKE ? OR payment_method LIKE ?)';
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
@@ -152,20 +157,22 @@ export const walletService = {
 
     const [rows] = await dbPool.query(query, params);
 
-    // Format for frontend consumption
+    // Format for frontend consumption (recharge history only)
     return rows.map((row) => ({
       id: `tx_${row.id}`,
       numeric_id: row.id,
-      type: row.type,
+      type: row.type || 'credit',
       amount: parseFloat(row.amount),
       balance_after: parseFloat(row.balance_after),
-      category: row.category,
+      payment_method: row.payment_method || 'Bank Account Transfer',
+      category: row.category || 'topup',
       description: row.description,
       reference_id: row.reference_id || `ref_${row.id}`,
       status: row.status || 'success',
       utr_number: row.utr_number || null,
       admin_notes: row.admin_notes || null,
       payment_screenshot: row.payment_screenshot || null,
+      approved_at: row.approved_at || null,
       created_at: row.created_at,
     }));
   },

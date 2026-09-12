@@ -51,38 +51,12 @@ export async function processAuditJob(jobData) {
       environment
     ]);
 
-    // 2. Wallet Balance Settlement & Ledger Posting
+    // 2. Wallet Balance Settlement (Atomic Debit from users.wallet_balance)
     if (cost > 0 && isSuccess && userId) {
-      // Atomic wallet debit
       await dbPool.query(
         'UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id = ?',
         [cost, userId]
       );
-
-      const [[user]] = await dbPool.query(
-        'SELECT wallet_balance FROM users WHERE id = ?',
-        [userId]
-      );
-      const balanceAfter = parseFloat(user?.wallet_balance || '0.00');
-
-      // Insert transaction ledger record into payment_history
-      try {
-        await dbPool.query(
-          `INSERT INTO payment_history (
-            user_id, type, amount, balance_after, category,
-            description, reference_id, status, created_at
-          ) VALUES (?, 'debit', ?, ?, 'api_usage', ?, ?, 'success', NOW())`,
-          [
-            userId,
-            cost,
-            balanceAfter,
-            `API Usage: ${endpoint}`,
-            requestId
-          ]
-        );
-      } catch (phErr) {
-        console.warn('Note: payment_history debit insert error:', phErr.message);
-      }
     }
   } catch (error) {
     console.error('❌ [AUDIT WORKER ERROR] Failed to process audit log/billing:', error.message);
