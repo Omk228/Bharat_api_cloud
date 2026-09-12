@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
-import { upstreamFetch } from '../../../core/utils/upstreamFetch.js';
+import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import QueueService from '../../../core/queue/queue.service.js';
 
