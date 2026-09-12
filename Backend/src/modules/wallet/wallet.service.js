@@ -51,7 +51,7 @@ async function saveScreenshotFile(screenshotBase64, userId, utr) {
 
 export const walletService = {
   /**
-   * Get current live wallet balance for a user
+   * Get current live wallet balance for a user (linked directly to users.wallet_balance)
    * @param {number} userId 
    */
   async getBalance(userId) {
@@ -66,20 +66,20 @@ export const walletService = {
 
     const balance = parseFloat(user.wallet_balance || '0.00');
 
-    // Get today's spend
+    // Get today's spend from api_hit_logs
     const [[spendRow]] = await dbPool.query(
-      `SELECT COALESCE(SUM(amount), 0.00) as today_spend
-       FROM wallet_transactions
-       WHERE user_id = ? AND type = 'debit' AND created_at >= CURDATE()`,
+      `SELECT COALESCE(SUM(cost), 0.00) as today_spend
+       FROM api_hit_logs
+       WHERE user_id = ? AND status_code = 200 AND created_at >= CURDATE()`,
       [userId]
     );
     const todaySpend = parseFloat(spendRow?.today_spend || '0.00');
 
-    // Get this month's spend
+    // Get this month's spend from api_hit_logs
     const [[monthSpendRow]] = await dbPool.query(
-      `SELECT COALESCE(SUM(amount), 0.00) as month_spend
-       FROM wallet_transactions
-       WHERE user_id = ? AND type = 'debit' AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')`,
+      `SELECT COALESCE(SUM(cost), 0.00) as month_spend
+       FROM api_hit_logs
+       WHERE user_id = ? AND status_code = 200 AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')`,
       [userId]
     );
     const monthSpend = parseFloat(monthSpendRow?.month_spend || '0.00');
@@ -125,14 +125,14 @@ export const walletService = {
   },
 
   /**
-   * Get paginated wallet transactions ledger
+   * Get paginated wallet transactions ledger (fetches directly from payment_history table)
    * @param {number} userId 
    * @param {object} options 
    */
   async getTransactions(userId, { limit = 50, offset = 0, type = null, search = null } = {}) {
     let query = `
       SELECT id, user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, admin_notes, payment_screenshot, created_at
-      FROM wallet_transactions
+      FROM payment_history
       WHERE user_id = ?
     `;
     const params = [userId];
@@ -335,7 +335,7 @@ export const walletService = {
   },
 
   /**
-   * Submit Recharge Request with UTR for Admin Verification
+   * Submit Recharge Request with UTR for Admin Verification (Saves in payment_history table)
    * @param {number} userId 
    * @param {object} param1 
    */
@@ -350,20 +350,20 @@ export const walletService = {
       throw ApiError.badRequest('Please enter a valid Bank UTR or IMPS/NEFT Reference Number');
     }
 
-    // Check for duplicate UTR
-    const [[existing]] = await dbPool.query(
-      'SELECT id, user_id, amount, status, created_at FROM wallet_transactions WHERE utr_number = ?',
+    // Check for duplicate UTR in payment_history
+    const [[existingInPaymentHistory]] = await dbPool.query(
+      'SELECT id, user_id, amount, status, created_at FROM payment_history WHERE utr_number = ?',
       [cleanUtr]
     );
 
-    if (existing) {
-      const statusText = existing.status ? existing.status.toUpperCase() : 'PROCESSED';
+    if (existingInPaymentHistory) {
+      const statusText = existingInPaymentHistory.status ? existingInPaymentHistory.status.toUpperCase() : 'PROCESSED';
       throw ApiError.badRequest(
         `This UTR (${cleanUtr}) has already been submitted (Status: ${statusText}). If you believe this is an error, please contact admin support.`
       );
     }
 
-    // Fetch current user wallet balance (balance is NOT updated yet)
+    // Fetch current user wallet balance from users table
     const [[user]] = await dbPool.query(
       'SELECT wallet_balance FROM users WHERE id = ?',
       [userId]
@@ -379,15 +379,16 @@ export const walletService = {
     // Save screenshot file to server disk uploads if provided
     const savedScreenshot = await saveScreenshotFile(screenshot, userId, cleanUtr);
 
-    // Record pending transaction with optional payment screenshot
+    // 1. Record pending transaction in payment_history table
     const [result] = await dbPool.query(
-      `INSERT INTO wallet_transactions (
-        user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, payment_screenshot
-      ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'pending', ?, ?)`,
+      `INSERT INTO payment_history (
+        user_id, type, amount, balance_after, payment_method, category, description, reference_id, status, utr_number, payment_screenshot, created_at
+      ) VALUES (?, 'credit', ?, ?, ?, 'topup', ?, ?, 'pending', ?, ?, NOW())`,
       [
         userId,
         numAmount,
         currentBalance,
+        method || 'Bank Account Transfer',
         `Wallet Recharge via ${method} (UTR: ${cleanUtr})`,
         ref,
         cleanUtr,
@@ -395,8 +396,28 @@ export const walletService = {
       ]
     );
 
+    // 2. Also record in wallet_transactions for consistency
+    try {
+      await dbPool.query(
+        `INSERT INTO wallet_transactions (
+          user_id, type, amount, balance_after, category, description, reference_id, status, utr_number, payment_screenshot, created_at
+        ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'pending', ?, ?, NOW())`,
+        [
+          userId,
+          numAmount,
+          currentBalance,
+          `Wallet Recharge via ${method} (UTR: ${cleanUtr})`,
+          ref,
+          cleanUtr,
+          savedScreenshot || null
+        ]
+      );
+    } catch (wtErr) {
+      console.warn('Note: wallet_transactions insertion skipped:', wtErr.message);
+    }
+
     return {
-      transaction_id: `tx_${result.insertId}`,
+      transaction_id: `ph_${result.insertId}`,
       numeric_id: result.insertId,
       amount: numAmount,
       utr_number: cleanUtr,
@@ -408,16 +429,16 @@ export const walletService = {
   },
 
   /**
-   * Get all recharge requests for Admin Panel
+   * Get all recharge requests for Admin Panel (queries payment_history)
    */
   async getAdminRechargeRequests({ status = 'all', search = null, limit = 50, offset = 0 } = {}) {
     let query = `
       SELECT t.id, t.user_id, t.type, t.amount, t.balance_after, t.category, 
              t.description, t.reference_id, t.status, t.utr_number, t.admin_notes, 
-             t.payment_screenshot, t.approved_at, t.created_at,
+             t.payment_screenshot, t.payment_method, t.approved_at, t.created_at,
              u.name as user_name, u.email as user_email, u.company_name as user_company,
              u.wallet_balance as current_user_balance
-      FROM wallet_transactions t
+      FROM payment_history t
       JOIN users u ON t.user_id = u.id
       WHERE t.category = 'topup'
     `;
@@ -437,7 +458,37 @@ export const walletService = {
     query += ' ORDER BY t.created_at DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit, 10), parseInt(offset, 10));
 
-    const [rows] = await dbPool.query(query, params);
+    let [rows] = await dbPool.query(query, params);
+
+    // If payment_history has no recharge records yet, fallback to wallet_transactions
+    if (!rows || rows.length === 0) {
+      try {
+        let fallbackQuery = `
+          SELECT t.id, t.user_id, t.type, t.amount, t.balance_after, t.category, 
+                 t.description, t.reference_id, t.status, t.utr_number, t.admin_notes, 
+                 t.payment_screenshot, 'Bank Account Transfer' as payment_method, t.approved_at, t.created_at,
+                 u.name as user_name, u.email as user_email, u.company_name as user_company,
+                 u.wallet_balance as current_user_balance
+          FROM wallet_transactions t
+          JOIN users u ON t.user_id = u.id
+          WHERE t.category = 'topup'
+        `;
+        const fbParams = [];
+        if (status && status !== 'all') {
+          fallbackQuery += ' AND t.status = ?';
+          fbParams.push(status);
+        }
+        if (search && search.trim()) {
+          fallbackQuery += ' AND (t.utr_number LIKE ? OR t.reference_id LIKE ? OR u.email LIKE ? OR u.name LIKE ?)';
+          const term = `%${search.trim()}%`;
+          fbParams.push(term, term, term, term);
+        }
+        fallbackQuery += ' ORDER BY t.created_at DESC LIMIT ? OFFSET ?';
+        fbParams.push(parseInt(limit, 10), parseInt(offset, 10));
+        const [fbRows] = await dbPool.query(fallbackQuery, fbParams);
+        rows = fbRows;
+      } catch (fbErr) {}
+    }
 
     return rows.map((row) => ({
       id: `tx_${row.id}`,
@@ -463,15 +514,26 @@ export const walletService = {
   },
 
   /**
-   * Approve a pending recharge request (Admin)
+   * Approve a pending recharge request (Admin) - Updates users.wallet_balance and payment_history
    */
   async approveRechargeRequest(transactionId, { adminNotes = 'Approved via Admin Panel' } = {}) {
-    const cleanId = String(transactionId).replace('tx_', '');
+    const cleanId = String(transactionId).replace(/^(tx_|ph_)/, '');
 
-    const [[txn]] = await dbPool.query(
-      'SELECT * FROM wallet_transactions WHERE id = ?',
+    let [[txn]] = await dbPool.query(
+      'SELECT * FROM payment_history WHERE id = ?',
       [cleanId]
     );
+
+    let isFromPaymentHistory = true;
+
+    if (!txn) {
+      const [[wtTxn]] = await dbPool.query(
+        'SELECT * FROM wallet_transactions WHERE id = ?',
+        [cleanId]
+      );
+      txn = wtTxn;
+      isFromPaymentHistory = false;
+    }
 
     if (!txn) {
       throw ApiError.notFound('Recharge transaction not found');
@@ -483,25 +545,38 @@ export const walletService = {
 
     const numAmount = parseFloat(txn.amount);
 
-    // Atomically increment user wallet balance
+    // Atomically increment user wallet balance in users table
     await dbPool.query(
       'UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?',
       [numAmount, txn.user_id]
     );
 
+    // Read updated wallet balance from users table
     const [[user]] = await dbPool.query(
       'SELECT wallet_balance FROM users WHERE id = ?',
       [txn.user_id]
     );
     const newBalance = parseFloat(user?.wallet_balance || '0.00');
 
-    // Update transaction to success
-    await dbPool.query(
-      `UPDATE wallet_transactions 
-       SET status = 'success', balance_after = ?, admin_notes = ?, approved_at = NOW() 
-       WHERE id = ?`,
-      [newBalance, adminNotes, cleanId]
-    );
+    // Update payment_history to success with new balance_after
+    if (isFromPaymentHistory) {
+      await dbPool.query(
+        `UPDATE payment_history 
+         SET status = 'success', balance_after = ?, admin_notes = ?, approved_at = NOW() 
+         WHERE id = ?`,
+        [newBalance, adminNotes, cleanId]
+      );
+    }
+
+    // Also update wallet_transactions if exists
+    try {
+      await dbPool.query(
+        `UPDATE wallet_transactions 
+         SET status = 'success', balance_after = ?, admin_notes = ?, approved_at = NOW() 
+         WHERE (id = ? OR utr_number = ? OR reference_id = ?)`,
+        [newBalance, adminNotes, cleanId, txn.utr_number || '', txn.reference_id || '']
+      );
+    } catch (e) {}
 
     return {
       transaction_id: `tx_${txn.id}`,
@@ -518,12 +593,20 @@ export const walletService = {
    * Reject a pending recharge request (Admin)
    */
   async rejectRechargeRequest(transactionId, { reason = 'Invalid or Unmatched UTR' } = {}) {
-    const cleanId = String(transactionId).replace('tx_', '');
+    const cleanId = String(transactionId).replace(/^(tx_|ph_)/, '');
 
-    const [[txn]] = await dbPool.query(
-      'SELECT * FROM wallet_transactions WHERE id = ?',
+    let [[txn]] = await dbPool.query(
+      'SELECT * FROM payment_history WHERE id = ?',
       [cleanId]
     );
+
+    if (!txn) {
+      const [[wtTxn]] = await dbPool.query(
+        'SELECT * FROM wallet_transactions WHERE id = ?',
+        [cleanId]
+      );
+      txn = wtTxn;
+    }
 
     if (!txn) {
       throw ApiError.notFound('Recharge transaction not found');
@@ -534,11 +617,20 @@ export const walletService = {
     }
 
     await dbPool.query(
-      `UPDATE wallet_transactions 
+      `UPDATE payment_history 
        SET status = 'rejected', admin_notes = ? 
        WHERE id = ?`,
       [reason, cleanId]
     );
+
+    try {
+      await dbPool.query(
+        `UPDATE wallet_transactions 
+         SET status = 'rejected', admin_notes = ? 
+         WHERE (id = ? OR utr_number = ? OR reference_id = ?)`,
+        [reason, cleanId, txn.utr_number || '', txn.reference_id || '']
+      );
+    } catch (e) {}
 
     return {
       transaction_id: `tx_${txn.id}`,
@@ -550,7 +642,7 @@ export const walletService = {
   },
 
   /**
-   * Add funds (Top-up) to user's wallet
+   * Add funds (Top-up) to user's wallet - Updates users.wallet_balance and payment_history
    * @param {number} userId 
    * @param {object} param1 
    */
@@ -560,7 +652,7 @@ export const walletService = {
       throw ApiError.badRequest('Amount must be a positive number');
     }
 
-    // Atomic increment in DB
+    // Atomic increment in users table
     await dbPool.query(
       'UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?',
       [numAmount, userId]
@@ -574,19 +666,36 @@ export const walletService = {
 
     const ref = referenceId || `topup_${Date.now()}`;
 
-    // Record credit transaction
+    // Record credit transaction in payment_history table
     await dbPool.query(
-      `INSERT INTO wallet_transactions (
-        user_id, type, amount, balance_after, category, description, reference_id, status
-      ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'success')`,
+      `INSERT INTO payment_history (
+        user_id, type, amount, balance_after, payment_method, category, description, reference_id, status, created_at
+      ) VALUES (?, 'credit', ?, ?, ?, 'topup', ?, ?, 'success', NOW())`,
       [
         userId,
         numAmount,
         balanceAfter,
+        method,
         `Wallet Topup via ${method}`,
         ref
       ]
     );
+
+    // Also record in wallet_transactions for consistency
+    try {
+      await dbPool.query(
+        `INSERT INTO wallet_transactions (
+          user_id, type, amount, balance_after, category, description, reference_id, status, created_at
+        ) VALUES (?, 'credit', ?, ?, 'topup', ?, ?, 'success', NOW())`,
+        [
+          userId,
+          numAmount,
+          balanceAfter,
+          `Wallet Topup via ${method}`,
+          ref
+        ]
+      );
+    } catch (e) {}
 
     return {
       wallet_balance: balanceAfter,
@@ -598,3 +707,4 @@ export const walletService = {
 };
 
 export default walletService;
+

@@ -65,20 +65,24 @@ export async function processAuditJob(jobData) {
       );
       const balanceAfter = parseFloat(user?.wallet_balance || '0.00');
 
-      // Insert transaction ledger record
-      await dbPool.query(
-        `INSERT INTO wallet_transactions (
-          user_id, type, amount, balance_after, category,
-          description, reference_id
-        ) VALUES (?, 'debit', ?, ?, 'api_usage', ?, ?)`,
-        [
-          userId,
-          cost,
-          balanceAfter,
-          `API Usage: ${endpoint}`,
-          requestId
-        ]
-      );
+      // Insert transaction ledger record into payment_history
+      try {
+        await dbPool.query(
+          `INSERT INTO payment_history (
+            user_id, type, amount, balance_after, category,
+            description, reference_id, status, created_at
+          ) VALUES (?, 'debit', ?, ?, 'api_usage', ?, ?, 'success', NOW())`,
+          [
+            userId,
+            cost,
+            balanceAfter,
+            `API Usage: ${endpoint}`,
+            requestId
+          ]
+        );
+      } catch (phErr) {
+        console.warn('Note: payment_history debit insert error:', phErr.message);
+      }
     }
   } catch (error) {
     console.error('❌ [AUDIT WORKER ERROR] Failed to process audit log/billing:', error.message);

@@ -99,11 +99,38 @@ export const initDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
+    const createPaymentHistoryTableQuery = `
+      CREATE TABLE IF NOT EXISTS payment_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        type ENUM('credit', 'debit') DEFAULT 'credit',
+        amount DECIMAL(12, 2) NOT NULL,
+        balance_after DECIMAL(12, 2) NOT NULL,
+        payment_method VARCHAR(100) DEFAULT 'Bank Account Transfer',
+        category ENUM('topup', 'api_usage', 'refund', 'bonus') DEFAULT 'topup',
+        description VARCHAR(255) NOT NULL,
+        reference_id VARCHAR(64) DEFAULT NULL,
+        utr_number VARCHAR(64) DEFAULT NULL,
+        status ENUM('pending', 'success', 'rejected') DEFAULT 'pending',
+        admin_notes VARCHAR(255) DEFAULT NULL,
+        approved_by VARCHAR(64) DEFAULT NULL,
+        payment_screenshot LONGTEXT DEFAULT NULL,
+        approved_at TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_ph_user (user_id, created_at),
+        INDEX idx_ph_status (status),
+        INDEX idx_ph_utr (utr_number)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+
     await dbPool.query(createUsersTableQuery);
     await dbPool.query(createApiCredentialsTableQuery);
     await dbPool.query(createApiHitLogsTableQuery);
     await dbPool.query(createIpWhitelistTableQuery);
     await dbPool.query(createWalletTransactionsTableQuery);
+    await dbPool.query(createPaymentHistoryTableQuery);
 
     // Safely verify columns on existing wallet_transactions table
     try {
