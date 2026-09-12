@@ -12,6 +12,7 @@ export const dbPool = mysql.createPool({
   connectionLimit: ENV.DB.CONNECTION_LIMIT,
   queueLimit: 0,
   connectTimeout: 20000,
+  timezone: '+00:00',
 });
 
 /**
