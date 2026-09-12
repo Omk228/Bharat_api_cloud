@@ -1091,12 +1091,14 @@ function WalletPage() {
                         <tr key={txn.id} className="hover:bg-secondary/20 transition-colors">
                           <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">
                             {new Date(txn.created_at).toLocaleString("en-IN", {
+                              timeZone: "Asia/Kolkata",
                               day: "2-digit",
                               month: "short",
                               year: "numeric",
                               hour: "2-digit",
                               minute: "2-digit",
                               second: "2-digit",
+                              hour12: true,
                             })}
                           </td>
                           <td className="px-4 py-3.5 font-mono font-medium text-foreground">

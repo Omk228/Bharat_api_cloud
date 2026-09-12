@@ -137,7 +137,16 @@ function WebhookHistory({ events }: { events: WebhookEventRow[] }) {
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {e.deliveries.length} attempt{e.deliveries.length > 1 ? "s" : ""} ·{" "}
-                    {new Date(e.created_at).toLocaleString("en-IN")}
+                    {new Date(e.created_at).toLocaleString("en-IN", {
+                      timeZone: "Asia/Kolkata",
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: true,
+                    })}
                   </span>
                   <div className="ml-auto flex items-center gap-3 text-xs">
                     <button
@@ -237,7 +246,16 @@ function AuditLog({ audit }: { audit: AuditRow[] }) {
                   <span className="text-muted-foreground">· {a.detail}</span>
                 </div>
                 <span className="text-muted-foreground">
-                  {new Date(a.created_at).toLocaleString("en-IN")}
+                  {new Date(a.created_at).toLocaleString("en-IN", {
+                    timeZone: "Asia/Kolkata",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: true,
+                  })}
                 </span>
               </div>
             ))}
