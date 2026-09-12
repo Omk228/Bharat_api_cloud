@@ -8,11 +8,11 @@ export const ENV = {
   CORS_ORIGIN: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(url => url.trim()) : '*',
   
   DB: {
-    HOST: process.env.DB_HOST || 'localhost',
+    HOST: (process.env.DB_HOST || 'localhost').trim(),
     PORT: parseInt(process.env.DB_PORT || '3306', 10),
-    USER: process.env.DB_USER || 'root',
-    PASSWORD: process.env.DB_PASSWORD || '',
-    NAME: process.env.DB_NAME || 'bharat_api_cloud',
+    USER: (process.env.DB_USER || 'root').trim(),
+    PASSWORD: (process.env.DB_PASSWORD || '').trim(),
+    NAME: (process.env.DB_NAME || 'bharat_api_cloud').trim(),
     CONNECTION_LIMIT: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
   },
 

@@ -11,9 +11,7 @@ export const dbPool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: ENV.DB.CONNECTION_LIMIT,
   queueLimit: 0,
-  connectTimeout: 3000,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
+  connectTimeout: 20000,
 });
 
 /**
