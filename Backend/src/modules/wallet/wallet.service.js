@@ -198,7 +198,7 @@ export const walletService = {
    * @param {number} userId 
    * @param {object} options 
    */
-  async getHitLogs(userId, { limit = 50, offset = 0, statusCode = null, search = null } = {}) {
+  async getHitLogs(userId, { limit = 10000, offset = 0, statusCode = null, search = null, startDate = null, endDate = null, date = null } = {}) {
     // Fetch default user API credentials as fallback if log has no credential_id
     const [userCreds] = await dbPool.query(
       'SELECT api_key, api_id, label FROM api_credentials WHERE user_id = ? ORDER BY id ASC LIMIT 1',
@@ -218,10 +218,26 @@ export const walletService = {
     const params = [userId];
 
     if (statusCode) {
-      if (statusCode === 200) {
+      if (statusCode === 200 || statusCode === '200') {
         query += ' AND l.status_code = 200';
       } else {
         query += ' AND l.status_code != 200';
+      }
+    }
+
+    if (date && String(date).trim()) {
+      query += ' AND DATE(l.created_at) = ?';
+      params.push(String(date).trim());
+    } else {
+      if (startDate && String(startDate).trim()) {
+        const s = String(startDate).trim();
+        query += ' AND l.created_at >= ?';
+        params.push(s.includes(' ') ? s : `${s} 00:00:00`);
+      }
+      if (endDate && String(endDate).trim()) {
+        const e = String(endDate).trim();
+        query += ' AND l.created_at <= ?';
+        params.push(e.includes(' ') ? e : `${e} 23:59:59`);
       }
     }
 
@@ -230,8 +246,12 @@ export const walletService = {
       params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
-    query += ' ORDER BY l.created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit, 10), parseInt(offset, 10));
+    query += ' ORDER BY l.created_at DESC';
+
+    const parsedLimit = limit === 'all' ? 100000 : Math.min(parseInt(limit, 10) || 10000, 100000);
+    const parsedOffset = parseInt(offset, 10) || 0;
+    query += ' LIMIT ? OFFSET ?';
+    params.push(parsedLimit, parsedOffset);
 
     const [rows] = await dbPool.query(query, params);
 

@@ -30,12 +30,15 @@ export const walletController = {
    * Get API Hit Logs
    */
   getHitLogs: asyncHandler(async (req, res) => {
-    const { limit = 50, offset = 0, statusCode, search } = req.query;
+    const { limit = 10000, offset = 0, statusCode, search, startDate, endDate, date } = req.query;
     const logs = await walletService.getHitLogs(req.user.id, {
-      limit: parseInt(limit, 10),
-      offset: parseInt(offset, 10),
-      statusCode: statusCode ? parseInt(statusCode, 10) : null,
+      limit: limit === 'all' ? 'all' : parseInt(limit, 10) || 10000,
+      offset: parseInt(offset, 10) || 0,
+      statusCode: statusCode ? (statusCode === 'all' ? null : parseInt(statusCode, 10)) : null,
       search,
+      startDate,
+      endDate,
+      date,
     });
     return ApiResponse.success(res, logs, 'API hit logs fetched successfully');
   }),

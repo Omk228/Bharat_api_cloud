@@ -358,8 +358,8 @@ export async function getDashboard(): Promise<DashboardData> {
       const [profileRes, walletRes, txsRes, logsRes, credsRes] = await Promise.allSettled([
         apiClient.getProfile(),
         apiClient.getWalletBalance(),
-        apiClient.getWalletTransactions({ limit: 100 }),
-        apiClient.getApiHitLogs({ limit: 100 }),
+        apiClient.getWalletTransactions({ limit: 500 }),
+        apiClient.getApiHitLogs({ limit: 10000 }),
         apiClient.getCredentials(),
       ]);
 

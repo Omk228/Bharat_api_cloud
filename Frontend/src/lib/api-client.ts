@@ -792,10 +792,13 @@ export const apiClient = {
   },
 
   async getApiHitLogs(params?: {
-    limit?: number;
+    limit?: number | string;
     offset?: number;
-    statusCode?: number;
+    statusCode?: number | string;
     search?: string;
+    startDate?: string;
+    endDate?: string;
+    date?: string;
   }): Promise<Array<{
     id: string;
     request_id: string;
@@ -817,8 +820,11 @@ export const apiClient = {
     const query = new URLSearchParams();
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.offset) query.set('offset', String(params.offset));
-    if (params?.statusCode) query.set('statusCode', String(params.statusCode));
+    if (params?.statusCode && params.statusCode !== 'all') query.set('statusCode', String(params.statusCode));
     if (params?.search) query.set('search', params.search);
+    if (params?.startDate) query.set('startDate', params.startDate);
+    if (params?.endDate) query.set('endDate', params.endDate);
+    if (params?.date) query.set('date', params.date);
 
     const res = await fetch(`${API_BASE}/wallet/logs?${query.toString()}`, {
       headers: {
