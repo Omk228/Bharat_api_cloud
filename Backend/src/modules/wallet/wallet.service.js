@@ -10,42 +10,58 @@ import CacheService from '../../core/cache/cache.service.js';
 async function saveScreenshotFile(screenshotBase64, userId, utr) {
   if (!screenshotBase64 || typeof screenshotBase64 !== 'string') return null;
 
+  const trimmed = screenshotBase64.trim();
+  if (!trimmed) return null;
+
   // If already an HTTP URL or local static path, return as is
   if (
-    screenshotBase64.startsWith('http://') ||
-    screenshotBase64.startsWith('https://') ||
-    screenshotBase64.startsWith('/uploads/')
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('/uploads/')
   ) {
-    return screenshotBase64;
+    return trimmed;
   }
-
-  // Check if it's a data URL (e.g. data:image/png;base64,....)
-  const matches = screenshotBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) {
-    return screenshotBase64; // fallback to storing string
-  }
-
-  const mimeType = matches[1];
-  const base64Data = matches[2];
-  let ext = 'png';
-  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg';
-  else if (mimeType.includes('webp')) ext = 'webp';
-  else if (mimeType.includes('pdf')) ext = 'pdf';
-  else if (mimeType.includes('png')) ext = 'png';
-
-  const cleanUtr = String(utr || 'receipt').replace(/[^a-zA-Z0-9]/g, '');
-  const fileName = `receipt_u${userId}_${cleanUtr}_${Date.now()}.${ext}`;
-  const uploadDir = path.join(process.cwd(), 'uploads', 'receipts');
 
   try {
+    let mimeType = 'image/jpeg';
+    let base64Data = trimmed;
+
+    // Check if it's a Data URL (e.g. data:image/png;base64,....)
+    const commaIdx = trimmed.indexOf(',');
+    if (trimmed.startsWith('data:') && commaIdx !== -1) {
+      const header = trimmed.substring(0, commaIdx);
+      base64Data = trimmed.substring(commaIdx + 1);
+      const mimeMatch = header.match(/^data:([^;]+)/i);
+      if (mimeMatch && mimeMatch[1]) {
+        mimeType = mimeMatch[1].toLowerCase().trim();
+      }
+    }
+
+    // Clean whitespace/newlines from base64 string
+    const cleanBase64 = base64Data.replace(/\s+/g, '');
+    if (!cleanBase64) return null;
+
+    let ext = 'jpg';
+    if (mimeType.includes('png')) ext = 'png';
+    else if (mimeType.includes('webp')) ext = 'webp';
+    else if (mimeType.includes('pdf')) ext = 'pdf';
+    else if (mimeType.includes('gif')) ext = 'gif';
+    else if (mimeType.includes('bmp')) ext = 'bmp';
+    else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg';
+
+    const cleanUtr = String(utr || 'receipt').replace(/[^a-zA-Z0-9]/g, '').slice(0, 32);
+    const fileName = `receipt_u${userId}_${cleanUtr}_${Date.now()}.${ext}`;
+    const uploadDir = path.join(process.cwd(), 'uploads', 'receipts');
+
     await fs.promises.mkdir(uploadDir, { recursive: true });
     const filePath = path.join(uploadDir, fileName);
-    const buffer = Buffer.from(base64Data, 'base64');
+    const buffer = Buffer.from(cleanBase64, 'base64');
     await fs.promises.writeFile(filePath, buffer);
     return `/uploads/receipts/${fileName}`;
   } catch (err) {
     console.error('Failed to save screenshot file to disk:', err);
-    return screenshotBase64; // fallback to raw string
+    // If it's too large to store as fallback string, truncate or return null to prevent DB packet crash
+    return trimmed.length > 500000 ? null : trimmed;
   }
 }
 

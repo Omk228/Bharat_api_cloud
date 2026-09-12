@@ -124,26 +124,82 @@ function WalletPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const compressImage = (dataUrl: string, maxDimension = 1600, quality = 0.85): Promise<string> => {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined") return resolve(dataUrl);
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width <= maxDimension && height <= maxDimension && dataUrl.length < 400000) {
+          return resolve(dataUrl);
+        }
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(dataUrl);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
   const processFile = (file: File) => {
     if (!file) return;
 
-    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+    const validExtensions = /\.(png|jpe?g|webp|pdf|bmp|jfif|heic|heif)$/i;
+    const isImageOrPdf =
+      file.type.startsWith("image/") ||
+      file.type === "application/pdf" ||
+      validExtensions.test(file.name);
+
+    if (!isImageOrPdf) {
       toast.error("Please upload a valid image file (PNG, JPG, JPEG, WEBP) or PDF receipt");
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("File size exceeds 8MB limit. Please upload a smaller screenshot.");
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File size exceeds 20MB limit. Please upload a smaller screenshot.");
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
+    reader.onload = async (e) => {
+      let dataUrl = e.target?.result as string;
+      if (!dataUrl) {
+        toast.error("Failed to read image file.");
+        return;
+      }
+
+      // Auto-compress image to ensure fast transfer and prevent payload size errors
+      if (file.type.startsWith("image/") || !file.name.toLowerCase().endsWith(".pdf")) {
+        try {
+          dataUrl = await compressImage(dataUrl);
+        } catch (compErr) {
+          console.warn("Client compression notice:", compErr);
+        }
+      }
+
       setScreenshotDataUrl(dataUrl);
       setScreenshotFileName(file.name);
-      const sizeKb = Math.round(file.size / 1024);
-      setScreenshotFileSize(sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`);
+      const estKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+      setScreenshotFileSize(estKb > 1024 ? `${(estKb / 1024).toFixed(1)} MB` : `${estKb} KB`);
       toast.success("Payment screenshot uploaded successfully!");
     };
     reader.onerror = () => {
