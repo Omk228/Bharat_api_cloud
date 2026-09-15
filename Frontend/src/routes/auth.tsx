@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ShieldCheck, Loader2, Wand2, Eye, EyeOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ShieldCheck, Loader2, Eye, EyeOff, LockKeyhole, Info } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { apiClient } from "@/lib/api-client";
-import { DEMO_EMAIL, DEMO_PASSWORD, getSession, setSessionFromBackend } from "@/lib/demo-store";
+import { setSessionFromBackend } from "@/lib/demo-store";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -14,12 +14,12 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Sign in to the Bharat API Cloud developer console to generate API keys, rotate secrets, export usage logs and access 350+ KYC and banking endpoints.",
+          "Sign in to the Bharat API Cloud developer console to manage API keys, monitor real-time requests, check balance and access 350+ KYC and banking endpoints.",
       },
       { property: "og:title", content: "Developer Sign In — Bharat API Cloud" },
       {
         property: "og:description",
-        content: "Sign in to generate API keys and access 350+ KYC & banking endpoints.",
+        content: "Sign in to access your Bharat API Cloud developer console.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -30,34 +30,20 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [company, setCompany] = useState("");
-  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const res = await apiClient.signup({
-          name: name.trim() || email.split("@")[0]!,
-          ...(company.trim() ? { company_name: company.trim() } : {}),
-          email: email.trim(),
-          password: password,
-        });
-        setSessionFromBackend(res.data.user);
-        toast.success("Account created successfully!");
-      } else {
-        const res = await apiClient.login({
-          email: email.trim(),
-          password: password,
-        });
-        setSessionFromBackend(res.data.user);
-        toast.success("Welcome back! Signed in successfully.");
-      }
+      const res = await apiClient.login({
+        email: email.trim(),
+        password: password,
+      });
+      setSessionFromBackend(res.data.user);
+      toast.success("Welcome back! Signed in successfully.");
       navigate({ to: "/dashboard", replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Authentication failed. Please check your credentials.");
@@ -66,68 +52,30 @@ function AuthPage() {
     }
   }
 
-  function useDemo() {
-    setEmail(DEMO_EMAIL);
-    setPassword(DEMO_PASSWORD);
-    setMode("signin");
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-foreground">
       <div className="w-full max-w-md">
-        <Link to="/" className="mb-8 flex items-center justify-center gap-2">
+        <Link to="/" className="mb-8 flex items-center justify-center gap-2 transition-opacity hover:opacity-80">
           <ShieldCheck className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold tracking-tight">Bharat API Cloud</span>
         </Link>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {mode === "signup" ? "Create a client account" : "Sign in to your console"}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {mode === "signup"
-              ? "Access 350+ Banking & KYC APIs, sandbox testing, and developer keys."
-              : "Manage your API keys, monitor real-time requests and manage webhooks."}
-          </p>
-
-          {/* Mode Switcher Tabs */}
-          <div className="mt-6 flex rounded-lg bg-secondary/60 p-1 border border-border/40">
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-all ${
-                mode === "signin"
-                  ? "bg-background text-foreground shadow-sm font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-all ${
-                mode === "signup"
-                  ? "bg-background text-foreground shadow-sm font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Create Account
-            </button>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <LockKeyhole className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">Sign in to your console</h1>
+              <p className="text-xs text-muted-foreground">Bharat API Cloud Developer Portal</p>
+            </div>
           </div>
 
+          <p className="mt-4 text-sm text-muted-foreground">
+            Enter your authorized email and password to access your API keys, balance, and developer console.
+          </p>
+
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            {mode === "signup" && (
-              <>
-                <Field label="Your name" value={name} onChange={setName} placeholder="Aarav Sharma" />
-                <Field
-                  label="Company"
-                  value={company}
-                  onChange={setCompany}
-                  placeholder="Acme Fintech Pvt Ltd"
-                />
-              </>
-            )}
             <Field
               label="Work email"
               type="email"
@@ -141,9 +89,8 @@ function AuthPage() {
               type="password"
               value={password}
               onChange={setPassword}
-              placeholder="At least 6 characters"
+              placeholder="Enter your password"
               required
-              minLength={6}
             />
             <button
               type="submit"
@@ -151,19 +98,22 @@ function AuthPage() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              {mode === "signup" ? "Create account" : "Sign in"}
+              Sign in to Console
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            {mode === "signup" ? "Already have an account?" : "New to Bharat API Cloud?"}{" "}
-            <button
-              onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-              className="font-medium text-primary hover:underline"
-            >
-              {mode === "signup" ? "Sign in" : "Create one"}
-            </button>
-          </p>
+          {/* Admin Managed Registration Notice */}
+          <div className="mt-6 rounded-xl border border-border/60 bg-secondary/40 p-3.5 text-xs text-muted-foreground">
+            <div className="flex items-start gap-2.5">
+              <Info className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+              <div>
+                <span className="font-semibold text-foreground">Admin-Managed Accounts:</span>
+                <p className="mt-0.5 leading-relaxed">
+                  New client accounts are provisioned exclusively by administrators. Please contact your account administrator to obtain your login credentials.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -229,3 +179,4 @@ function Field({
     </label>
   );
 }
+

@@ -1,6 +1,72 @@
 import PDFDocument from 'pdfkit';
 
 /**
+ * Utility helper to ensure a value is always treated as an array.
+ * Upstream XML-to-JSON parsers convert single child elements to objects instead of arrays.
+ */
+function ensureArray(val) {
+  if (val == null) return [];
+  if (Array.isArray(val)) return val;
+  return [val];
+}
+
+/**
+ * Recursively find TrueLinkCreditReport inside any nested response structure
+ */
+function findTrueLinkCreditReport(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  if (obj.TrueLinkCreditReport) return obj.TrueLinkCreditReport;
+  if (obj.Asset?.TrueLinkCreditReport) return obj.Asset.TrueLinkCreditReport;
+  if (obj.GetCustomerAssetsSuccess?.Asset?.TrueLinkCreditReport) return obj.GetCustomerAssetsSuccess.Asset.TrueLinkCreditReport;
+  if (obj.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.Asset?.TrueLinkCreditReport) return obj.GetCustomerAssetsResponse.GetCustomerAssetsSuccess.Asset.TrueLinkCreditReport;
+  
+  if (Array.isArray(obj.steps)) {
+    for (const step of obj.steps) {
+      const resp = step?.response || {};
+      const found =
+        resp?.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.Asset?.TrueLinkCreditReport ||
+        resp?.GetCustomerAssetsSuccess?.Asset?.TrueLinkCreditReport ||
+        resp?.Asset?.TrueLinkCreditReport ||
+        resp?.TrueLinkCreditReport;
+      if (found) return found;
+    }
+  }
+
+  if (obj.data) {
+    const found = findTrueLinkCreditReport(obj.data);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Recursively find CreditSummaryData inside any nested response structure
+ */
+function findCreditSummary(obj) {
+  if (!obj || typeof obj !== 'object') return {};
+  if (obj.CreditSummaryData) return obj.CreditSummaryData;
+  if (obj.GetCustomerAssetsSuccess?.CreditSummaryData) return obj.GetCustomerAssetsSuccess.CreditSummaryData;
+  if (obj.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.CreditSummaryData) return obj.GetCustomerAssetsResponse.GetCustomerAssetsSuccess.CreditSummaryData;
+
+  if (Array.isArray(obj.steps)) {
+    for (const step of obj.steps) {
+      const resp = step?.response || {};
+      const found =
+        resp?.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.CreditSummaryData ||
+        resp?.GetCustomerAssetsSuccess?.CreditSummaryData ||
+        resp?.CreditSummaryData;
+      if (found) return found;
+    }
+  }
+
+  if (obj.data) {
+    const found = findCreditSummary(obj.data);
+    if (found) return found;
+  }
+  return {};
+}
+
+/**
  * Generates an official, beautifully styled CIBIL Credit Information Report (CIR) in PDF format.
  * @param {object} reportData - TrueLinkCreditReport or response data object
  * @returns {Promise<Buffer>} - Resolves with PDF Buffer
@@ -24,28 +90,32 @@ export async function generateCibilPdfReport(reportData = {}) {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', (err) => reject(err));
 
-      // Extract details
-      const trueLink =
-        reportData?.TrueLinkCreditReport ||
-        reportData?.data?.steps?.[2]?.response?.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.Asset?.TrueLinkCreditReport ||
-        reportData?.steps?.[2]?.response?.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.Asset?.TrueLinkCreditReport ||
-        reportData?.asset?.TrueLinkCreditReport ||
-        {};
-
-      const creditSummary =
-        reportData?.CreditSummaryData ||
-        reportData?.data?.steps?.[2]?.response?.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.CreditSummaryData ||
-        reportData?.steps?.[2]?.response?.GetCustomerAssetsResponse?.GetCustomerAssetsSuccess?.CreditSummaryData ||
-        {};
+      // Extract details robustly
+      const trueLink = findTrueLinkCreditReport(reportData) || reportData?.TrueLinkCreditReport || reportData?.asset?.TrueLinkCreditReport || {};
+      const creditSummary = findCreditSummary(reportData);
 
       const borrower = trueLink?.Borrower || {};
-      const scoreObj = borrower?.CreditScore || {};
-      const riskScore = parseInt(scoreObj?.riskScore || '750', 10);
+      const creditScoreRaw = borrower?.CreditScore;
+      const scoreObj = Array.isArray(creditScoreRaw) ? (creditScoreRaw[0] || {}) : (creditScoreRaw || {});
+      const rawRiskScore = parseInt(scoreObj?.riskScore || scoreObj?.score || scoreObj?.CreditScore || '750', 10);
+      const riskScore = isNaN(rawRiskScore) ? 750 : rawRiskScore;
       const scoreName = scoreObj?.scoreName || 'CIBILTransUnionScore3';
 
-      const borrowerName = `${borrower?.BorrowerName?.Name?.Forename || ''} ${borrower?.BorrowerName?.Name?.Surname || ''}`.trim() || 'Valued Customer';
-      const dob = borrower?.Birth?.BirthDate ? `${borrower.Birth.BirthDate.year}-${String(borrower.Birth.BirthDate.month).padStart(2, '0')}-${String(borrower.Birth.BirthDate.day).padStart(2, '0')}` : (borrower?.Birth?.date?.split('+')?.[0] || 'N/A');
-      const gender = borrower?.Gender || 'N/A';
+      const forename = borrower?.BorrowerName?.Name?.Forename || reportData?.forename || '';
+      const surname = borrower?.BorrowerName?.Name?.Surname || reportData?.surname || '';
+      const borrowerName = `${forename} ${surname}`.trim() || 'Valued Customer';
+
+      let dob = 'N/A';
+      if (borrower?.Birth?.BirthDate) {
+        const b = borrower.Birth.BirthDate;
+        dob = `${b.year || 'YYYY'}-${String(b.month || '01').padStart(2, '0')}-${String(b.day || '01').padStart(2, '0')}`;
+      } else if (borrower?.Birth?.date) {
+        dob = String(borrower.Birth.date).split('+')[0];
+      } else if (reportData?.date_of_birth) {
+        dob = String(reportData.date_of_birth);
+      }
+
+      const gender = borrower?.Gender || reportData?.gender || 'N/A';
       const referenceKey = trueLink?.ReferenceKey || 'CIR-' + Math.floor(1000000000 + Math.random() * 9000000000);
       const reportDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -94,7 +164,6 @@ export async function generateCibilPdfReport(reportData = {}) {
         ['Credit Age', `${creditSummary.OldestCreditAccountPeriod || '240'} Mo`, '#64748b'],
       ];
 
-      let mX = sumX;
       let mY = currentY + 35;
       metrics.forEach(([label, val, color], idx) => {
         const itemX = sumX + (idx % 3) * 115;
@@ -114,10 +183,26 @@ export async function generateCibilPdfReport(reportData = {}) {
       const personalHeight = 84;
       doc.rect(36, currentY, 523, personalHeight).fillAndStroke('#ffffff', borderColor);
 
-      // Extract IDs
-      const idList = borrower?.IdentifierPartition?.Identifier || [];
-      const getID = (type) => idList.find(i => i?.ID?.IdentifierName === type)?.ID?.Id || idList.find(i => i?.ID?.IdentifierName === type)?.ID?.SerialNumber || 'N/A';
-      const pan = getID('TaxId');
+      // Extract IDs safely
+      const rawIdentifiers = borrower?.IdentifierPartition?.Identifier || borrower?.IdentifierPartition || borrower?.Identifier;
+      const idList = ensureArray(rawIdentifiers);
+      const getID = (type) => {
+        const item = idList.find((i) => {
+          const idObj = i?.ID || i;
+          return idObj?.IdentifierName === type || idObj?.identifierName === type || idObj?.name === type;
+        });
+        if (item) {
+          const idObj = item?.ID || item;
+          return idObj?.Id || idObj?.id || idObj?.SerialNumber || idObj?.serialNumber || 'N/A';
+        }
+        return 'N/A';
+      };
+
+      let pan = getID('TaxId');
+      if (pan === 'N/A' && reportData?.pan_id) {
+        const p = String(reportData.pan_id).toUpperCase();
+        pan = `${p.slice(0, 5)}XXXX${p.slice(-1)}`;
+      }
       const ckyc = getID('CkycId');
       const ration = getID('RationCardId');
 
@@ -138,9 +223,23 @@ export async function generateCibilPdfReport(reportData = {}) {
       drawField('CKYC NUMBER', ckyc, col2, currentY + 32);
       drawField('RATION CARD ID', ration, col3, currentY + 32);
 
-      const phones = (borrower?.BorrowerTelephone || []).map(p => p?.PhoneNumber?.Number).filter(Boolean);
+      // Extract Telephone(s) safely (can be object, array, or string)
+      const rawPhones = borrower?.BorrowerTelephone;
+      const phoneList = ensureArray(rawPhones);
+      const phones = phoneList
+        .map((p) => {
+          if (typeof p === 'string') return p;
+          return p?.PhoneNumber?.Number || p?.PhoneNumber?.number || p?.number || p?.Number;
+        })
+        .filter(Boolean);
+
+      if (phones.length === 0 && reportData?.phone_number) {
+        const ph = String(reportData.phone_number);
+        phones.push(`${ph.slice(0, 3)}XXXX${ph.slice(-3)}`);
+      }
+
       drawField('REGISTERED MOBILE(S)', phones.slice(0, 3).join(', ') || 'N/A', col1, currentY + 56);
-      drawField('EMPLOYMENT', borrower?.Employer?.OccupationCode?.description || 'Salaried', col3, currentY + 56);
+      drawField('EMPLOYMENT', borrower?.Employer?.OccupationCode?.description || borrower?.Employer?.occupation || 'Salaried', col3, currentY + 56);
 
       currentY += personalHeight + 12;
 
@@ -149,7 +248,8 @@ export async function generateCibilPdfReport(reportData = {}) {
       doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold').text('2. REGISTERED ADDRESS HISTORY', 44, currentY + 5);
       currentY += 18;
 
-      const addresses = borrower?.BorrowerAddress || [];
+      const rawAddresses = borrower?.BorrowerAddress;
+      const addresses = ensureArray(rawAddresses);
       const maxAddr = Math.min(addresses.length, 3);
       const addrHeight = Math.max(maxAddr * 22 + 8, 30);
       doc.rect(36, currentY, 523, addrHeight).fillAndStroke('#ffffff', borderColor);
@@ -157,11 +257,12 @@ export async function generateCibilPdfReport(reportData = {}) {
       if (addresses.length === 0) {
         doc.fillColor(textMuted).fontSize(7.5).font('Helvetica').text('No past addresses reported on file.', col1, currentY + 8);
       } else {
-        addresses.slice(0, 3).forEach((addr, idx) => {
-          const street = addr?.CreditAddress?.StreetAddress || 'Address on record';
-          const pin = addr?.CreditAddress?.PostalCode || '';
-          const reported = addr?.dateReported?.split('+')?.[0] || 'N/A';
-          const origin = addr?.Origin?.symbol || 'Bank';
+        addresses.slice(0, 3).forEach((addrWrap, idx) => {
+          const addr = addrWrap?.CreditAddress || addrWrap || {};
+          const street = addr?.StreetAddress || addr?.streetAddress || addr?.line1 || 'Address on record';
+          const pin = addr?.PostalCode || addr?.postalCode || addr?.pin || '';
+          const reported = String(addrWrap?.dateReported || 'N/A').split('+')[0];
+          const origin = addrWrap?.Origin?.symbol || addrWrap?.Origin?.name || 'Bank';
           
           doc.fillColor(accentCyan).fontSize(7.5).font('Helvetica-Bold').text(`[${origin}]`, col1, currentY + 6 + (idx * 22));
           doc.fillColor(textDark).fontSize(7.5).font('Helvetica').text(`${street} (PIN: ${pin}) · Reported: ${reported}`, col1 + 45, currentY + 6 + (idx * 22), { width: 420 });
@@ -175,7 +276,8 @@ export async function generateCibilPdfReport(reportData = {}) {
       doc.fillColor('#ffffff').fontSize(8.5).font('Helvetica-Bold').text('3. DETAILED ACCOUNT TRADELINES & REPAYMENT TRACK RECORD', 44, currentY + 5);
       currentY += 20;
 
-      const tradelines = trueLink?.TradeLinePartition || [];
+      const rawTradelines = trueLink?.TradeLinePartition;
+      const tradelines = ensureArray(rawTradelines);
 
       if (tradelines.length === 0) {
         doc.rect(36, currentY, 523, 40).fillAndStroke('#ffffff', borderColor);
@@ -183,15 +285,17 @@ export async function generateCibilPdfReport(reportData = {}) {
         currentY += 45;
       } else {
         tradelines.forEach((tlWrap, tlIdx) => {
-          const tl = tlWrap?.Tradeline || {};
-          const creditor = tl?.creditorName || 'INSTITUTION';
-          const acctNum = tl?.accountNumber ? `••••${String(tl.accountNumber).slice(-4)}` : 'N/A';
-          const balance = tl?.currentBalance ? `₹${parseFloat(tl.currentBalance).toLocaleString('en-IN')}` : '₹0';
-          const highCredit = tl?.highBalance ? `₹${parseFloat(tl.highBalance).toLocaleString('en-IN')}` : 'N/A';
-          const dateOpened = tl?.dateOpened?.split('+')?.[0] || 'N/A';
-          const dateReported = tl?.dateReported?.split('+')?.[0] || 'N/A';
+          const tl = tlWrap?.Tradeline || tlWrap || {};
+          const creditor = tl?.creditorName || tl?.CreditorName || 'INSTITUTION';
+          const rawAcct = tl?.accountNumber || tl?.AccountNumber || '';
+          const acctNum = rawAcct ? `••••${String(rawAcct).slice(-4)}` : 'N/A';
+          const balance = tl?.currentBalance != null ? `₹${parseFloat(tl.currentBalance || 0).toLocaleString('en-IN')}` : '₹0';
+          const highCredit = tl?.highBalance != null ? `₹${parseFloat(tl.highBalance || 0).toLocaleString('en-IN')}` : 'N/A';
+          const dateOpened = String(tl?.dateOpened || 'N/A').split('+')[0];
+          const dateReported = String(tl?.dateReported || 'N/A').split('+')[0];
           const interest = tl?.GrantedTrade?.interestRate !== '-1.00' && tl?.GrantedTrade?.interestRate ? `${tl.GrantedTrade.interestRate}%` : 'Standard';
-          const payHistory = tl?.GrantedTrade?.PayStatusHistory?.status || '';
+          const rawPayStatus = tl?.GrantedTrade?.PayStatusHistory?.status || tl?.GrantedTrade?.PayStatusHistory || '';
+          const payHistory = typeof rawPayStatus === 'string' ? rawPayStatus : JSON.stringify(rawPayStatus);
 
           // Check if page overflow
           if (currentY + 70 > doc.page.height - 40) {
@@ -205,7 +309,7 @@ export async function generateCibilPdfReport(reportData = {}) {
           doc.fillColor(headerNavy).fontSize(8.5).font('Helvetica-Bold').text(`${tlIdx + 1}. ${creditor}`, 44, currentY + 6);
           doc.fillColor(textMuted).fontSize(7.5).font('Helvetica').text(`ACCT: ${acctNum}  |  OPENED: ${dateOpened}  |  REPORTED: ${dateReported}`, 180, currentY + 6);
           
-          const isClosed = tl?.dateClosed || tl?.currentBalance === '0';
+          const isClosed = tl?.dateClosed || tl?.currentBalance === '0' || tl?.currentBalance === 0;
           doc.fillColor(isClosed ? '#10b981' : '#0284c7').fontSize(7.5).font('Helvetica-Bold').text(isClosed ? 'CLOSED / ZERO BALANCE' : 'ACTIVE', 430, currentY + 6, { align: 'right', width: 115 });
 
           // Row 2 info
@@ -242,7 +346,8 @@ export async function generateCibilPdfReport(reportData = {}) {
       doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold').text('4. RECENT CREDIT INQUIRIES', 44, currentY + 5);
       currentY += 18;
 
-      const inquiries = trueLink?.InquiryPartition || [];
+      const rawInquiries = trueLink?.InquiryPartition;
+      const inquiries = ensureArray(rawInquiries);
       const inqHeight = Math.max(inquiries.length * 16 + 10, 28);
       doc.rect(36, currentY, 523, inqHeight).fillAndStroke('#ffffff', borderColor);
 
@@ -250,10 +355,10 @@ export async function generateCibilPdfReport(reportData = {}) {
         doc.fillColor(textMuted).fontSize(7.5).font('Helvetica').text('No credit inquiries in the past 36 months.', col1, currentY + 8);
       } else {
         inquiries.slice(0, 5).forEach((inqWrap, iIdx) => {
-          const inq = inqWrap?.Inquiry || {};
-          const member = inq?.subscriberName || 'FINANCIAL INSTITUTION';
+          const inq = inqWrap?.Inquiry || inqWrap || {};
+          const member = inq?.subscriberName || inq?.SubscriberName || inq?.member || 'FINANCIAL INSTITUTION';
           const amount = inq?.amount ? `₹${parseFloat(inq.amount).toLocaleString('en-IN')}` : 'Unspecified';
-          const iDate = inq?.inquiryDate?.split('+')?.[0] || 'N/A';
+          const iDate = String(inq?.inquiryDate || inq?.date || 'N/A').split('+')[0];
 
           doc.fillColor(textDark).fontSize(7.5).font('Helvetica-Bold').text(`${iIdx + 1}. ${member}`, col1, currentY + 6 + (iIdx * 16));
           doc.fillColor(textMuted).fontSize(7.5).font('Helvetica').text(`Amount: ${amount}  |  Inquiry Date: ${iDate}`, col1 + 160, currentY + 6 + (iIdx * 16));

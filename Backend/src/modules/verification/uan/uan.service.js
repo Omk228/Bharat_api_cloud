@@ -1,3 +1,4 @@
+import { credentialResolver } from '../../../core/credentials/credentialResolver.js';
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
@@ -93,10 +94,11 @@ export class UanService {
     }
 
     // 2. Cache Miss: Forward to Upstream Provider (IDSPAY)
-    const masterApiId = ENV.IDSPAY.PROD_API_ID;
-    const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
-    const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
-    const upstreamUrl = `${ENV.IDSPAY.PROD_BASE_URL}/srv3/uan-mobile`;
+    const idspayCreds = await credentialResolver.getIdspayCredentials();
+    const masterApiId = idspayCreds.apiId;
+    const masterApiKey = idspayCreds.apiKey;
+    const masterTokenId = idspayCreds.tokenId;
+    const upstreamUrl = `${idspayCreds.baseUrl}/srv3/uan-mobile`;
 
     let finalResponse;
     let resultCode = 101;
@@ -314,10 +316,11 @@ export class UanService {
     }
 
     // 2. Cache Miss: Forward to Upstream Provider (IDSPAY)
-    const masterApiId = ENV.IDSPAY.PROD_API_ID;
-    const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
-    const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
-    const upstreamUrl = `${ENV.IDSPAY.PROD_BASE_URL}/srv3/uan-direct`;
+    const idspayCreds = await credentialResolver.getIdspayCredentials();
+    const masterApiId = idspayCreds.apiId;
+    const masterApiKey = idspayCreds.apiKey;
+    const masterTokenId = idspayCreds.tokenId;
+    const upstreamUrl = `${idspayCreds.baseUrl}/srv3/uan-direct`;
 
     let finalResponse;
     let resultCode = 101;

@@ -1,3 +1,4 @@
+import { credentialResolver } from '../../../core/credentials/credentialResolver.js';
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
@@ -40,10 +41,11 @@ export class StatementAnalyzerService {
       );
     }
 
-    const masterApiId = ENV.IDSPAY.PROD_API_ID;
-    const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
-    const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
-    const upstreamUrl = `${ENV.IDSPAY.PROD_BASE_URL}/srv2/statement-analyzer`;
+    const idspayCreds = await credentialResolver.getIdspayCredentials();
+    const masterApiId = idspayCreds.apiId;
+    const masterApiKey = idspayCreds.apiKey;
+    const masterTokenId = idspayCreds.tokenId;
+    const upstreamUrl = `${idspayCreds.baseUrl}/srv2/statement-analyzer`;
 
     const generatedRequestId = request_id || crypto.randomUUID();
     const clientRef = client_ref_num || `STA_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;

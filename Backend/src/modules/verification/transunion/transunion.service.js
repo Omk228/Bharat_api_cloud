@@ -1,3 +1,4 @@
+import { credentialResolver } from '../../../core/credentials/credentialResolver.js';
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
@@ -99,10 +100,11 @@ export class TransunionVerificationService {
       throw ApiError.paymentRequired(`Insufficient wallet balance (₹${hitCost.toFixed(2)} required). Please recharge your wallet.`);
     }
 
-    const masterApiId = ENV.IDSPAY.PROD_API_ID;
-    const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
-    const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
-    const upstreamUrl = `${ENV.IDSPAY.PROD_BASE_URL}/srv5/transunion-Score-Hybrid`;
+    const idspayCreds = await credentialResolver.getIdspayCredentials();
+    const masterApiId = idspayCreds.apiId;
+    const masterApiKey = idspayCreds.apiKey;
+    const masterTokenId = idspayCreds.tokenId;
+    const upstreamUrl = `${idspayCreds.baseUrl}/srv5/transunion-Score-Hybrid`;
 
     let upstreamResult = null;
     let isSuccess = false;

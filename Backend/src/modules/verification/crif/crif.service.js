@@ -1,3 +1,4 @@
+import { credentialResolver } from '../../../core/credentials/credentialResolver.js';
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
@@ -53,10 +54,11 @@ export class CrifVerificationService {
       );
     }
 
-    const masterApiId = ENV.IDSPAY.PROD_API_ID;
-    const masterApiKey = ENV.IDSPAY.PROD_API_KEY;
-    const masterTokenId = ENV.IDSPAY.PROD_TOKEN_ID;
-    const upstreamUrl = `${ENV.IDSPAY.PROD_BASE_URL}/crif/Credit-ScoreV4`;
+    const idspayCreds = await credentialResolver.getIdspayCredentials();
+    const masterApiId = idspayCreds.apiId;
+    const masterApiKey = idspayCreds.apiKey;
+    const masterTokenId = idspayCreds.tokenId;
+    const upstreamUrl = `${idspayCreds.baseUrl}/crif/Credit-ScoreV4`;
 
     let upstreamResult = null;
     let isSuccess = false;

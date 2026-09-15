@@ -15,9 +15,10 @@ import {
   Banknote,
   ScanFace,
   Building2,
+  LogOut,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getSession } from "@/lib/demo-store";
+import { getSession, signOut } from "@/lib/demo-store";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/")({
@@ -176,6 +177,11 @@ function Index() {
     };
   }, []);
 
+  function handleSignOut() {
+    signOut();
+    setSignedIn(false);
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
@@ -196,27 +202,28 @@ function Index() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             {signedIn ? (
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                Dashboard <ArrowRight className="h-4 w-4" />
-              </Link>
-            ) : (
-              <>
+              <div className="flex items-center gap-2">
                 <Link
-                  to="/auth"
-                  className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/auth"
+                  to="/dashboard"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                 >
-                  Get API keys <ArrowRight className="h-4 w-4" />
+                  Dashboard <ArrowRight className="h-4 w-4" />
                 </Link>
-              </>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-muted-foreground transition-all hover:text-foreground hover:bg-secondary active:scale-[0.98]"
+                >
+                  <LogOut className="h-4 w-4" /> Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Console Login <ArrowRight className="h-4 w-4" />
+              </Link>
             )}
           </div>
         </div>
@@ -241,18 +248,20 @@ function Index() {
               NBFCs, and fintech platforms.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
+              {!signedIn && (
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Developer Sign In <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
               <a
-                href="#pricing"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                href="/docs"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-3 font-semibold transition-colors hover:bg-accent"
               >
-                Start for free <ArrowRight className="h-4 w-4" />
+                <Terminal className="h-4 w-4" /> View API docs
               </a>
-            <a
-              href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-3 font-semibold transition-colors hover:bg-accent"
-            >
-              <Terminal className="h-4 w-4" /> View API docs
-            </a>
             </div>
             <div className="mt-10 flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> ISO 27001</span>
@@ -427,17 +436,19 @@ if (result.status === "verified") {
             Get sandbox keys instantly. Talk to our team about production access and volume pricing.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
+            {!signedIn && (
+              <Link
+                to="/auth"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Developer Console Login <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
             <a
-              href="#pricing"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Get API keys <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href="#"
+              href="/docs"
               className="inline-flex items-center rounded-lg border border-border bg-card px-8 py-3 font-semibold transition-colors hover:bg-accent"
             >
-              Contact sales
+              Explore API Docs
             </a>
           </div>
         </div>

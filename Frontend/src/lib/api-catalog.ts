@@ -1453,32 +1453,6 @@ export const endpoints: ApiEndpoint[] = [
     sampleBody: { vpa: "aarav@okhdfcbank" },
     sampleResponse: { status: "verified", vpa_valid: true, payee_name: "AARAV SHARMA", psp: "okhdfcbank", request_id: "upi_2b91fe" },
   },
-  {
-    id: "bank-statement",
-    group: "Banking",
-    method: "POST",
-    path: "/bank/statement/analyse",
-    title: "Bank statement analysis",
-    desc: "Parses a PDF bank statement and returns income, obligations, bounce count and a cash-flow summary.",
-    tags: ["statement", "underwriting", "income", "analysis", "lending"],
-    latency: "~6.4s",
-    params: [
-      { name: "file_url", type: "string", required: true, desc: "HTTPS URL of the PDF statement." },
-      { name: "password", type: "string", desc: "PDF password if the statement is protected." },
-    ],
-    sampleBody: { file_url: "https://files.example.com/statement.pdf", password: "AARA1204" },
-    sampleResponse: {
-      status: "analysed",
-      account_holder: "AARAV SHARMA",
-      period: { from: "2026-02-01", to: "2026-07-31" },
-      average_monthly_credit: 184500,
-      average_monthly_debit: 141200,
-      salary_detected: true,
-      emi_obligations: 23400,
-      bounced_cheques: 0,
-      request_id: "stmt_9c31a7",
-    },
-  },
 
   /* ---------------- Account Aggregator ---------------- */
   {

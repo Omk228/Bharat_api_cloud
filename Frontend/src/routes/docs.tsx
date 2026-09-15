@@ -148,7 +148,7 @@ function DocsPage() {
                 to="/auth"
                 className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground"
               >
-                Get API keys
+                Sign in
               </Link>
             )}
           </div>

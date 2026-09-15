@@ -1,3 +1,4 @@
+import { credentialResolver } from '../../core/credentials/credentialResolver.js';
 import crypto from 'node:crypto';
 import { ENV } from '../../core/config/env.config.js';
 import { upstreamFetch } from '../../core/utils/httpAgent.js';

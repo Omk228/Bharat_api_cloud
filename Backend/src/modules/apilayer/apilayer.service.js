@@ -1,3 +1,4 @@
+import { credentialResolver } from '../../core/credentials/credentialResolver.js';
 import { ENV } from '../../core/config/env.config.js';
 import CacheService from '../../core/cache/cache.service.js';
 
