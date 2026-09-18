@@ -51,6 +51,25 @@ import { apiClient } from "@/lib/api-client";
 import { BASE_URL } from "@/lib/api-catalog";
 import { getStoredUserEmail } from "@/lib/demo-store";
 
+export function isUpstreamLowBalanceError(dataOrError: unknown): boolean {
+  if (!dataOrError) return false;
+  const str = typeof dataOrError === "string"
+    ? dataOrError
+    : JSON.stringify(dataOrError);
+  return (
+    /low[\s_-]*balance/i.test(str) ||
+    /insufficient[\s_-]*(wallet[\s_-]*)?(balance|fund|funds|credit|credits|quota)/i.test(str) ||
+    /wallet[\s_-]*balance[\s_-]*(is[\s_-]*)?(low|exhausted|empty|zero)/i.test(str) ||
+    /(credits?|balance|funds?)[\s_-]*exhausted/i.test(str) ||
+    /exhausted[\s_-]*(credits?|balance|funds?)/i.test(str) ||
+    /out[\s_-]*of[\s_-]*(balance|credits?|fund|funds?)/i.test(str) ||
+    /not[\s_-]*enough[\s_-]*(balance|credit|credits)/i.test(str) ||
+    /quota[\s_-]*exceeded/i.test(str) ||
+    /credit[\s_-]*limit[\s_-]*exceeded/i.test(str) ||
+    /unexpected[\s_-]*issue/i.test(str)
+  );
+}
+
 export type VerificationResult = {
   pan?: string;
   pan_type?: string;
@@ -1033,38 +1052,67 @@ function TestApiPage() {
       const latency = Math.round(performance.now() - start);
       setResponseTime(latency);
 
+      const isUpstreamIssue = isUpstreamLowBalanceError(data);
+
       const statusCode =
-        data.http_response_code ||
-        data.status?.code ||
-        200;
+        isUpstreamIssue
+          ? 503
+          : data.http_response_code ||
+            data.status?.code ||
+            200;
 
       setResponseStatus(statusCode);
-      setResponseJson(data);
 
-      const resultCode = data.result_code;
-      const statusType = data.status?.type;
-
-      if (resultCode === 101 || statusType === "success" || statusCode === 200) {
-        toast.success(`Verified successfully (${latency}ms)`);
-        setActiveViewTab("visual");
-      } else if (resultCode === 102 || resultCode === 103) {
-        toast.info(data.message || "Result Code: Invalid Input · Refund Processed");
+      if (isUpstreamIssue) {
+        const unexpectedPayload: ApiResponseEnvelope = {
+          http_response_code: 503,
+          result_code: 102,
+          request_id: data.request_id || `req_${Date.now()}`,
+          client_ref_num: data.client_ref_num || null,
+          message: "There is an unexpected issue. Please try again later.",
+          status_message: "Unexpected issue",
+          status: {
+            code: 503,
+            type: "failed",
+            message: "There is an unexpected issue. Please try again later.",
+          },
+          result: null,
+        };
+        setResponseJson(unexpectedPayload);
+        toast.error("There is an unexpected issue. Please try again later.");
       } else {
-        toast.success(`Response received in ${latency}ms`);
+        setResponseJson(data);
+
+        const resultCode = data.result_code;
+        const statusType = data.status?.type;
+
+        if (resultCode === 101 || statusType === "success" || statusCode === 200) {
+          toast.success(`Verified successfully (${latency}ms)`);
+          setActiveViewTab("visual");
+        } else if (resultCode === 102 || resultCode === 103) {
+          toast.info(data.message || "Result Code: Invalid Input · Refund Processed");
+        } else {
+          toast.success(`Response received in ${latency}ms`);
+        }
       }
     } catch (err: unknown) {
       const latency = Math.round(performance.now() - start);
       setResponseTime(latency);
-      setResponseStatus(500);
-      const errMsg = err instanceof Error ? err.message : "Request failed";
+      const isUpstreamIssue = isUpstreamLowBalanceError(err);
+      setResponseStatus(isUpstreamIssue ? 503 : 500);
+      const errMsg = isUpstreamIssue
+        ? "There is an unexpected issue. Please try again later."
+        : (err instanceof Error ? err.message : "Request failed");
       setResponseJson({
+        http_response_code: isUpstreamIssue ? 503 : 500,
+        result_code: 102,
         status: {
-          code: 500,
+          code: isUpstreamIssue ? 503 : 500,
           type: "error",
           message: errMsg,
         },
         message: errMsg,
-        status_message: "Refund processed",
+        status_message: isUpstreamIssue ? "Unexpected issue" : "Refund processed",
       });
       toast.error(errMsg);
     } finally {
@@ -2566,7 +2614,7 @@ function TestApiPage() {
                         </div>
 
                         <p className="text-[11px] text-muted-foreground">
-                          👉 Direct live Mobile to Bank Advance account linkage lookup powered by IDSpay.
+                          👉 Direct live Mobile to Bank Advance account linkage lookup powered by Bharat API Gateway.
                         </p>
                       </div>
                     </>
@@ -2941,7 +2989,9 @@ function TestApiPage() {
                     <div className="flex items-center gap-2">
                       <span
                         className={`rounded px-2 py-0.5 font-mono text-xs font-bold ${
-                          selectedService === "mobile_upi"
+                          isUpstreamLowBalanceError(responseJson)
+                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            : selectedService === "mobile_upi"
                             ? isSuccess
                               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                               : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
@@ -2951,7 +3001,9 @@ function TestApiPage() {
                         }`}
                       >
                         HTTP {responseStatus} · {
-                          selectedService === "mobile_upi"
+                          isUpstreamLowBalanceError(responseJson)
+                            ? "UNEXPECTED ISSUE"
+                            : selectedService === "mobile_upi"
                             ? isSuccess
                               ? "VERIFIED"
                               : "NOT FOUND · UNLINKED"
@@ -4155,7 +4207,7 @@ function TestApiPage() {
                                           : "No Bank Record Linked"}
                                       </p>
                                       <p className="font-mono text-xs text-muted-foreground">
-                                        Mobile: +91 {displayMobile} · IDSpay Mobile To Bank Advance Gateway
+                                        Mobile: +91 {displayMobile} · Bharat API Mobile To Bank Advance Gateway
                                       </p>
                                     </div>
                                   </div>
@@ -6490,6 +6542,37 @@ function TestApiPage() {
                             </div>
                           </>
                         )}
+                      </div>
+                    ) : isUpstreamLowBalanceError(responseJson) ? (
+                      /* Unexpected Issue Card */
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 space-y-3">
+                        <div className="flex items-center gap-2.5">
+                          <AlertCircle className="h-5 w-5 text-amber-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-foreground">
+                              There is an unexpected issue
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              There is an unexpected issue. Please try again later.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg bg-background/80 border border-border/60 p-3 text-xs font-mono text-muted-foreground space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span>Status:</span>
+                            <span className="font-semibold text-amber-400">HTTP 503 · Unexpected Issue</span>
+                          </div>
+                          {Boolean(responseJson?.request_id) && (
+                            <div className="flex items-center justify-between">
+                              <span>Request ID:</span>
+                              <span className="text-foreground">{String(responseJson.request_id)}</span>
+                            </div>
+                          )}
+                          <p className="text-[11px] text-muted-foreground/80 pt-1 border-t border-border/40">
+                            Our automated upstream monitor is working on resolving this. Please retry your request in a few moments.
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       /* Failure / Invalid Card */

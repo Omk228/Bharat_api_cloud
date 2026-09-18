@@ -11,9 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as ApisRouteImport } from './routes/apis'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as LogsRouteImport } from './routes/logs'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as TestApiRouteImport } from './routes/test-api'
+import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as WebhooksRouteImport } from './routes/webhooks'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedDashboardApisRouteImport } from './routes/_authenticated/dashboard/apis'
 import { Route as AuthenticatedDashboardIpWhitelistRouteImport } from './routes/_authenticated/dashboard/ip-whitelist'
@@ -31,6 +36,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApisRoute = ApisRouteImport.update({
+  id: '/apis',
+  path: '/apis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -41,9 +51,29 @@ const DocsRoute = DocsRouteImport.update({
   path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LogsRoute = LogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestApiRoute = TestApiRouteImport.update({
+  id: '/test-api',
+  path: '/test-api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WebhooksRoute = WebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardIndexRoute =
@@ -91,9 +121,14 @@ const AuthenticatedDashboardWebhooksRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/apis': typeof ApisRoute
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRoute
+  '/logs': typeof LogsRoute
   '/status': typeof StatusRoute
+  '/test-api': typeof TestApiRoute
+  '/wallet': typeof WalletRoute
+  '/webhooks': typeof WebhooksRoute
   '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
   '/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
@@ -104,9 +139,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/apis': typeof ApisRoute
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRoute
+  '/logs': typeof LogsRoute
   '/status': typeof StatusRoute
+  '/test-api': typeof TestApiRoute
+  '/wallet': typeof WalletRoute
+  '/webhooks': typeof WebhooksRoute
   '/dashboard/apis': typeof AuthenticatedDashboardApisRoute
   '/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
@@ -119,9 +159,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/apis': typeof ApisRoute
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRoute
+  '/logs': typeof LogsRoute
   '/status': typeof StatusRoute
+  '/test-api': typeof TestApiRoute
+  '/wallet': typeof WalletRoute
+  '/webhooks': typeof WebhooksRoute
   '/_authenticated/dashboard/apis': typeof AuthenticatedDashboardApisRoute
   '/_authenticated/dashboard/ip-whitelist': typeof AuthenticatedDashboardIpWhitelistRoute
   '/_authenticated/dashboard/logs': typeof AuthenticatedDashboardLogsRoute
@@ -134,9 +179,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/apis'
     | '/auth'
     | '/docs'
+    | '/logs'
     | '/status'
+    | '/test-api'
+    | '/wallet'
+    | '/webhooks'
     | '/dashboard/apis'
     | '/dashboard/ip-whitelist'
     | '/dashboard/logs'
@@ -147,9 +197,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/apis'
     | '/auth'
     | '/docs'
+    | '/logs'
     | '/status'
+    | '/test-api'
+    | '/wallet'
+    | '/webhooks'
     | '/dashboard/apis'
     | '/dashboard/ip-whitelist'
     | '/dashboard/logs'
@@ -161,9 +216,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/apis'
     | '/auth'
     | '/docs'
+    | '/logs'
     | '/status'
+    | '/test-api'
+    | '/wallet'
+    | '/webhooks'
     | '/_authenticated/dashboard/apis'
     | '/_authenticated/dashboard/ip-whitelist'
     | '/_authenticated/dashboard/logs'
@@ -176,9 +236,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ApisRoute: typeof ApisRoute
   AuthRoute: typeof AuthRoute
   DocsRoute: typeof DocsRoute
+  LogsRoute: typeof LogsRoute
   StatusRoute: typeof StatusRoute
+  TestApiRoute: typeof TestApiRoute
+  WalletRoute: typeof WalletRoute
+  WebhooksRoute: typeof WebhooksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -197,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apis': {
+      id: '/apis'
+      path: '/apis'
+      fullPath: '/apis'
+      preLoaderRoute: typeof ApisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -211,11 +283,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/logs': {
+      id: '/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof LogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/status': {
       id: '/status'
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/test-api': {
+      id: '/test-api'
+      path: '/test-api'
+      fullPath: '/test-api'
+      preLoaderRoute: typeof TestApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/webhooks': {
+      id: '/webhooks'
+      path: '/webhooks'
+      fullPath: '/webhooks'
+      preLoaderRoute: typeof WebhooksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard/': {
@@ -297,9 +397,14 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ApisRoute: ApisRoute,
   AuthRoute: AuthRoute,
   DocsRoute: DocsRoute,
+  LogsRoute: LogsRoute,
   StatusRoute: StatusRoute,
+  TestApiRoute: TestApiRoute,
+  WalletRoute: WalletRoute,
+  WebhooksRoute: WebhooksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

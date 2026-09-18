@@ -6,6 +6,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 export class UanService {
   /**
@@ -127,28 +128,40 @@ export class UanService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [UAN UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        // Format to exact schema specified
-        finalResponse = {
-          status: upstreamData.status || {
-            code: upstreamRes.ok ? 200 : upstreamRes.status,
-            type: upstreamRes.ok ? 'success' : 'failed',
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Mobile To UAN verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          // Format to exact schema specified
+          finalResponse = {
+            status: upstreamData.status || {
+              code: upstreamRes.ok ? 200 : upstreamRes.status,
+              type: upstreamRes.ok ? 'success' : 'failed',
+              message: upstreamData.message || (upstreamRes.ok ? 'Success' : 'Failed'),
+            },
             message: upstreamData.message || (upstreamRes.ok ? 'Success' : 'Failed'),
-          },
-          message: upstreamData.message || (upstreamRes.ok ? 'Success' : 'Failed'),
-          data: upstreamData.data !== undefined ? upstreamData.data : (upstreamData.result || null),
-          request_id: upstreamData.request_id || requestId,
-          client_ref_num: upstreamData.client_ref_num || clientRef,
-        };
+            data: upstreamData.data !== undefined ? upstreamData.data : (upstreamData.result || null),
+            request_id: upstreamData.request_id || requestId,
+            client_ref_num: upstreamData.client_ref_num || clientRef,
+          };
 
-        isSuccess = upstreamRes.ok && (
-          upstreamData.status?.code === 200 ||
-          upstreamData.status?.type === 'success' ||
-          upstreamData.message === 'Success' ||
-          Boolean(upstreamData.data?.uan && upstreamData.data.uan.length > 0)
-        );
-        resultCode = isSuccess ? 101 : 102;
+          isSuccess = upstreamRes.ok && (
+            upstreamData.status?.code === 200 ||
+            upstreamData.status?.type === 'success' ||
+            upstreamData.message === 'Success' ||
+            Boolean(upstreamData.data?.uan && upstreamData.data.uan.length > 0)
+          );
+          resultCode = isSuccess ? 101 : 102;
+        }
       } catch (err) {
         console.error('⚠️ Upstream Mobile To UAN call failed:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        }
       }
     }
 
@@ -349,27 +362,39 @@ export class UanService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [UAN DIRECT UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = {
-          status: upstreamData.status || {
-            code: upstreamRes.ok ? 200 : upstreamRes.status,
-            type: upstreamRes.ok ? 'success' : 'failed',
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during UAN Direct verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          finalResponse = {
+            status: upstreamData.status || {
+              code: upstreamRes.ok ? 200 : upstreamRes.status,
+              type: upstreamRes.ok ? 'success' : 'failed',
+              message: upstreamData.message || (upstreamRes.ok ? 'Success' : 'Failed'),
+            },
             message: upstreamData.message || (upstreamRes.ok ? 'Success' : 'Failed'),
-          },
-          message: upstreamData.message || (upstreamRes.ok ? 'Success' : 'Failed'),
-          data: upstreamData.data !== undefined ? upstreamData.data : (upstreamData.result || null),
-          request_id: upstreamData.request_id || requestId,
-          client_ref_num: upstreamData.client_ref_num || clientRef,
-        };
+            data: upstreamData.data !== undefined ? upstreamData.data : (upstreamData.result || null),
+            request_id: upstreamData.request_id || requestId,
+            client_ref_num: upstreamData.client_ref_num || clientRef,
+          };
 
-        isSuccess = upstreamRes.ok && (
-          upstreamData.status?.code === 200 ||
-          upstreamData.status?.type === 'success' ||
-          upstreamData.message === 'Success' ||
-          Boolean(upstreamData.data?.uan && upstreamData.data.uan.length > 0)
-        );
-        resultCode = isSuccess ? 101 : 102;
+          isSuccess = upstreamRes.ok && (
+            upstreamData.status?.code === 200 ||
+            upstreamData.status?.type === 'success' ||
+            upstreamData.message === 'Success' ||
+            Boolean(upstreamData.data?.uan && upstreamData.data.uan.length > 0)
+          );
+          resultCode = isSuccess ? 101 : 102;
+        }
       } catch (err) {
         console.error('⚠️ Upstream UAN Direct call failed:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        }
       }
     }
 

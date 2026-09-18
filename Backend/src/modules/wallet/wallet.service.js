@@ -198,7 +198,7 @@ export const walletService = {
    * @param {number} userId 
    * @param {object} options 
    */
-  async getHitLogs(userId, { limit = 10000, offset = 0, statusCode = null, search = null, startDate = null, endDate = null, date = null } = {}) {
+  async getHitLogs(userId, { limit = 10000, offset = 0, statusCode = null, search = null, startDate = null, endDate = null, date = null, service = null, endpoint = null } = {}) {
     // Fetch default user API credentials as fallback if log has no credential_id
     const [userCreds] = await dbPool.query(
       'SELECT api_key, api_id, label FROM api_credentials WHERE user_id = ? ORDER BY id ASC LIMIT 1',
@@ -223,6 +223,16 @@ export const walletService = {
       } else {
         query += ' AND l.status_code != 200';
       }
+    }
+
+    if (endpoint && String(endpoint).trim() && String(endpoint).trim() !== 'all') {
+      query += ' AND l.endpoint LIKE ?';
+      params.push(`%${String(endpoint).trim()}%`);
+    }
+
+    if (service && String(service).trim() && String(service).trim() !== 'all') {
+      query += ' AND (l.endpoint LIKE ? OR l.request_id LIKE ?)';
+      params.push(`%${String(service).trim()}%`, `%${String(service).trim()}%`);
     }
 
     if (date && String(date).trim()) {

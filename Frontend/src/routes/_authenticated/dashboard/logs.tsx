@@ -11,6 +11,12 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Activity,
+  Layers,
+  Zap,
+  TrendingUp,
+  Clock,
+  Coins,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -29,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/logs")({
       { title: "Real-Time API Hit Logs & History — Bharat API Cloud" },
       {
         name: "description",
-        content: "Complete live stream and history of API hits with response times, HTTP statuses, date range filtering, and full Excel export.",
+        content: "Complete live stream and history of API hits with response times, HTTP statuses, service name/endpoint filtering, date range filtering, and full Excel export.",
       },
     ],
   }),
@@ -136,6 +142,7 @@ function LogsPage() {
 }
 
 function LogsContent({ data }: { data: DashboardData }) {
+  const [selectedService, setSelectedService] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [datePreset, setDatePreset] = useState<"all" | "today" | "yesterday" | "7days" | "month" | "custom">("all");
@@ -145,6 +152,43 @@ function LogsContent({ data }: { data: DashboardData }) {
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   const rawLogs = data.apiHitLogs || [];
+
+  // Compute total raw spend across all unfiltered logs
+  const totalAccountSpend = useMemo(() => {
+    return rawLogs.reduce((acc, l) => acc + (parseFloat(String(l.cost_deducted)) || 0), 0);
+  }, [rawLogs]);
+
+  // Extract unique services with total hits, spend, and endpoint for dropdown
+  const serviceOptions = useMemo(() => {
+    const serviceMap = new Map<
+      string,
+      { name: string; endpoint: string; totalHits: number; totalSpend: number; group: string }
+    >();
+
+    for (const log of rawLogs) {
+      const name = resolveLogServiceName(log);
+      const ep = (log.endpoint || "").split("?")[0].trim();
+      const group = log.group || "KYC";
+      const cost = parseFloat(String(log.cost_deducted)) || 0;
+
+      if (!serviceMap.has(name)) {
+        serviceMap.set(name, {
+          name,
+          endpoint: ep,
+          totalHits: 0,
+          totalSpend: 0,
+          group,
+        });
+      }
+
+      const item = serviceMap.get(name)!;
+      item.totalHits += 1;
+      item.totalSpend += cost;
+      if (!item.endpoint && ep) item.endpoint = ep;
+    }
+
+    return Array.from(serviceMap.values()).sort((a, b) => b.totalHits - a.totalHits);
+  }, [rawLogs]);
 
   // Helper to handle date preset selection
   const handleDatePreset = (preset: "all" | "today" | "yesterday" | "7days" | "month" | "custom") => {
@@ -180,23 +224,36 @@ function LogsContent({ data }: { data: DashboardData }) {
   };
 
   const clearAllFilters = () => {
+    setSelectedService("all");
     setSearch("");
     setStatusFilter("all");
     setDatePreset("all");
     setStartDate("");
     setEndDate("");
     setCurrentPage(1);
-    toast.info("All filters cleared.");
+    toast.info("All log filters have been reset.");
   };
 
-  // Apply filters
+  // Apply all active filters
   const filteredLogs = useMemo(() => {
     return rawLogs.filter((log) => {
-      // 1. Status Filter
+      // 1. Service / Endpoint Filter
+      if (selectedService !== "all") {
+        const sName = resolveLogServiceName(log);
+        const ep = (log.endpoint || "").split("?")[0].trim();
+        const matchesName = sName.toLowerCase() === selectedService.toLowerCase();
+        const matchesEp =
+          ep.toLowerCase() === selectedService.toLowerCase() ||
+          ep.toLowerCase().includes(selectedService.toLowerCase());
+        const rawServiceMatch = (log.service_name || "").toLowerCase() === selectedService.toLowerCase();
+        if (!matchesName && !matchesEp && !rawServiceMatch) return false;
+      }
+
+      // 2. Status Filter
       if (statusFilter === "200" && log.status_code !== 200) return false;
       if (statusFilter === "error" && log.status_code === 200) return false;
 
-      // 2. Date Filter
+      // 3. Date Filter
       if (startDate || endDate) {
         const logDate = new Date(log.created_at);
         if (startDate) {
@@ -209,7 +266,7 @@ function LogsContent({ data }: { data: DashboardData }) {
         }
       }
 
-      // 3. Search Filter
+      // 4. Search Filter
       if (search.trim()) {
         const q = search.toLowerCase();
         const sName = resolveLogServiceName(log).toLowerCase();
@@ -233,9 +290,9 @@ function LogsContent({ data }: { data: DashboardData }) {
 
       return true;
     });
-  }, [rawLogs, statusFilter, startDate, endDate, search]);
+  }, [rawLogs, selectedService, statusFilter, startDate, endDate, search]);
 
-  // Aggregates for filtered data
+  // Aggregates for filtered data (dynamically reflecting selected service + date filter)
   const totalFilteredSpend = useMemo(() => {
     return filteredLogs.reduce((acc, l) => acc + (parseFloat(String(l.cost_deducted)) || 0), 0);
   }, [filteredLogs]);
@@ -244,9 +301,51 @@ function LogsContent({ data }: { data: DashboardData }) {
     return filteredLogs.filter((l) => l.status_code === 200).length;
   }, [filteredLogs]);
 
-  const successRate = filteredLogs.length > 0
-    ? ((totalFilteredSuccess / filteredLogs.length) * 100).toFixed(1)
-    : "100";
+  const totalFilteredErrors = filteredLogs.length - totalFilteredSuccess;
+
+  const successRate =
+    filteredLogs.length > 0
+      ? ((totalFilteredSuccess / filteredLogs.length) * 100).toFixed(1)
+      : "100";
+
+  const avgLatency = useMemo(() => {
+    if (filteredLogs.length === 0) return 0;
+    const sum = filteredLogs.reduce((acc, l) => acc + (l.response_time_ms || 0), 0);
+    return Math.round(sum / filteredLogs.length);
+  }, [filteredLogs]);
+
+  // Selected Service metadata for spotlight banner
+  const activeServiceInfo = useMemo(() => {
+    if (selectedService === "all") return null;
+    const found = serviceOptions.find(
+      (s) =>
+        s.name.toLowerCase() === selectedService.toLowerCase() ||
+        s.endpoint.toLowerCase() === selectedService.toLowerCase()
+    );
+    if (found) return found;
+    return {
+      name: selectedService,
+      endpoint: selectedService,
+      totalHits: filteredLogs.length,
+      totalSpend: totalFilteredSpend,
+      group: "API Service",
+    };
+  }, [selectedService, serviceOptions, filteredLogs.length, totalFilteredSpend]);
+
+  // Human-readable date range label
+  const activeDateLabel = useMemo(() => {
+    if (datePreset === "all" && !startDate && !endDate) return "All Time";
+    if (datePreset === "today") return "Today";
+    if (datePreset === "yesterday") return "Yesterday";
+    if (datePreset === "7days") return "Last 7 Days";
+    if (datePreset === "month") return "This Month";
+    if (startDate && endDate) {
+      return startDate === endDate ? `${startDate}` : `${startDate} to ${endDate}`;
+    }
+    if (startDate) return `From ${startDate}`;
+    if (endDate) return `Until ${endDate}`;
+    return "Custom Date Range";
+  }, [datePreset, startDate, endDate]);
 
   // Pagination calculation
   const effectivePageSize = pageSize === -1 ? filteredLogs.length || 1 : pageSize;
@@ -297,13 +396,28 @@ function LogsContent({ data }: { data: DashboardData }) {
     ];
 
     const csvContent = toCsv(csvData, headers);
-    const dateTag = new Date().toISOString().split("T")[0];
-    downloadCsv(`bharat-api-hit-logs-total-${exportList.length}hits-${dateTag}.csv`, csvContent);
-    toast.success(`🎉 Exported ${exportList.length} total API hit logs to Excel/CSV.`);
+    const serviceTag =
+      selectedService === "all" || exportAll
+        ? "all-services"
+        : selectedService.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    const dateTag =
+      datePreset === "all"
+        ? "all-time"
+        : startDate
+        ? `${startDate}-to-${endDate || startDate}`
+        : datePreset;
+
+    downloadCsv(`bharat-api-${serviceTag}-${exportList.length}hits-${dateTag}.csv`, csvContent);
+    toast.success(`🎉 Exported ${exportList.length} hit logs to Excel/CSV.`);
   };
 
   const hasActiveFilters = Boolean(
-    search.trim() || statusFilter !== "all" || datePreset !== "all" || startDate || endDate
+    selectedService !== "all" ||
+      search.trim() ||
+      statusFilter !== "all" ||
+      datePreset !== "all" ||
+      startDate ||
+      endDate
   );
 
   return (
@@ -321,7 +435,7 @@ function LogsContent({ data }: { data: DashboardData }) {
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-            Complete audit ledger of every API hit processed for your account with exact timestamps, status codes, latencies, and billing deductions.
+            Complete audit ledger of every API hit processed for your account with exact timestamps, status codes, latencies, service filtering, and billing deductions.
           </p>
         </div>
 
@@ -350,32 +464,143 @@ function LogsContent({ data }: { data: DashboardData }) {
         </div>
       </div>
 
-      {/* Quick Metrics Summary Cards */}
+      {/* Active Service Consumption Spotlight Banner (Shown when a service is selected) */}
+      {activeServiceInfo && (
+        <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/30 p-5 shadow-sm backdrop-blur-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
+                <Activity className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/15 px-2 py-0.5 rounded-full border border-primary/20">
+                    {activeServiceInfo.group || "API Service"}
+                  </span>
+                  <span className="text-[10px] font-mono text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded-full border border-border">
+                    {activeServiceInfo.endpoint || selectedService}
+                  </span>
+                  <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3 text-primary" /> {activeDateLabel}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-foreground mt-1">
+                  {activeServiceInfo.name}
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-3 bg-card/80 backdrop-blur-md rounded-xl p-2.5 px-4 border border-border">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                    Service Hits
+                  </span>
+                  <p className="font-mono text-base font-bold text-foreground">
+                    {filteredLogs.length.toLocaleString("en-IN")}{" "}
+                    <span className="text-[11px] text-muted-foreground font-normal">hits</span>
+                  </p>
+                </div>
+                <div className="h-8 w-px bg-border mx-1" />
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                    Total Amount Consumed
+                  </span>
+                  <p className="font-mono text-base font-bold text-primary">
+                    ₹{totalFilteredSpend.toFixed(2)}
+                  </p>
+                </div>
+                <div className="h-8 w-px bg-border mx-1" />
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                    Success Rate
+                  </span>
+                  <p className="font-mono text-base font-bold text-emerald-500">
+                    {successRate}%
+                  </p>
+                </div>
+                <div className="h-8 w-px bg-border mx-1" />
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                    Avg Latency
+                  </span>
+                  <p className="font-mono text-base font-bold text-foreground">
+                    {avgLatency}ms
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedService("all");
+                  setCurrentPage(1);
+                }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground bg-secondary/80 hover:bg-secondary rounded-xl px-3 py-2 border border-border transition-colors cursor-pointer"
+                title="Show all services"
+              >
+                <X className="h-3.5 w-3.5" /> All Services
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Metrics Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
-          <span className="text-[11px] font-medium text-muted-foreground block">Total Hits Displayed</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground block">Total Hits</span>
+            <Zap className="h-3.5 w-3.5 text-primary" />
+          </div>
           <p className="mt-1 font-mono text-lg font-bold text-foreground">
             {filteredLogs.length.toLocaleString("en-IN")}
-            <span className="text-xs text-muted-foreground font-normal ml-1">/ {rawLogs.length}</span>
           </p>
+          <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
+            {selectedService === "all" ? "Across all services" : selectedService} · {activeDateLabel}
+          </span>
         </div>
+
         <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
-          <span className="text-[11px] font-medium text-muted-foreground block">Successful Hits (200 OK)</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground block">Total Amount Consumed</span>
+            <Coins className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <p className="mt-1 font-mono text-lg font-bold text-primary">
+            ₹{totalFilteredSpend.toFixed(2)}
+          </p>
+          <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
+            {selectedService === "all" ? `Total account spend: ₹${totalAccountSpend.toFixed(2)}` : `Billed for ${selectedService}`}
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground block">Successful Hits</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+          </div>
           <p className="mt-1 font-mono text-lg font-bold text-emerald-500">
             {totalFilteredSuccess.toLocaleString("en-IN")}
           </p>
+          <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
+            {totalFilteredErrors > 0 ? `${totalFilteredErrors} error hits` : "100% error-free"}
+          </span>
         </div>
+
         <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
-          <span className="text-[11px] font-medium text-muted-foreground block">Success Rate</span>
-          <p className="mt-1 font-mono text-lg font-bold text-primary">
-            {successRate}%
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
-          <span className="text-[11px] font-medium text-muted-foreground block">Total API Spend (View)</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground block">Success Rate &amp; Latency</span>
+            <TrendingUp className="h-3.5 w-3.5 text-primary" />
+          </div>
           <p className="mt-1 font-mono text-lg font-bold text-foreground">
-            ₹{totalFilteredSpend.toFixed(2)}
+            {successRate}%{" "}
+            <span className="text-xs font-medium text-muted-foreground font-mono">
+              ({avgLatency}ms)
+            </span>
           </p>
+          <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
+            Avg API execution speed
+          </span>
         </div>
       </div>
 
@@ -425,43 +650,68 @@ function LogsContent({ data }: { data: DashboardData }) {
           )}
         </div>
 
-        {/* Search, Status, Date Pickers, Rows-Per-Page */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-2 border-t border-border/60 text-xs">
-          {/* Search Box (4 cols) */}
-          <div className="relative sm:col-span-4">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        {/* Filter Dropdowns Grid: Service Selector, Search, Status, Dates, Page Size */}
+        <div className="grid grid-cols-12 gap-3 pt-3 border-t border-border/60 text-xs">
+          {/* Row 1: 1. API Service / Endpoint Filter Dropdown (7 cols) */}
+          <div className="col-span-12 lg:col-span-7">
+            <select
+              value={selectedService}
+              onChange={(e) => {
+                setSelectedService(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`w-full h-10 rounded-xl border bg-background px-3 text-xs font-medium outline-none focus:border-primary text-foreground transition-colors cursor-pointer ${
+                selectedService !== "all"
+                  ? "border-primary bg-primary/5 font-semibold text-primary"
+                  : "border-border"
+              }`}
+            >
+              <option value="all">
+                ⚡ All Services &amp; Endpoints ({rawLogs.length.toLocaleString("en-IN")} hits · ₹{totalAccountSpend.toFixed(2)})
+              </option>
+              {serviceOptions.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.name} ({s.totalHits.toLocaleString("en-IN")} hits · ₹{s.totalSpend.toFixed(2)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Row 1: 2. Search Box (5 cols) */}
+          <div className="relative col-span-12 lg:col-span-5">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search Service, Request ID, Client Ref, Endpoint..."
+              placeholder="Search Request ID, Client Ref, IP, Key..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
+              className="w-full h-10 rounded-xl border border-border bg-background pl-9 pr-3 text-xs outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
-          {/* Status Selector (2 cols) */}
-          <div className="sm:col-span-2">
+          {/* Row 2: 3. Status Selector (3 cols) */}
+          <div className="col-span-6 sm:col-span-3">
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary text-foreground"
+              className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs font-medium outline-none focus:border-primary text-foreground cursor-pointer"
             >
               <option value="all">All Statuses</option>
-              <option value="200">200 OK (Success)</option>
-              <option value="error">4xx / 5xx (Errors)</option>
+              <option value="200">Success</option>
+              <option value="error">Errors</option>
             </select>
           </div>
 
-          {/* Start Date Picker (2 cols) */}
-          <div className="sm:col-span-2">
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-background px-2.5 py-1.5">
-              <span className="text-[10px] text-muted-foreground font-semibold">From:</span>
+          {/* Row 2: 4. Start Date Picker (3 cols) */}
+          <div className="col-span-6 sm:col-span-3">
+            <div className="flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 transition-colors focus-within:border-primary">
+              <span className="text-xs text-muted-foreground font-semibold shrink-0">From:</span>
               <input
                 type="date"
                 value={startDate}
@@ -475,10 +725,10 @@ function LogsContent({ data }: { data: DashboardData }) {
             </div>
           </div>
 
-          {/* End Date Picker (2 cols) */}
-          <div className="sm:col-span-2">
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-background px-2.5 py-1.5">
-              <span className="text-[10px] text-muted-foreground font-semibold">To:</span>
+          {/* Row 2: 5. End Date Picker (3 cols) */}
+          <div className="col-span-6 sm:col-span-3">
+            <div className="flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 transition-colors focus-within:border-primary">
+              <span className="text-xs text-muted-foreground font-semibold shrink-0">To:</span>
               <input
                 type="date"
                 value={endDate}
@@ -492,21 +742,21 @@ function LogsContent({ data }: { data: DashboardData }) {
             </div>
           </div>
 
-          {/* Page Size Selector (2 cols) */}
-          <div className="sm:col-span-2">
+          {/* Row 2: 6. Page Size Selector (3 cols) */}
+          <div className="col-span-6 sm:col-span-3">
             <select
               value={pageSize}
               onChange={(e) => {
                 setPageSize(parseInt(e.target.value, 10));
                 setCurrentPage(1);
               }}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary text-foreground"
+              className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs font-medium outline-none focus:border-primary text-foreground cursor-pointer"
             >
-              <option value={25}>25 / page</option>
-              <option value={50}>50 / page</option>
-              <option value={100}>100 / page</option>
-              <option value={250}>250 / page</option>
-              <option value={500}>500 / page</option>
+              <option value={25}>Show 25 / page</option>
+              <option value={50}>Show 50 / page</option>
+              <option value={100}>Show 100 / page</option>
+              <option value={250}>Show 250 / page</option>
+              <option value={500}>Show 500 / page</option>
               <option value={-1}>Show All ({filteredLogs.length})</option>
             </select>
           </div>
@@ -517,14 +767,16 @@ function LogsContent({ data }: { data: DashboardData }) {
       {filteredLogs.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground space-y-2">
           <p className="font-semibold text-foreground">No API hits recorded matching your filter criteria.</p>
-          <p className="text-xs text-muted-foreground">Try clearing date or search filters to view your complete log history.</p>
+          <p className="text-xs text-muted-foreground">
+            Try adjusting the API service filter, date range, or search keyword to view records.
+          </p>
           {hasActiveFilters && (
             <button
               type="button"
               onClick={clearAllFilters}
               className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 mt-2 cursor-pointer"
             >
-              Clear All Filters
+              Reset All Filters
             </button>
           )}
         </div>
@@ -601,8 +853,12 @@ function LogsContent({ data }: { data: DashboardData }) {
                               : "bg-rose-500/15 text-rose-500 border-rose-500/30"
                           }`}
                         >
-                          {log.status_code === 200 ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                          {log.status_code} {log.status_code === 200 ? "OK" : "Error"}
+                          {log.status_code === 200 ? (
+                            <CheckCircle2 className="h-3 w-3" />
+                          ) : (
+                            <XCircle className="h-3 w-3" />
+                          )}
+                          {log.status_code === 200 ? "Success" : "Error"}
                         </span>
                       </td>
 

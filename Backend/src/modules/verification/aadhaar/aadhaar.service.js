@@ -6,6 +6,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 export class AadhaarVerificationService {
   /**
@@ -114,11 +115,23 @@ export class AadhaarVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY AADHAAR RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = upstreamData;
-        resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
-        isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Aadhaar verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          finalResponse = upstreamData;
+          resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
+          isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
+        }
       } catch (err) {
         console.error('⚠️ IDSPay Aadhaar upstream provider call failed:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        }
       }
     }
 
@@ -302,22 +315,32 @@ export class AadhaarVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY AADHAAR AUTO-VERIFICATION RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = upstreamData;
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Aadhaar auto-verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          isSuccess = false;
+        } else {
+          finalResponse = upstreamData;
 
-        // Determine success status
-        const genStatus = upstreamData?.methods?.generateToken?.status;
-        const fetchStatus = upstreamData?.methods?.fetchDetails?.status;
-        const rootStatus = upstreamData?.status;
+          // Determine success status
+          const genStatus = upstreamData?.methods?.generateToken?.status;
+          const fetchStatus = upstreamData?.methods?.fetchDetails?.status;
+          const rootStatus = upstreamData?.status;
 
-        isSuccess =
-          genStatus?.code === 200 ||
-          fetchStatus?.code === 200 ||
-          rootStatus?.code === 200 ||
-          upstreamData?.methods?.generateToken?.data?.status === 'generate_otp_success' ||
-          upstreamData?.methods?.fetchDetails?.data?.status === 'success_aadhaar' ||
-          upstreamData?.result_code === 101;
+          isSuccess =
+            genStatus?.code === 200 ||
+            fetchStatus?.code === 200 ||
+            rootStatus?.code === 200 ||
+            upstreamData?.methods?.generateToken?.data?.status === 'generate_otp_success' ||
+            upstreamData?.methods?.fetchDetails?.data?.status === 'success_aadhaar' ||
+            upstreamData?.result_code === 101;
+        }
       } catch (err) {
         console.error('⚠️ IDSPay Aadhaar Auto-Verification upstream provider call failed:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          isSuccess = false;
+        }
       }
     }
 

@@ -5,6 +5,7 @@ import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 export class StatementAnalyzerService {
   /**
@@ -369,15 +370,17 @@ export class StatementAnalyzerService {
       } catch (err) {
         console.error(`❌ Statement Analysis 1-Shot Error:`, err.message);
         resultCode = 102;
-        finalResponse = {
-          http_response_code: 502,
-          status_code: 502,
-          status_message: 'BAD_GATEWAY',
-          result_code: 102,
-          message: `Statement Analyzer error: ${err.message}`,
-          client_ref_num: clientRef,
-          request_id: generatedRequestId,
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(generatedRequestId, clientRef)
+          : {
+              http_response_code: 502,
+              status_code: 502,
+              status_message: 'BAD_GATEWAY',
+              result_code: 102,
+              message: `Statement Analyzer error: ${err.message}`,
+              client_ref_num: clientRef,
+              request_id: generatedRequestId,
+            };
       }
 
     // -------------------------------------------------------------
@@ -401,49 +404,58 @@ export class StatementAnalyzerService {
         const upstreamData = await upstreamRes.json().catch(() => null);
         console.log(`📥 [UPSTREAM RESPONSE] Status: ${upstreamRes.status}`, JSON.stringify(upstreamData));
 
-        const isOk = upstreamRes.ok && upstreamData && upstreamData.status !== 'error' && upstreamData.status_code !== 400 && upstreamData.status_code !== 404 && upstreamData.status_code !== 500;
-
-        if (isOk) {
-          isSuccess = true;
-          resultCode = 101;
-          finalResponse = {
-            http_response_code: 200,
-            status_code: 200,
-            status_message: 'SUCCESS',
-            result_code: 101,
-            message: upstreamData.message || upstreamData.status?.message || 'Request successful.',
-            client_ref_num: clientRef,
-            request_id: upstreamData.request_id || upstreamData.data?.request_id || generatedRequestId,
-            token: upstreamData.token || upstreamData.data?.token || undefined,
-            txn_id: upstreamData.txn_id || upstreamData.data?.txn_id || undefined,
-            data: sanitizeValue(upstreamData.data || upstreamData.result || upstreamData),
-          };
-        } else {
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Statement Analyzer request.');
+          finalResponse = formatUpstreamLowBalanceResponse(generatedRequestId, clientRef);
           resultCode = 102;
-          const upstreamCode = upstreamRes.status && upstreamRes.status !== 200 ? upstreamRes.status : (upstreamData?.status_code || 400);
-          finalResponse = {
-            http_response_code: upstreamCode,
-            status_code: upstreamCode,
-            status_message: 'FAILED',
-            result_code: 102,
-            message: upstreamData?.message || upstreamData?.status?.message || upstreamData?.error?.msg || 'Request failed.',
-            client_ref_num: clientRef,
-            request_id: generatedRequestId,
-            error: sanitizeValue(upstreamData || null),
-          };
+          isSuccess = false;
+        } else {
+          const isOk = upstreamRes.ok && upstreamData && upstreamData.status !== 'error' && upstreamData.status_code !== 400 && upstreamData.status_code !== 404 && upstreamData.status_code !== 500;
+
+          if (isOk) {
+            isSuccess = true;
+            resultCode = 101;
+            finalResponse = {
+              http_response_code: 200,
+              status_code: 200,
+              status_message: 'SUCCESS',
+              result_code: 101,
+              message: upstreamData.message || upstreamData.status?.message || 'Request successful.',
+              client_ref_num: clientRef,
+              request_id: upstreamData.request_id || upstreamData.data?.request_id || generatedRequestId,
+              token: upstreamData.token || upstreamData.data?.token || undefined,
+              txn_id: upstreamData.txn_id || upstreamData.data?.txn_id || undefined,
+              data: sanitizeValue(upstreamData.data || upstreamData.result || upstreamData),
+            };
+          } else {
+            resultCode = 102;
+            const upstreamCode = upstreamRes.status && upstreamRes.status !== 200 ? upstreamRes.status : (upstreamData?.status_code || 400);
+            finalResponse = {
+              http_response_code: upstreamCode,
+              status_code: upstreamCode,
+              status_message: 'FAILED',
+              result_code: 102,
+              message: upstreamData?.message || upstreamData?.status?.message || upstreamData?.error?.msg || 'Request failed.',
+              client_ref_num: clientRef,
+              request_id: generatedRequestId,
+              error: sanitizeValue(upstreamData || null),
+            };
+          }
         }
       } catch (err) {
         console.error(`❌ Upstream Statement Analyzer [${effectiveMethod}] Error:`, err.message);
         resultCode = 102;
-        finalResponse = {
-          http_response_code: 502,
-          status_code: 502,
-          status_message: 'BAD_GATEWAY',
-          result_code: 102,
-          message: `Upstream Statement Analyzer provider error: ${err.message}`,
-          client_ref_num: clientRef,
-          request_id: generatedRequestId,
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(generatedRequestId, clientRef)
+          : {
+              http_response_code: 502,
+              status_code: 502,
+              status_message: 'BAD_GATEWAY',
+              result_code: 102,
+              message: `Upstream Statement Analyzer provider error: ${err.message}`,
+              client_ref_num: clientRef,
+              request_id: generatedRequestId,
+            };
       }
     } else {
       // Sandbox Simulation Fallback

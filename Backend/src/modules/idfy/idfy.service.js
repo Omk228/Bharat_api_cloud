@@ -6,6 +6,7 @@ import CacheService from '../../core/cache/cache.service.js';
 import QueueService from '../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../core/config/pricing.config.js';
 import { ApiError } from '../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../core/utils/upstreamHelper.js';
 
 export class IdfyService {
   /**
@@ -124,8 +125,16 @@ export class IdfyService {
     const postData = await postRes.json();
     console.log(`📥 [IDFY POST STATUS ${postRes.status}]:`, postData);
 
+    if (isUpstreamLowBalance(postData)) {
+      console.warn('⚠️ [UPSTREAM ALERT] IDFY returned low balance / credit error.');
+      return formatUpstreamLowBalanceResponse(taskId, client_ref_num);
+    }
+
     const requestId = postData.request_id;
     if (!requestId) {
+      if (isUpstreamLowBalance(postData.message || postData.error)) {
+        return formatUpstreamLowBalanceResponse(taskId, client_ref_num);
+      }
       throw new Error(postData.message || postData.error || 'Failed to initiate IDFY bank account validation task.');
     }
 

@@ -87,13 +87,18 @@ const ENDPOINT_CATALOG_MAP = {
 
   // IP Lookup
   '/check': ['api_requester_ip_lookup', '/check'],
+  '/ip/check': ['api_requester_ip_lookup', '/check'],
+  '/ip/lookup': ['api_requester_ip_lookup', '/check'],
   '/ip': ['api_requester_ip_lookup', '/check'],
+  '/api/v1/ip/check': ['api_requester_ip_lookup', '/check'],
+  '/api/v1/ip/lookup': ['api_requester_ip_lookup', '/check'],
   'ip_lookup': ['api_requester_ip_lookup', '/check'],
 
   // Reverse Geocode
   '/reverse': ['api_reverse_geocoding', '/reverse'],
   '/reverse-geocode': ['api_reverse_geocoding', '/reverse'],
   '/geocode': ['api_reverse_geocoding', '/reverse'],
+  '/': ['api_reverse_geocoding', '/reverse'],
   'reverse_geocode': ['api_reverse_geocoding', '/reverse'],
 
   // TransUnion CIBIL Hybrid

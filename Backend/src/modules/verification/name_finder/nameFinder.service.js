@@ -6,6 +6,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 export class NameFinderVerificationService {
   /**
@@ -111,16 +112,28 @@ export class NameFinderVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY NAME FINDER RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = {
-          ...upstreamData,
-          request_id: upstreamData.request_id || requestId,
-          client_ref_num: upstreamData.client_ref_num || clientRef
-        };
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Name Finder verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          finalResponse = {
+            ...upstreamData,
+            request_id: upstreamData.request_id || requestId,
+            client_ref_num: upstreamData.client_ref_num || clientRef
+          };
 
-        resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
-        isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200 && upstreamData.result_code !== 103);
+          resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
+          isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200 && upstreamData.result_code !== 103);
+        }
       } catch (err) {
         console.error('⚠️ IDSPay Name Finder upstream provider call failed:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        }
       }
     }
 

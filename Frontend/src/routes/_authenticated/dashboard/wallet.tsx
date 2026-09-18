@@ -56,11 +56,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
 });
 
 const RECHARGE_PACKS = [
-  { amount: 500, label: "Starter", bonus: 0, tag: "Standard" },
-  { amount: 1000, label: "Standard", bonus: 0, tag: "Most Popular", popular: true },
-  { amount: 2500, label: "Growth", bonus: 100, tag: "+₹100 Bonus" },
-  { amount: 5000, label: "Scale", bonus: 350, tag: "+₹350 Bonus" },
-  { amount: 10000, label: "Enterprise", bonus: 1000, tag: "+10% Extra", special: true },
+  { amount: 10000, label: "Starter", bonus: 0, tag: "Standard" },
+  { amount: 20000, label: "Growth", bonus: 0, tag: "Standard" },
+  { amount: 30000, label: "Scale", bonus: 3000, tag: "+₹3,000 Bonus", special: true, badge: "+₹3,000 BONUS" },
+  { amount: 50000, label: "Enterprise", bonus: 5000, tag: "+₹5,000 Bonus", special: true, badge: "+₹5,000 BONUS" },
 ];
 
 const BANK_DETAILS = {
@@ -78,7 +77,7 @@ function WalletPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Recharge selection state
-  const [selectedPack, setSelectedPack] = useState<number>(1000);
+  const [selectedPack, setSelectedPack] = useState<number>(10000);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [gstin, setGstin] = useState<string>("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -428,7 +427,7 @@ function WalletPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                       {RECHARGE_PACKS.map((pack) => {
                         const isSelected = selectedPack === pack.amount && !customAmount;
                         return (
@@ -446,13 +445,13 @@ function WalletPage() {
                             }`}
                           >
                             {pack.popular && (
-                              <span className="absolute -top-2.5 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground">
+                              <span className="absolute -top-2.5 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground shadow-sm">
                                 POPULAR
                               </span>
                             )}
                             {pack.special && (
-                              <span className="absolute -top-2.5 rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-bold text-white">
-                                10% EXTRA
+                              <span className="absolute -top-2.5 rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-bold text-white shadow-sm">
+                                {pack.badge || "BONUS"}
                               </span>
                             )}
                             <span className="font-mono text-sm font-bold text-foreground">
@@ -470,7 +469,7 @@ function WalletPage() {
                     <div className="pt-2 border-t border-border/60">
                       <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                         <span>Or enter custom amount:</span>
-                        <span className="text-[11px]">Min. ₹1 — Max. ₹5,00,000</span>
+                        <span className="text-[11px] text-muted-foreground">Any custom amount</span>
                       </div>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-mono text-sm font-bold text-muted-foreground">
@@ -479,8 +478,7 @@ function WalletPage() {
                         <input
                           type="number"
                           min={1}
-                          max={500000}
-                          placeholder="e.g. 500"
+                          placeholder="e.g. 10000"
                           value={customAmount}
                           onChange={(e) => setCustomAmount(e.target.value)}
                           className="w-full rounded-xl border border-border bg-background pl-8 pr-4 py-2.5 font-mono text-sm font-semibold outline-none focus:border-primary transition-colors"

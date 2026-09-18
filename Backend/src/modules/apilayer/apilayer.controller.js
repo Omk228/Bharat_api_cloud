@@ -7,15 +7,15 @@ export class ApiLayerController {
   static async lookupIp(req, res, next) {
     try {
       const targetIp =
-        req.params.ip ||
-        req.query.ip ||
-        req.body.ip ||
-        req.body.ip_address ||
+        req.params?.ip ||
+        req.query?.ip ||
+        req.body?.ip ||
+        req.body?.ip_address ||
         req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
         req.socket.remoteAddress ||
         '182.156.19.94';
 
-      const result = await ApiLayerService.lookupIp(targetIp);
+      const result = await ApiLayerService.lookupIp(targetIp, req.apiClient, req.originalUrl || req.path);
       return res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -28,13 +28,14 @@ export class ApiLayerController {
   static async checkRequesterIp(req, res, next) {
     try {
       const targetIp =
-        req.query.ip ||
-        req.body.ip ||
+        req.query?.ip ||
+        req.body?.ip ||
+        req.body?.ip_address ||
         req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
         req.socket.remoteAddress ||
         '182.156.19.94';
 
-      const result = await ApiLayerService.lookupIp(targetIp);
+      const result = await ApiLayerService.lookupIp(targetIp, req.apiClient, req.originalUrl || req.path);
       return res.status(200).json(result);
     } catch (err) {
       next(err);

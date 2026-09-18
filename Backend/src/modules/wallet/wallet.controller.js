@@ -30,7 +30,7 @@ export const walletController = {
    * Get API Hit Logs
    */
   getHitLogs: asyncHandler(async (req, res) => {
-    const { limit = 10000, offset = 0, statusCode, search, startDate, endDate, date } = req.query;
+    const { limit = 10000, offset = 0, statusCode, search, startDate, endDate, date, service, endpoint } = req.query;
     const logs = await walletService.getHitLogs(req.user.id, {
       limit: limit === 'all' ? 'all' : parseInt(limit, 10) || 10000,
       offset: parseInt(offset, 10) || 0,
@@ -39,6 +39,8 @@ export const walletController = {
       startDate,
       endDate,
       date,
+      service,
+      endpoint,
     });
     return ApiResponse.success(res, logs, 'API hit logs fetched successfully');
   }),

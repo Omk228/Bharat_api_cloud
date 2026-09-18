@@ -126,11 +126,26 @@ async function run() {
       }
     }
 
-    // 5. Create robust .htaccess with no-cache headers, MIME types and standard SPA rewrite rules
-    const htaccessContent = `<IfModule mod_headers.c>
-  Header set Cache-Control "no-cache, no-store, must-revalidate"
-  Header set Pragma "no-cache"
-  Header set Expires 0
+    // 5. Create robust .htaccess with ErrorDocument 404, no-cache headers, MIME types and standard SPA rewrite rules
+    const htaccessContent = `# ==============================================================================
+# BHARAT API CLOUD — PRODUCTION HOSTINGER / APACHE / LITESPEED CONFIG
+# ==============================================================================
+ErrorDocument 404 /index.html
+DirectoryIndex index.html
+
+<IfModule mod_dir.c>
+  DirectoryIndex index.html
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\\.(js|mjs|css|svg|png|jpg|jpeg|webp|ico|woff|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
 </IfModule>
 
 <IfModule mod_mime.c>
@@ -139,16 +154,20 @@ async function run() {
   AddType text/css .css
   AddType image/svg+xml .svg
   AddType image/x-icon .ico
+  AddType image/png .png
+  AddType image/webp .webp
   AddType application/json .json
+  AddType font/woff2 .woff2
 </IfModule>
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  RewriteRule ^index\\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  RewriteRule ^api/ - [L]
+  RewriteRule ^.*$ /index.html [L,QSA]
 </IfModule>
 `;
 

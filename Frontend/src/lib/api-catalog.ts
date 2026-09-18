@@ -1245,8 +1245,8 @@ export const endpoints: ApiEndpoint[] = [
     method: "POST",
     path: "/srv3/mobile-to-bank/advance",
     title: "Mobile To Bank Advance",
-    desc: "Advanced mobile-to-bank account lookup and verification powered by IDSpay. Retrieve verified bank accounts and beneficiary details linked with an Indian mobile number.",
-    tags: ["bank", "mobile", "advance", "account", "verification", "idspay"],
+    desc: "Advanced mobile-to-bank account lookup and verification powered by Bharat API Gateway. Retrieve verified bank accounts and beneficiary details linked with an Indian mobile number.",
+    tags: ["bank", "mobile", "advance", "account", "verification"],
     latency: "~400ms",
     params: [
       { name: "mobile_number", type: "string", required: true, desc: "10-digit Indian mobile number of the account holder." },

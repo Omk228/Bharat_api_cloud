@@ -86,12 +86,12 @@ const CATALOG_ITEMS = [
     category: 'Banking & IFSC',
     method: 'POST',
     endpoint_path: '/srv3/mobile-to-bank/advance',
-    upstream_provider: 'IDSpay Gateway',
+    upstream_provider: 'NPCI & Banking Rails',
     current_price: 2.00,
     status: 'Active',
     latency_p95: 400,
     uptime_24h: 99.90,
-    description: 'Advanced mobile-to-bank account lookup and verification powered by IDSpay. Retrieve verified bank accounts and beneficiary details linked with an Indian mobile number.'
+    description: 'Advanced mobile-to-bank account lookup and verification powered by Bharat API Gateway. Retrieve verified bank accounts and beneficiary details linked with an Indian mobile number.'
   },
   {
     id: 'api_cat_01',

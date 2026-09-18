@@ -6,6 +6,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 import IdfyService from '../../idfy/idfy.service.js';
 
 export class BankVerificationService {
@@ -141,46 +142,58 @@ export class BankVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY BANK RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        const resourceData = upstreamData?.data?.beneValidationResp?.resourceData || upstreamData?.result || upstreamData?.data || {};
-        const metaData = upstreamData?.data?.beneValidationResp?.metaData || {};
-        const creditorName = resourceData?.creditorName || resourceData?.beneficiary_name || resourceData?.fullname || '';
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Bank verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          const resourceData = upstreamData?.data?.beneValidationResp?.resourceData || upstreamData?.result || upstreamData?.data || {};
+          const metaData = upstreamData?.data?.beneValidationResp?.metaData || {};
+          const creditorName = resourceData?.creditorName || resourceData?.beneficiary_name || resourceData?.fullname || '';
 
-        isSuccess = (upstreamData?.status?.code === 200 || upstreamData?.http_response_code === 200 || metaData?.status === 'SUCCESS' || Boolean(creditorName));
-        resultCode = isSuccess ? 101 : 102;
+          isSuccess = (upstreamData?.status?.code === 200 || upstreamData?.http_response_code === 200 || metaData?.status === 'SUCCESS' || Boolean(creditorName));
+          resultCode = isSuccess ? 101 : 102;
 
-        const responseRequestId = resourceData.transactionId || upstreamData.request_id || requestId;
+          const responseRequestId = resourceData.transactionId || upstreamData.request_id || requestId;
 
-        finalResponse = {
-          http_response_code: 200,
-          result_code: resultCode,
-          request_id: responseRequestId,
-          client_ref_num: resourceData?.clientRefNum || clientRef,
-          message: upstreamData.message || (isSuccess ? 'Beneficiary validated successfully.' : 'Verification failed'),
-          status_message: isSuccess ? 'Verification success' : 'Verification failed',
-          result: {
-            creditorAccountId: resourceData.creditorAccountId || cleanAccount,
-            account_number: resourceData.creditorAccountId || cleanAccount,
-            ifscCode: cleanIfsc,
-            ifsc: cleanIfsc,
-            beneficiary_name: creditorName,
-            fullname: creditorName,
-            creditorName: creditorName,
-            rrn: resourceData.rrn || '',
-            transactionReferenceNumber: resourceData.transactionReferenceNumber || '',
-            transactionId: resourceData.transactionId || '',
-            transactionTime: resourceData.transactionTime || '',
-            responseCode: resourceData.responseCode || '',
-            isNameMatch: resourceData.isNameMatch || false,
-            matchingScore: resourceData.matchingScore || null,
-            account_status: isSuccess ? 'ACTIVE' : 'INVALID',
-            account_exists: isSuccess,
-            is_valid: isSuccess,
-            ...resourceData
-          },
-          data: upstreamData.data || upstreamData
-        };
+          finalResponse = {
+            http_response_code: 200,
+            result_code: resultCode,
+            request_id: responseRequestId,
+            client_ref_num: resourceData?.clientRefNum || clientRef,
+            message: upstreamData.message || (isSuccess ? 'Beneficiary validated successfully.' : 'Verification failed'),
+            status_message: isSuccess ? 'Verification success' : 'Verification failed',
+            result: {
+              creditorAccountId: resourceData.creditorAccountId || cleanAccount,
+              account_number: resourceData.creditorAccountId || cleanAccount,
+              ifscCode: cleanIfsc,
+              ifsc: cleanIfsc,
+              beneficiary_name: creditorName,
+              fullname: creditorName,
+              creditorName: creditorName,
+              rrn: resourceData.rrn || '',
+              transactionReferenceNumber: resourceData.transactionReferenceNumber || '',
+              transactionId: resourceData.transactionId || '',
+              transactionTime: resourceData.transactionTime || '',
+              responseCode: resourceData.responseCode || '',
+              isNameMatch: resourceData.isNameMatch || false,
+              matchingScore: resourceData.matchingScore || null,
+              account_status: isSuccess ? 'ACTIVE' : 'INVALID',
+              account_exists: isSuccess,
+              is_valid: isSuccess,
+              ...resourceData
+            },
+            data: upstreamData.data || upstreamData
+          };
+        }
       } catch (err) {
         console.error('⚠️ IDSPay Bank upstream provider call failed:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        }
       }
     }
 

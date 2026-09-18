@@ -4,6 +4,7 @@ import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 export class DigilockerVerificationService {
   /**
@@ -162,7 +163,12 @@ export class DigilockerVerificationService {
           const upstreamData = await upstreamRes.json().catch(() => null);
           console.log(`📥 [UPSTREAM RESPONSE] Status: ${upstreamRes.status}`);
 
-          if (upstreamRes.ok && upstreamData) {
+          if (isUpstreamLowBalance(upstreamData)) {
+            console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during DigiLocker generateToken.');
+            finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+            resultCode = 102;
+            isSuccess = false;
+          } else if (upstreamRes.ok && upstreamData) {
             isSuccess = true;
             resultCode = 101;
 
@@ -205,15 +211,17 @@ export class DigilockerVerificationService {
         } catch (err) {
           console.error('❌ Upstream DigiLocker generateToken Error:', err.message);
           resultCode = 102;
-          finalResponse = {
-            http_response_code: 502,
-            status_code: 502,
-            status_message: 'BAD_GATEWAY',
-            result_code: 102,
-            message: `Upstream DigiLocker provider error: ${err.message}`,
-            client_ref_num: clientRef,
-            request_id: requestId,
-          };
+          finalResponse = isUpstreamLowBalance(err.message)
+            ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+            : {
+                http_response_code: 502,
+                status_code: 502,
+                status_message: 'BAD_GATEWAY',
+                result_code: 102,
+                message: `Upstream DigiLocker provider error: ${err.message}`,
+                client_ref_num: clientRef,
+                request_id: requestId,
+              };
         }
       } else {
         isSuccess = true;
@@ -283,7 +291,12 @@ export class DigilockerVerificationService {
           const upstreamData = await upstreamRes.json().catch(() => null);
           console.log(`📥 [UPSTREAM RESPONSE] Status: ${upstreamRes.status}`);
 
-          if (upstreamRes.ok && upstreamData) {
+          if (isUpstreamLowBalance(upstreamData)) {
+            console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during DigiLocker fetchDetails.');
+            finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+            resultCode = 102;
+            isSuccess = false;
+          } else if (upstreamRes.ok && upstreamData) {
             isSuccess = true;
             resultCode = 101;
 
@@ -321,15 +334,17 @@ export class DigilockerVerificationService {
         } catch (err) {
           console.error('❌ Upstream DigiLocker fetchDetails Error:', err.message);
           resultCode = 102;
-          finalResponse = {
-            http_response_code: 502,
-            status_code: 502,
-            status_message: 'BAD_GATEWAY',
-            result_code: 102,
-            message: `Upstream DigiLocker provider error: ${err.message}`,
-            client_ref_num: clientRef,
-            request_id: requestId,
-          };
+          finalResponse = isUpstreamLowBalance(err.message)
+            ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+            : {
+                http_response_code: 502,
+                status_code: 502,
+                status_message: 'BAD_GATEWAY',
+                result_code: 102,
+                message: `Upstream DigiLocker provider error: ${err.message}`,
+                client_ref_num: clientRef,
+                request_id: requestId,
+              };
         }
       } else {
         isSuccess = true;

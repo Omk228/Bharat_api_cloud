@@ -2,6 +2,7 @@ import { credentialResolver } from '../../../core/credentials/credentialResolver
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import QueueService from '../../../core/queue/queue.service.js';
@@ -89,12 +90,20 @@ export class CrifVerificationService {
         const data = await upstreamRes.json();
         console.log(`📥 [CRIF UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(data, null, 2));
 
+        if (isUpstreamLowBalance(data)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during CRIF verification.');
+          return formatUpstreamLowBalanceResponse(requestId, clientRef);
+        }
+
         if (data && (data.status?.code === 200 || data.http_response_code === 200 || data.data?.status === 'success' || data.data?.score)) {
           upstreamResult = data;
           isSuccess = true;
         }
       } catch (err) {
         console.error('⚠️ CRIF upstream provider error:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          return formatUpstreamLowBalanceResponse(requestId, clientRef);
+        }
       }
     }
 

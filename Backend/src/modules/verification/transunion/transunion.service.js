@@ -6,6 +6,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 // In-memory fallback map for high-speed PDF report retrieval
 const localReportStore = new Map();
@@ -137,12 +138,20 @@ export class TransunionVerificationService {
         const data = await upstreamRes.json();
         console.log(`📥 [TRANSUNION UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(data, null, 2));
 
+        if (isUpstreamLowBalance(data)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during TransUnion verification.');
+          return formatUpstreamLowBalanceResponse(requestId, clientRef);
+        }
+
         if (data && (data.status?.code === 200 || data.http_response_code === 200 || data.data?.status === 'success')) {
           upstreamResult = data;
           isSuccess = true;
         }
       } catch (err) {
         console.error('⚠️ TransUnion upstream provider error:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          return formatUpstreamLowBalanceResponse(requestId, clientRef);
+        }
       }
     }
 

@@ -5,6 +5,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 import crypto from 'node:crypto';
 
 export class PanVerificationService {
@@ -112,26 +113,35 @@ export class PanVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY PRODUCTION RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = {
-          ...upstreamData,
-          request_id: upstreamData.request_id || requestId,
-          client_ref_num: upstreamData.client_ref_num || clientRef
-        };
-        resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
-        isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during PAN verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          finalResponse = {
+            ...upstreamData,
+            request_id: upstreamData.request_id || requestId,
+            client_ref_num: upstreamData.client_ref_num || clientRef
+          };
+          resultCode = upstreamData.result_code || (upstreamRes.ok ? 101 : 102);
+          isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
+        }
       } catch (err) {
         console.error('⚠️ IDSPay upstream provider call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
-        finalResponse = {
-          http_response_code: 502,
-          result_code: 102,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Upstream verification service temporarily unavailable.',
-          status_message: 'Verification failed',
-          result: null
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              http_response_code: 502,
+              result_code: 102,
+              request_id: requestId,
+              client_ref_num: clientRef,
+              message: 'Upstream verification service temporarily unavailable.',
+              status_message: 'Verification failed',
+              result: null
+            };
       }
     } else {
       console.log('ℹ️ No IDSPay master keys found in .env');
@@ -278,40 +288,49 @@ export class PanVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [PAN PLUS UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        finalResponse = {
-          status: upstreamData.status || {
-            code: upstreamRes.ok ? 200 : upstreamRes.status,
-            type: upstreamRes.ok ? 'success' : 'failed',
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during PAN Plus verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          finalResponse = {
+            status: upstreamData.status || {
+              code: upstreamRes.ok ? 200 : upstreamRes.status,
+              type: upstreamRes.ok ? 'success' : 'failed',
+              message: upstreamData.message || (upstreamRes.ok ? 'Pan details validation successful.' : 'Verification failed'),
+            },
             message: upstreamData.message || (upstreamRes.ok ? 'Pan details validation successful.' : 'Verification failed'),
-          },
-          message: upstreamData.message || (upstreamRes.ok ? 'Pan details validation successful.' : 'Verification failed'),
-          data: upstreamData.data !== undefined ? upstreamData.data : (upstreamData.result || null),
-          request_id: upstreamData.request_id || requestId,
-          client_ref_num: upstreamData.client_ref_num || clientRef,
-        };
+            data: upstreamData.data !== undefined ? upstreamData.data : (upstreamData.result || null),
+            request_id: upstreamData.request_id || requestId,
+            client_ref_num: upstreamData.client_ref_num || clientRef,
+          };
 
-        isSuccess = upstreamRes.ok && (
-          upstreamData.status?.code === 200 ||
-          upstreamData.status?.type === 'success' ||
-          upstreamData.message === 'Pan details validation successful.' ||
-          Boolean(upstreamData.data?.pan)
-        );
-        resultCode = isSuccess ? 101 : 102;
+          isSuccess = upstreamRes.ok && (
+            upstreamData.status?.code === 200 ||
+            upstreamData.status?.type === 'success' ||
+            upstreamData.message === 'Pan details validation successful.' ||
+            Boolean(upstreamData.data?.pan)
+          );
+          resultCode = isSuccess ? 101 : 102;
+        }
       } catch (err) {
         console.error('⚠️ Upstream PAN Plus call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
-        finalResponse = {
-          status: {
-            code: 502,
-            type: 'failed',
-            message: 'Upstream verification service temporarily unavailable. Please try again.',
-          },
-          message: 'Upstream verification service temporarily unavailable. Please try again.',
-          data: null,
-          request_id: requestId,
-          client_ref_num: clientRef,
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              status: {
+                code: 502,
+                type: 'failed',
+                message: 'Upstream verification service temporarily unavailable. Please try again.',
+              },
+              message: 'Upstream verification service temporarily unavailable. Please try again.',
+              data: null,
+              request_id: requestId,
+              client_ref_num: clientRef,
+            };
       }
     } else {
       console.log('ℹ️ No IDSPay master keys found in .env');

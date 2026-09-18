@@ -6,6 +6,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 export class PrefillVerificationService {
   /**
@@ -117,35 +118,47 @@ export class PrefillVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [IDSPAY PREFILL RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        const nestedData = upstreamData?.data || upstreamData;
-        const resultData =
-          nestedData?.result ||
-          upstreamData?.result ||
-          (nestedData?.name || nestedData?.pan || nestedData?.dob ? nestedData : null);
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Prefill verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        } else {
+          const nestedData = upstreamData?.data || upstreamData;
+          const resultData =
+            nestedData?.result ||
+            upstreamData?.result ||
+            (nestedData?.name || nestedData?.pan || nestedData?.dob ? nestedData : null);
 
-        isSuccess = Boolean(
-          resultData?.name ||
-          resultData?.pan ||
-          resultData?.dob ||
-          upstreamData?.message === 'success' ||
-          nestedData?.message === 'success'
-        );
+          isSuccess = Boolean(
+            resultData?.name ||
+            resultData?.pan ||
+            resultData?.dob ||
+            upstreamData?.message === 'success' ||
+            nestedData?.message === 'success'
+          );
 
-        resultCode = isSuccess ? 101 : (nestedData.result_code || upstreamData.result_code || 102);
+          resultCode = isSuccess ? 101 : (nestedData.result_code || upstreamData.result_code || 102);
 
-        const responseRequestId = nestedData.request_id || upstreamData.request_id || requestId;
+          const responseRequestId = nestedData.request_id || upstreamData.request_id || requestId;
 
-        finalResponse = {
-          http_response_code: 200,
-          result_code: resultCode,
-          request_id: responseRequestId,
-          client_ref_num: nestedData.client_ref_num || clientRef,
-          message: isSuccess ? 'success' : (nestedData.message || upstreamData.message || 'no record found'),
-          result: resultData,
-          data: upstreamData.data || upstreamData
-        };
+          finalResponse = {
+            http_response_code: 200,
+            result_code: resultCode,
+            request_id: responseRequestId,
+            client_ref_num: nestedData.client_ref_num || clientRef,
+            message: isSuccess ? 'success' : (nestedData.message || upstreamData.message || 'no record found'),
+            result: resultData,
+            data: upstreamData.data || upstreamData
+          };
+        }
       } catch (err) {
         console.error('⚠️ IDSPay Prefill upstream provider call failed:', err.message);
+        if (isUpstreamLowBalance(err.message)) {
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
+          isSuccess = false;
+        }
       }
     }
 

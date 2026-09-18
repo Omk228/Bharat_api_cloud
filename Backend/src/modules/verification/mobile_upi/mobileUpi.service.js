@@ -6,6 +6,7 @@ import CacheService from '../../../core/cache/cache.service.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
+import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 
 export class MobileUpiVerificationService {
   /**
@@ -117,51 +118,61 @@ export class MobileUpiVerificationService {
         const upstreamData = await upstreamRes.json();
         console.log(`📥 [MOBILE UPI UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(upstreamData, null, 2));
 
-        const rawData = upstreamData.data || upstreamData.result || {};
-        const innerResultCode = rawData.result_code !== undefined ? Number(rawData.result_code) : undefined;
-        const outerResultCode = upstreamData.result_code !== undefined ? Number(upstreamData.result_code) : undefined;
-
-        const vpa = rawData.vpa || upstreamData.vpa || null;
-        const mobileLinkedName = rawData.mobile_linked_name || rawData.name || upstreamData.mobile_linked_name || null;
-        const hasVpaOrName = Boolean(vpa || mobileLinkedName);
-
-        if (hasVpaOrName && innerResultCode !== 103 && outerResultCode !== 103) {
-          resultCode = 101;
-          isSuccess = true;
-          finalResponse = {
-            http_response_code: 200,
-            client_ref_num: clientRef,
-            request_id: requestId,
-            result_code: 101,
-            result: {
-              mobile_linked_name: mobileLinkedName,
-              vpa: vpa,
-            },
-          };
-        } else {
-          resultCode = innerResultCode || outerResultCode || 103;
+        if (isUpstreamLowBalance(upstreamData)) {
+          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Mobile UPI verification.');
+          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
+          resultCode = 102;
           isSuccess = false;
-          finalResponse = {
-            http_response_code: 200,
-            client_ref_num: clientRef,
-            request_id: requestId,
-            result_code: resultCode,
-            message: rawData.message || upstreamData.message || 'No linked name found',
-            result: null,
-          };
+        } else {
+          const rawData = upstreamData.data || upstreamData.result || {};
+          const innerResultCode = rawData.result_code !== undefined ? Number(rawData.result_code) : undefined;
+          const outerResultCode = upstreamData.result_code !== undefined ? Number(upstreamData.result_code) : undefined;
+
+          const vpa = rawData.vpa || upstreamData.vpa || null;
+          const mobileLinkedName = rawData.mobile_linked_name || rawData.name || upstreamData.mobile_linked_name || null;
+          const hasVpaOrName = Boolean(vpa || mobileLinkedName);
+
+          if (hasVpaOrName && innerResultCode !== 103 && outerResultCode !== 103) {
+            resultCode = 101;
+            isSuccess = true;
+            finalResponse = {
+              http_response_code: 200,
+              client_ref_num: clientRef,
+              request_id: requestId,
+              result_code: 101,
+              result: {
+                mobile_linked_name: mobileLinkedName,
+                vpa: vpa,
+              },
+            };
+          } else {
+            resultCode = innerResultCode || outerResultCode || 103;
+            isSuccess = false;
+            finalResponse = {
+              http_response_code: 200,
+              client_ref_num: clientRef,
+              request_id: requestId,
+              result_code: resultCode,
+              message: rawData.message || upstreamData.message || 'No linked name found',
+              result: null,
+            };
+          }
         }
       } catch (err) {
         console.error('⚠️ Mobile To UPI upstream provider call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
-        finalResponse = {
-          http_response_code: 502,
-          client_ref_num: clientRef,
-          request_id: requestId,
-          result_code: 102,
-          message: 'Upstream verification service temporarily unavailable. Please try again.',
-          result: null,
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              http_response_code: 502,
+              client_ref_num: clientRef,
+              request_id: requestId,
+              result_code: 102,
+              message: 'Upstream verification service temporarily unavailable.',
+              status_message: 'Verification failed',
+              result: null,
+            };
       }
     } else {
       console.log('ℹ️ No IDSPay master keys found in .env, using gateway simulated sandbox.');

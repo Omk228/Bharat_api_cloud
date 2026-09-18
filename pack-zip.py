@@ -20,6 +20,29 @@ if os.path.exists(dist_dir):
 
     print(f"[OK] Successfully updated {frontend_zip_path} ({os.path.getsize(frontend_zip_path)} bytes)")
 
+# 1B. Package Frontend source code into frontend.zip (Full Source Code)
+frontend_dir = os.path.join(root_dir, 'Frontend')
+frontend_src_zip_path = os.path.join(root_dir, 'frontend.zip')
+
+if os.path.exists(frontend_dir):
+    if os.path.exists(frontend_src_zip_path):
+        os.remove(frontend_src_zip_path)
+
+    frontend_excluded_dirs = {'node_modules', '.git', '.cache', 'dist', '.output'}
+    frontend_excluded_files = {'.DS_Store', 'npm-debug.log'}
+
+    with zipfile.ZipFile(frontend_src_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(frontend_dir):
+            dirs[:] = [d for d in dirs if d not in frontend_excluded_dirs]
+            for file in files:
+                if file in frontend_excluded_files or file.endswith('.tmp'):
+                    continue
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, frontend_dir).replace(os.sep, '/')
+                zipf.write(full_path, rel_path)
+
+    print(f"[OK] Successfully updated {frontend_src_zip_path} ({os.path.getsize(frontend_src_zip_path)} bytes)")
+
 # 2. Package Backend into backend.zip (Production Node deployment)
 backend_dir = os.path.join(root_dir, 'Backend')
 backend_zip_path = os.path.join(root_dir, 'backend.zip')
