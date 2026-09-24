@@ -42,6 +42,7 @@ import {
   EyeOff,
   RefreshCw,
   FileCheck,
+  Download,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiClient } from "@/lib/api-client";
 import { BASE_URL } from "@/lib/api-catalog";
 import { getStoredUserEmail } from "@/lib/demo-store";
+import { generateTransUnionPdfFromApiResponse } from "@/lib/transunionPdfGenerator";
 
 export function isUpstreamLowBalanceError(dataOrError: unknown): boolean {
   if (!dataOrError) return false;
@@ -501,6 +503,49 @@ function TestApiPage() {
   const [responseStatus, setResponseStatus] = useState<number | null>(null);
   const [responseJson, setResponseJson] = useState<ApiResponseEnvelope | null>(null);
   const [activeViewTab, setActiveViewTab] = useState<"visual" | "json">("visual");
+
+  // TransUnion CIBIL PDF State
+  const [tuPdfBlobUrl, setTuPdfBlobUrl] = useState<string | null>(null);
+  const [tuPdfLoading, setTuPdfLoading] = useState<boolean>(false);
+  const [tuPdfError, setTuPdfError] = useState<string | null>(null);
+  const [tuExtracted, setTuExtracted] = useState<any>(null);
+
+  // Generate TransUnion PDF automatically when responseJson arrives for transunion
+  useEffect(() => {
+    if (selectedService === "transunion" && responseJson) {
+      let active = true;
+      setTuPdfLoading(true);
+      setTuPdfError(null);
+      generateTransUnionPdfFromApiResponse(responseJson, {
+        fullName: `${tuForename} ${tuSurname}`.trim(),
+        panNumber: tuPan.trim().toUpperCase(),
+        mobileNumber: tuPhone.trim(),
+        dob: tuDob.trim() || null,
+        gender: tuGender || "Male",
+      })
+        .then((res) => {
+          if (!active) return;
+          setTuPdfBlobUrl(res.blobUrl);
+          setTuExtracted(res.extracted);
+          setTuPdfLoading(false);
+        })
+        .catch((err) => {
+          if (!active) return;
+          console.error("TransUnion PDF Generation Error:", err);
+          setTuPdfError(err?.message || "Failed to generate PDF report");
+          setTuPdfLoading(false);
+        });
+
+      return () => {
+        active = false;
+      };
+    } else {
+      setTuPdfBlobUrl(null);
+      setTuExtracted(null);
+      setTuPdfLoading(false);
+      setTuPdfError(null);
+    }
+  }, [responseJson, selectedService, tuForename, tuSurname, tuPan, tuPhone, tuDob, tuGender]);
 
   // Sync credentials when loaded
   useEffect(() => {
@@ -2978,7 +3023,7 @@ function TestApiPage() {
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <FileText className="h-3.5 w-3.5" /> Raw JSON Response
+                      <FileText className="h-3.5 w-3.5" /> {selectedService === "transunion" ? "PDF Report View" : "Raw JSON Response"}
                     </button>
                   </div>
                 </div>
@@ -3021,17 +3066,29 @@ function TestApiPage() {
                         </span>
                       )}
                       {responseJson && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(JSON.stringify(responseJson, null, 2));
-                            setCopiedRes(true);
-                            toast.success("Full response copied!");
-                            setTimeout(() => setCopiedRes(false), 1500);
-                          }}
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
-                          {copiedRes ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} Copy JSON
-                        </button>
+                        selectedService === "transunion" ? (
+                          tuPdfBlobUrl ? (
+                            <a
+                              href={tuPdfBlobUrl}
+                              download={`TransUnion_CIBIL_Report_${tuPan.trim() || "Customer"}.pdf`}
+                              className="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:underline"
+                            >
+                              <Download className="h-3.5 w-3.5" /> Download CIBIL PDF
+                            </a>
+                          ) : null
+                        ) : (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(JSON.stringify(responseJson, null, 2));
+                              setCopiedRes(true);
+                              toast.success("Full response copied!");
+                              setTimeout(() => setCopiedRes(false), 1500);
+                            }}
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            {copiedRes ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} Copy JSON
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -3434,16 +3491,56 @@ function TestApiPage() {
                             const stepsSummary = Array.isArray(tuData.steps_summary) ? (tuData.steps_summary as Array<Record<string, unknown>>) : [];
                             const message = String(responseJson?.message || tuData.message || "CIBIL report ready!");
 
+                            const scoreVal = tuExtracted?.cibilScore ?? (typeof tuData.score === "number" ? tuData.score : null);
+                            const scoreName = tuExtracted?.scoreName || "CIBILTransUnionScore3";
+                            const scoringFactors = tuExtracted?.scoringFactors || [];
+                            const totalAccounts = tuExtracted?.totalAccounts ?? 0;
+                            const activeAccounts = tuExtracted?.activeAccounts ?? 0;
+                            const closedAccounts = tuExtracted?.closedAccounts ?? 0;
+                            const totalSanctioned = tuExtracted?.totalSanctioned ?? 0;
+                            const totalCurrentBal = tuExtracted?.totalCurrentBalance ?? 0;
+                            const overdueVal = tuExtracted?.totalOverdue ?? 0;
+                            const totalEnquiries = tuExtracted?.totalEnquiries ?? 0;
+                            const onTimePaymentPct = tuExtracted?.onTimePaymentPct;
+                            const creditCardUtilPct = tuExtracted?.creditCardUtilPct;
+
+                            const borrower = tuExtracted?.borrower || {};
+                            const borrowerName = borrower.name || `${tuForename} ${tuSurname}`.trim().toUpperCase() || "CUSTOMER";
+                            const fatherName = borrower.fatherName || "—";
+                            const dobVal = borrower.dob || tuDob.trim() || "—";
+                            const genderVal = borrower.gender || tuGender || "Male";
+                            const panVal = (tuExtracted?.identifications?.find((i: any) => i.type === "TaxId" || i.type === "01")?.number) || tuPan.trim().toUpperCase() || "—";
+                            const mobileVal = (tuExtracted?.telephones?.[0]?.number) || tuPhone.trim() || "—";
+
+                            const identifications = tuExtracted?.identifications || [];
+                            const addresses = tuExtracted?.addresses || [];
+                            const telephones = tuExtracted?.telephones || [];
+                            const emails = tuExtracted?.emails || [];
+                            const employment = tuExtracted?.employment || [];
+                            const tradelines = tuExtracted?.allTradelines || [];
+                            const inquiries = tuExtracted?.inquiries || [];
+                            const dpdHistory = tuExtracted?.dpdHistory6m || [];
+                            const dpdAnalysis = tuExtracted?.dpdAnalysis;
+                            const riskFlags = tuExtracted?.riskFlags || [];
+
                             return (
-                              <div className="space-y-4">
+                              <div className="space-y-5">
+                                {/* Top Header Banner */}
                                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
                                   <div className="flex items-center gap-2.5">
-                                    <div className="rounded-lg bg-amber-500/15 p-2 text-amber-400 border border-amber-500/30">
+                                    <div className="rounded-lg bg-cyan-500/15 p-2.5 text-cyan-400 border border-cyan-500/30">
                                       <ShieldCheck className="h-5 w-5" />
                                     </div>
                                     <div>
-                                      <p className="text-base font-bold text-foreground">TransUnion CIBIL Score Ready</p>
-                                      <p className="text-xs text-muted-foreground font-mono">Client Key: {clientKey}</p>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-bold text-foreground">TransUnion CIBIL Credit Report</p>
+                                        <span className="rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 text-[10px] px-2 py-0.5 font-semibold">
+                                          Official CIR
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        Consumer: <span className="text-foreground font-medium">{borrowerName}</span> · Client Key: {clientKey}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -3456,43 +3553,428 @@ function TestApiPage() {
                                   </div>
                                 </div>
 
-                                {webTokenUrl && (
-                                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                                        <Sparkles className="h-4 w-4" /> Interactive CIBIL Web Report Link
+                                {/* Score & Financial Metrics Grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                  {/* CIBIL Score Card */}
+                                  <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3.5 space-y-2 flex flex-col justify-between">
+                                    <div>
+                                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                        <Sparkles className="h-3 w-3 text-cyan-400" /> CIBIL Score
+                                      </span>
+                                      <div className="flex items-baseline gap-2 mt-1">
+                                        <p className="text-3xl font-black text-cyan-400 font-mono tracking-tight">
+                                          {scoreVal !== null ? scoreVal : "N/A"}
+                                        </p>
+                                        {scoreVal !== null && (
+                                          <span className={`text-[10px] font-semibold ${
+                                            scoreVal >= 750 ? "text-emerald-400" : scoreVal >= 700 ? "text-cyan-400" : scoreVal >= 650 ? "text-amber-400" : "text-rose-400"
+                                          }`}>
+                                            {scoreVal >= 750 ? "Prime / Excellent" : scoreVal >= 700 ? "Good" : scoreVal >= 650 ? "Fair" : "High Risk"}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {scoreVal !== null && (
+                                      <div className="w-full bg-secondary/50 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all duration-1000 ${
+                                            scoreVal >= 750 ? "bg-emerald-500" : scoreVal >= 700 ? "bg-cyan-500" : scoreVal >= 650 ? "bg-amber-500" : "bg-rose-500"
+                                          }`}
+                                          style={{ width: `${Math.min(100, Math.max(10, ((scoreVal - 300) / 600) * 100))}%` }}
+                                        />
+                                      </div>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground font-mono truncate">{scoreName}</p>
+                                  </div>
+
+                                  {/* Total Accounts */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1 flex flex-col justify-between">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                      <Layers className="h-3 w-3 text-primary" /> Total Accounts
+                                    </span>
+                                    <p className="text-xl font-bold text-foreground font-mono">
+                                      {totalAccounts} <span className="text-xs font-normal text-muted-foreground">Facilities</span>
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      Active: <span className="text-emerald-400 font-semibold">{activeAccounts}</span> · Closed: <span className="text-zinc-400 font-semibold">{closedAccounts}</span>
+                                    </p>
+                                  </div>
+
+                                  {/* Total Sanctioned / High Credit */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1 flex flex-col justify-between">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                      <DollarSign className="h-3 w-3 text-emerald-400" /> Total Sanctioned
+                                    </span>
+                                    <p className="text-xl font-bold text-emerald-400 font-mono">
+                                      ₹{Number(totalSanctioned).toLocaleString("en-IN")}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">High Credit Sanctioned</p>
+                                  </div>
+
+                                  {/* Current Balance / Overdue */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1 flex flex-col justify-between">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                      <Landmark className="h-3 w-3 text-indigo-400" /> Current Balances
+                                    </span>
+                                    <p className="text-xl font-bold text-foreground font-mono">
+                                      ₹{Number(totalCurrentBal).toLocaleString("en-IN")}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      Overdue: <span className={overdueVal > 0 ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>₹{Number(overdueVal).toLocaleString("en-IN")}</span>
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Demographics & Consumer Details Card */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                      <User className="h-3.5 w-3.5 text-cyan-400" /> Consumer Identity & Demographic Details
+                                    </span>
+                                    <span className="text-[10px] font-mono text-muted-foreground">Bureau Verified Record</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">Full Name</span>
+                                      <p className="font-bold text-foreground truncate">{borrowerName}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">Father's Name</span>
+                                      <p className="font-medium text-foreground truncate">{fatherName}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">Date of Birth</span>
+                                      <p className="font-mono text-foreground">{dobVal}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">Gender</span>
+                                      <p className="font-medium text-foreground">{genderVal}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">PAN / Tax ID</span>
+                                      <p className="font-mono font-bold text-cyan-400">{panVal}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">Mobile Number</span>
+                                      <p className="font-mono font-medium text-foreground">{mobileVal}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">Total Enquiries</span>
+                                      <p className="font-mono font-medium text-foreground">{totalEnquiries} Enquiries</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] text-muted-foreground block">Report Date</span>
+                                      <p className="font-mono text-foreground">{tuExtracted?.reportDate || "Recent"}</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Identifications Chips */}
+                                  {identifications.length > 0 && (
+                                    <div className="pt-2 border-t border-border/40 space-y-1.5">
+                                      <span className="text-[10px] font-semibold text-muted-foreground block uppercase tracking-wider">Identifications Reported</span>
+                                      <div className="flex flex-wrap gap-2">
+                                        {identifications.map((id: any, idx: number) => (
+                                          <div key={idx} className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-mono flex items-center gap-1.5">
+                                            <Fingerprint className="h-3 w-3 text-cyan-400" />
+                                            <span className="text-muted-foreground">{id.type}:</span>
+                                            <span className="font-bold text-foreground">{id.number}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Addresses List */}
+                                  {addresses.length > 0 && (
+                                    <div className="pt-2 border-t border-border/40 space-y-1.5">
+                                      <span className="text-[10px] font-semibold text-muted-foreground block uppercase tracking-wider">Addresses Reported ({addresses.length})</span>
+                                      <div className="grid gap-2 sm:grid-cols-2">
+                                        {addresses.slice(0, 4).map((addr: any, idx: number) => (
+                                          <div key={idx} className="rounded-lg border border-border bg-secondary/20 p-2.5 text-xs flex items-start gap-2">
+                                            <MapPin className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
+                                            <div className="space-y-0.5">
+                                              <p className="text-foreground leading-snug">{addr.address}</p>
+                                              <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+                                                {addr.category && <span>Category: {addr.category}</span>}
+                                                {addr.dateReported && <span>Reported: {addr.dateReported}</span>}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Employment Info */}
+                                  {employment.length > 0 && (
+                                    <div className="pt-2 border-t border-border/40 space-y-1.5">
+                                      <span className="text-[10px] font-semibold text-muted-foreground block uppercase tracking-wider">Employment Details</span>
+                                      <div className="grid gap-2 sm:grid-cols-3">
+                                        {employment.slice(0, 3).map((emp: any, idx: number) => (
+                                          <div key={idx} className="rounded-lg border border-border bg-secondary/20 p-2 text-xs space-y-0.5">
+                                            <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                                              <Briefcase className="h-3 w-3 text-cyan-400" />
+                                              {emp.occupationCode ? `Occupation Code: ${emp.occupationCode}` : "Employment Record"}
+                                            </div>
+                                            {emp.income && <p className="text-[11px] text-muted-foreground">Income: ₹{emp.income}</p>}
+                                            {emp.dateReported && <p className="text-[10px] text-muted-foreground font-mono">Date Reported: {emp.dateReported}</p>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* DPD & Payment Delinquency Breakdown */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                      <Clock className="h-3.5 w-3.5 text-indigo-400" /> DPD Delinquency & Payment Performance
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                                      overdueVal > 0 ? "bg-rose-500/15 border-rose-500/30 text-rose-400" : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                    }`}>
+                                      {tuExtracted?.dpdOverall || (overdueVal > 0 ? "Overdue Facilities Detected" : "Clean Repayment History")}
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs space-y-0.5">
+                                      <span className="text-[10px] text-muted-foreground block">1-30 Days DPD</span>
+                                      <p className="font-bold text-foreground font-mono">{tuExtracted?.dpd30Days || "0 Account(s)"}</p>
+                                    </div>
+                                    <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs space-y-0.5">
+                                      <span className="text-[10px] text-muted-foreground block">31-60 Days DPD</span>
+                                      <p className="font-bold text-foreground font-mono">{tuExtracted?.dpd60Days || "0 Account(s)"}</p>
+                                    </div>
+                                    <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs space-y-0.5">
+                                      <span className="text-[10px] text-muted-foreground block">61-90 Days DPD</span>
+                                      <p className="font-bold text-foreground font-mono">{tuExtracted?.dpd90Days || "0 Account(s)"}</p>
+                                    </div>
+                                    <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs space-y-0.5">
+                                      <span className="text-[10px] text-muted-foreground block">90+ Days DPD</span>
+                                      <p className="font-bold text-foreground font-mono">{tuExtracted?.dpd120Days || "0 Account(s)"}</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Scoring Factors & Risk Flags */}
+                                  {scoringFactors.length > 0 && (
+                                    <div className="pt-2 border-t border-border/40 space-y-1">
+                                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Bureau Scoring Factors</span>
+                                      <div className="grid gap-1.5 sm:grid-cols-2">
+                                        {scoringFactors.map((fact: string, idx: number) => (
+                                          <div key={idx} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-2.5 py-1.5 text-xs text-cyan-300 flex items-center gap-1.5">
+                                            <Sparkles className="h-3 w-3 text-cyan-400 shrink-0" />
+                                            <span className="truncate">{fact}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Account Tradelines (Active & Closed Loan / Credit Facilities) */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <CreditCard className="h-3.5 w-3.5 text-primary" /> Loan & Credit Facilities Tradelines ({tradelines.length})
+                                      </span>
+                                      <span className="rounded-full bg-secondary text-[10px] px-2 py-0.5 font-mono text-muted-foreground">
+                                        {activeAccounts} Active · {closedAccounts} Closed
                                       </span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      {message} Click below to launch the verified TransUnion score and detailed credit history viewer.
+                                    <span className="text-[10px] text-muted-foreground font-mono">Real-time Upstream Records</span>
+                                  </div>
+
+                                  {tradelines.length > 0 ? (
+                                    <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                                      {tradelines.map((trade: any, idx: number) => {
+                                        const overdueNum = Number(trade.overdueAmount || trade.overdue_amount || 0);
+                                        const isClosed = trade.status === "CLOSED" || String(trade.status).toUpperCase() === "CLOSED";
+                                        const sanctionedNum = Number(trade.sanctionedAmount || trade.amount || 0);
+                                        const currentBalNum = Number(trade.current_balance || trade.balanceAmount || 0);
+
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className={`rounded-lg border p-3 text-xs transition-colors space-y-2 ${
+                                              overdueNum > 0
+                                                ? "border-rose-500/30 bg-rose-500/5"
+                                                : isClosed
+                                                ? "border-border/60 bg-secondary/15"
+                                                : "border-border bg-secondary/30"
+                                            }`}
+                                          >
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                              <div className="flex items-center gap-2">
+                                                <div className={`rounded p-1 text-[10px] font-bold ${
+                                                  isClosed ? "bg-zinc-800 text-zinc-400" : "bg-emerald-500/15 text-emerald-400"
+                                                }`}>
+                                                  {isClosed ? "CLOSED" : "ACTIVE"}
+                                                </div>
+                                                <p className="font-bold text-foreground">{trade.lender || trade.bank || "Credit Facility"}</p>
+                                                <span className="text-muted-foreground">·</span>
+                                                <span className="text-muted-foreground font-medium">{trade.facilityType || trade.type || "Loan"}</span>
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-mono text-[10px] text-muted-foreground">Acc: {trade.accountNumber || "N/A"}</span>
+                                                {trade.repaymentDpd && (
+                                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
+                                                    overdueNum > 0 ? "bg-rose-500/15 border-rose-500/30 text-rose-400" : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                                  }`}>
+                                                    {trade.repaymentDpd}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-border/40 text-[11px]">
+                                              <div>
+                                                <span className="text-[10px] text-muted-foreground block">Sanctioned Amount</span>
+                                                <p className="font-mono font-semibold text-emerald-400">
+                                                  ₹{sanctionedNum.toLocaleString("en-IN")}
+                                                </p>
+                                              </div>
+                                              <div>
+                                                <span className="text-[10px] text-muted-foreground block">Current Balance</span>
+                                                <p className="font-mono font-semibold text-foreground">
+                                                  ₹{currentBalNum.toLocaleString("en-IN")}
+                                                </p>
+                                              </div>
+                                              <div>
+                                                <span className="text-[10px] text-muted-foreground block">Overdue Amount</span>
+                                                <p className={`font-mono font-bold ${overdueNum > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+                                                  ₹{overdueNum.toLocaleString("en-IN")}
+                                                </p>
+                                              </div>
+                                              <div>
+                                                <span className="text-[10px] text-muted-foreground block">Dates</span>
+                                                <p className="font-mono text-[10px] text-muted-foreground">
+                                                  Opened: {trade.dateOpened || "N/A"} {trade.dateClosed && `· Closed: ${trade.dateClosed}`}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="py-6 text-center text-xs text-muted-foreground">
+                                      No detailed tradeline facilities reported for this consumer profile.
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Recent Inquiries (Enquiries) */}
+                                {inquiries.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                    <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <FileCheck className="h-3.5 w-3.5 text-cyan-400" /> Recent Credit Inquiries ({inquiries.length})
+                                      </span>
+                                      <span className="text-[10px] font-mono text-muted-foreground">Bureau Enquiries Log</span>
+                                    </div>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                      {inquiries.map((inq: any, idx: number) => (
+                                        <div key={idx} className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs flex items-center justify-between gap-2">
+                                          <div>
+                                            <p className="font-bold text-foreground">{inq.enquiry || inq.lender || "Lending Institution"}</p>
+                                            <p className="text-[10px] text-muted-foreground">Purpose: {inq.purpose || "Credit Facility"}</p>
+                                          </div>
+                                          <div className="text-right">
+                                            <p className="font-mono font-semibold text-cyan-400">
+                                              {Number(inq.amount || 0) > 0 ? `₹${Number(inq.amount).toLocaleString("en-IN")}` : "—"}
+                                            </p>
+                                            <p className="text-[10px] font-mono text-muted-foreground">{inq.date || "—"}</p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* PDF Download & Action Toolbar */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-4">
+                                  <div className="space-y-0.5">
+                                    <h4 className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                                      <FileText className="h-4 w-4" /> Official TransUnion CIBIL CIR Report (PDF Generated)
+                                    </h4>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Complete multi-page authentic CIBIL report formatted with Account Tradelines, 36-Month DPD grids, Inquiries & Score Factors.
                                     </p>
-                                    <div className="flex flex-wrap items-center gap-2">
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {tuPdfBlobUrl && (
+                                      <>
+                                        <a
+                                          href={tuPdfBlobUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-cyan-500 shadow transition-colors"
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5" /> View PDF in New Tab
+                                        </a>
+                                        <a
+                                          href={tuPdfBlobUrl}
+                                          download={`TransUnion_CIBIL_Report_${tuPan.trim() || "Customer"}.pdf`}
+                                          className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-900/40 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-800/50 transition-colors shadow"
+                                        >
+                                          <Download className="h-3.5 w-3.5" /> Download PDF Report
+                                        </a>
+                                      </>
+                                    )}
+                                    {webTokenUrl && (
                                       <a
                                         href={webTokenUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-500 shadow transition-colors"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-amber-500 shadow transition-colors"
                                       >
-                                        🚀 View CIBIL Credit Report <ExternalLink className="h-3.5 w-3.5" />
+                                        <Sparkles className="h-3.5 w-3.5" /> Interactive Portal
                                       </a>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(webTokenUrl);
-                                          toast.success("Web report link copied!");
-                                        }}
-                                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-                                      >
-                                        <Copy className="h-3 w-3" /> Copy Link
-                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {tuPdfLoading && (
+                                  <div className="flex items-center justify-center py-12 text-xs text-muted-foreground gap-2">
+                                    <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />
+                                    Generating authentic TransUnion CIBIL CIR PDF document...
+                                  </div>
+                                )}
+
+                                {tuPdfError && (
+                                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
+                                    ⚠️ {tuPdfError}
+                                  </div>
+                                )}
+
+                                {/* Embedded Full-Page PDF Viewer */}
+                                {tuPdfBlobUrl && (
+                                  <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg space-y-0">
+                                    <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-border">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-cyan-400" />
+                                        <span className="text-xs font-bold text-foreground">
+                                          TransUnion CIR PDF Preview
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] font-mono text-muted-foreground">
+                                        Multi-page High Fidelity Rendering
+                                      </span>
                                     </div>
+                                    <iframe
+                                      src={`${tuPdfBlobUrl}#toolbar=1&navpanes=0`}
+                                      title="TransUnion CIBIL Report PDF"
+                                      className="w-full h-[650px] border-0 bg-zinc-950"
+                                    />
                                   </div>
                                 )}
 
                                 {stepsSummary.length > 0 && (
                                   <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                                     <span className="text-xs font-bold text-foreground">Pipeline Execution Summary</span>
-                                    <div className="grid gap-2 sm:grid-cols-3">
+                                    <div className="grid gap-2 sm:grid-cols-4">
                                       {stepsSummary.map((st, i) => (
                                         <div key={i} className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs space-y-1">
                                           <div className="flex items-center justify-between">

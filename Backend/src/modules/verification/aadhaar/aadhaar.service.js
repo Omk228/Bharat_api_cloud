@@ -127,62 +127,50 @@ export class AadhaarVerificationService {
         }
       } catch (err) {
         console.error('⚠️ IDSPay Aadhaar upstream provider call failed:', err.message);
-        if (isUpstreamLowBalance(err.message)) {
-          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
-          resultCode = 102;
-          isSuccess = false;
-        }
-      }
-    }
-
-    // Fallback sandbox simulation if upstream was not called or failed
-    if (!finalResponse) {
-      if (!isValidFormat) {
         resultCode = 102;
         isSuccess = false;
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 102,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Invalid Aadhaar number or combination of inputs',
-          status_message: 'Refund processed',
-          result: {
-            aadhaar: cleanAadhaar || 'XXXXXXXXXXXX',
-            aadhaar_status: 'Invalid',
-            is_valid: false
-          }
-        };
-      } else {
-        resultCode = 101;
-        isSuccess = true;
-        const masked = cleanAadhaar ? `XXXXXXXX${cleanAadhaar.slice(-4)}` : 'XXXXXXXX1445';
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 101,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Request processed successfully.',
-          result: {
-            aadhaar: masked,
-            aadhaar_number: masked,
-            is_valid: true,
-            status: 'VALID',
-            age_band: '30-40',
-            gender: 'MALE',
-            state: 'Uttar Pradesh',
-            mobile_digits: 'XXX-XXX-3490',
-            name_match: cleanName ? true : undefined,
-            name_match_score: cleanName ? 100 : undefined
-          }
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
+              result_code: 102,
+              request_id: requestId,
+              client_ref_num: clientRef,
+              message: 'Server Error. Please try again later.',
+              status_message: 'Server Error',
+              result: null,
+              data: null
+            };
       }
+    } else {
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        status: {
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
+        },
+        http_response_code: 500,
+        result_code: 103,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        status_message: 'Server Error',
+        result: null,
+        data: null
+      };
     }
 
     // 3. Store result in Cache (24 Hours for valid, 5 Mins for invalid)
-    if (cleanAadhaar && finalResponse) {
-      const ttl = isSuccess ? 86400 : 300;
-      CacheService.setVerification('aadhaar', cleanAadhaar, finalResponse, ttl).catch(() => {});
+    if (cleanAadhaar && finalResponse && isSuccess && (finalResponse.result || finalResponse.data)) {
+      CacheService.setVerification('aadhaar', cleanAadhaar, finalResponse, 86400).catch(() => {});
     }
 
     // 4. Asynchronously push to BullMQ queue without blocking Express (<0.8ms)

@@ -148,68 +148,52 @@ export class MobileToBankService {
           }
         }
       } catch (err) {
-        console.error('⚠️ Mobile To Bank Advance upstream provider call failed:', err.message);
+        console.error('⚠️ Mobile To Bank Advance call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
         finalResponse = isUpstreamLowBalance(err.message)
           ? formatUpstreamLowBalanceResponse(requestId, clientRef)
           : {
-              http_response_code: 502,
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
               client_ref_num: clientRef,
               request_id: requestId,
               result_code: 102,
-              message: 'Upstream verification service temporarily unavailable.',
-              status_message: 'Verification failed',
+              message: 'Server Error. Please try again later.',
+              status_message: 'Server Error',
               result: null,
+              data: null,
             };
       }
     } else {
-      console.log('ℹ️ No IDSPay master keys found in .env, using fallback simulation.');
-    }
-
-    let isSimulated = false;
-    // Fallback simulation if upstream was not called (e.g. Missing master keys in local dev)
-    if (!finalResponse) {
-      isSimulated = true;
-      if (!isValidMobile || cleanMobile.startsWith('0000')) {
-        resultCode = 102;
-        isSuccess = false;
-        finalResponse = {
-          http_response_code: 200,
-          client_ref_num: clientRef,
-          request_id: requestId,
-          result_code: 102,
-          message: 'Invalid Mobile Number or No Record Found',
-          result: null,
-        };
-      } else {
-        resultCode = 101;
-        isSuccess = true;
-        finalResponse = {
-          http_response_code: 200,
-          client_ref_num: clientRef,
-          request_id: requestId,
-          result_code: 101,
-          message: 'Details fetched successfully.',
-          bank_account_data: {
-            name: 'RINKI  .',
-            utr: '625199976885',
-            account_number: '6947737207',
-            ifsc: 'KKBK0004587',
-            upi: `${cleanMobile}@nyes`,
-          },
-          result: {
-            mobile_number: cleanMobile,
-            consent: cleanConsent,
-          },
-        };
-      }
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        status: {
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
+        },
+        http_response_code: 500,
+        result_code: 103,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        status_message: 'Server Error',
+        result: null,
+        data: null,
+      };
     }
 
     const durationMs = Date.now() - startTime;
 
     // 3. Store in cache if successful (24 Hours)
-    if (cleanMobile && finalResponse && isSuccess && !isSimulated) {
+    if (cleanMobile && finalResponse && isSuccess && finalResponse.bank_account_data) {
       await CacheService.setVerification('mobile_to_bank_advance', cacheKeyIdentifier, finalResponse, 86400);
       console.log(`💾 [MOBILE TO BANK ADVANCE CACHED] Key verify:mobile_to_bank_advance:${cacheKeyIdentifier} stored for 24h`);
     }

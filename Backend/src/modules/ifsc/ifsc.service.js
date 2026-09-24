@@ -164,7 +164,7 @@ export class IfscService {
       throw new Error(`Upstream Razorpay IFSC service returned status ${upstreamRes.status}`);
     } catch (err) {
       if (err.name === 'TimeoutError') {
-        throw ApiError.gatewayTimeout('Upstream Razorpay IFSC API timed out. Please retry.');
+        throw ApiError.internal('Server Error. Please try again later.');
       }
       throw err;
     }

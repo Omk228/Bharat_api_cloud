@@ -153,62 +153,52 @@ export class PrefillVerificationService {
           };
         }
       } catch (err) {
-        console.error('⚠️ IDSPay Prefill upstream provider call failed:', err.message);
-        if (isUpstreamLowBalance(err.message)) {
-          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
-          resultCode = 102;
-          isSuccess = false;
-        }
-      }
-    }
-
-    // Fallback sandbox simulation if upstream was not called or failed
-    if (!finalResponse) {
-      if (!isValidMobile || cleanMobile.startsWith('0000')) {
+        console.error('⚠️ Prefill verification call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 102,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Invalid Mobile Number or Name combination',
-          result: null
-        };
-      } else {
-        resultCode = 101;
-        isSuccess = true;
-        const fullName = `${cleanFirstName} ${cleanLastName}`.trim().toUpperCase();
-
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 101,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'success',
-          result: {
-            name: fullName || 'SOM KUMAR',
-            dob: '26-12-1990',
-            age: '35',
-            gender: 'MALE',
-            pan: 'ERXXXXXX76K',
-            email: `${cleanFirstName.toLowerCase() || 'user'}@example.com`,
-            address: [
-              {
-                first_line_of_address: 'FLAT 402, SHIVAM APARTMENTS',
-                second_line_of_address: 'SECTOR 18, NEAR CITY CENTER',
-                third_line_of_address: 'NOIDA, GAUTAM BUDDHA NAGAR, UP - 201301'
-              }
-            ]
-          }
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
+              result_code: 102,
+              request_id: requestId,
+              client_ref_num: clientRef,
+              message: 'Server Error. Please try again later.',
+              status_message: 'Server Error',
+              result: null,
+              data: null
+            };
       }
+    } else {
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        status: {
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
+        },
+        http_response_code: 500,
+        result_code: 103,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        status_message: 'Server Error',
+        result: null,
+        data: null
+      };
     }
 
     const durationMs = Date.now() - startTime;
 
     // 3. Cache valid verification results in Redis for 24 hours (86,400 seconds) 🚀
-    if (isSuccess && cleanMobile && cleanFirstName) {
+    if (isSuccess && cleanMobile && cleanFirstName && finalResponse?.result) {
       await CacheService.setVerification('prefill', cacheKeyIdentifier, finalResponse, 86400);
       console.log(`💾 [PREFILL CACHED] Key verify:prefill:${cacheKeyIdentifier} stored for 24h`);
     }

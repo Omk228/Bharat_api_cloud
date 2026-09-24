@@ -128,32 +128,32 @@ export class PanVerificationService {
           isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200);
         }
       } catch (err) {
-        console.error('⚠️ IDSPay upstream provider call failed:', err.message);
+        console.error('⚠️ PAN verification call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
         finalResponse = isUpstreamLowBalance(err.message)
           ? formatUpstreamLowBalanceResponse(requestId, clientRef)
           : {
-              http_response_code: 502,
+              http_response_code: 500,
               result_code: 102,
               request_id: requestId,
               client_ref_num: clientRef,
-              message: 'Upstream verification service temporarily unavailable.',
-              status_message: 'Verification failed',
+              message: 'Server Error. Please try again later.',
+              status_message: 'Server Error',
               result: null
             };
       }
     } else {
-      console.log('ℹ️ No IDSPay master keys found in .env');
+      console.log('ℹ️ No master keys found in DB or .env');
       resultCode = 103;
       isSuccess = false;
       finalResponse = {
-        http_response_code: 503,
+        http_response_code: 500,
         result_code: 103,
         request_id: requestId,
         client_ref_num: clientRef,
-        message: 'Upstream verification provider credentials not configured.',
-        status_message: 'Service unavailable',
+        message: 'Server Error. Service configuration missing.',
+        status_message: 'Server Error',
         result: null
       };
     }
@@ -315,35 +315,43 @@ export class PanVerificationService {
           resultCode = isSuccess ? 101 : 102;
         }
       } catch (err) {
-        console.error('⚠️ Upstream PAN Plus call failed:', err.message);
+        console.error('⚠️ PAN Plus call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
         finalResponse = isUpstreamLowBalance(err.message)
           ? formatUpstreamLowBalanceResponse(requestId, clientRef)
           : {
               status: {
-                code: 502,
+                code: 500,
                 type: 'failed',
-                message: 'Upstream verification service temporarily unavailable. Please try again.',
+                message: 'Server Error',
               },
-              message: 'Upstream verification service temporarily unavailable. Please try again.',
+              http_response_code: 500,
+              result_code: 102,
+              message: 'Server Error. Please try again later.',
+              status_message: 'Server Error',
               data: null,
+              result: null,
               request_id: requestId,
               client_ref_num: clientRef,
             };
       }
     } else {
-      console.log('ℹ️ No IDSPay master keys found in .env');
+      console.log('ℹ️ No master keys found in DB or .env');
       resultCode = 103;
       isSuccess = false;
       finalResponse = {
         status: {
-          code: 503,
+          code: 500,
           type: 'failed',
-          message: 'Upstream verification provider credentials not configured on server.',
+          message: 'Server Error',
         },
-        message: 'Upstream verification provider credentials not configured on server.',
+        http_response_code: 500,
+        result_code: 103,
+        message: 'Server Error. Service configuration missing.',
+        status_message: 'Server Error',
         data: null,
+        result: null,
         request_id: requestId,
         client_ref_num: clientRef,
       };

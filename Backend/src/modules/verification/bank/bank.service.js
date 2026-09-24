@@ -188,68 +188,52 @@ export class BankVerificationService {
           };
         }
       } catch (err) {
-        console.error('⚠️ IDSPay Bank upstream provider call failed:', err.message);
-        if (isUpstreamLowBalance(err.message)) {
-          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
-          resultCode = 102;
-          isSuccess = false;
-        }
-      }
-    }
-
-    // Fallback sandbox simulation if upstream was not called or failed
-    if (!finalResponse) {
-      if (!isValidAcc || !isValidIfscCode || cleanAccount.startsWith('0000')) {
+        console.error('⚠️ Bank verification call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 102,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Invalid Bank Account Number or IFSC Code',
-          status_message: 'Verification failed',
-          result: {
-            creditorAccountId: cleanAccount,
-            account_number: cleanAccount,
-            ifscCode: cleanIfsc,
-            ifsc: cleanIfsc,
-            account_status: 'INVALID',
-            beneficiary_name: '',
-            fullname: '',
-            is_valid: false,
-            account_exists: false
-          }
-        };
-      } else {
-        resultCode = 101;
-        isSuccess = true;
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 101,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Bank Account Verified Successfully (Penny Less)',
-          status_message: 'Verification success',
-          result: {
-            creditorAccountId: cleanAccount,
-            account_number: cleanAccount,
-            ifscCode: cleanIfsc,
-            ifsc: cleanIfsc,
-            beneficiary_name: 'LIVE VERIFIED BENEFICIARY',
-            fullname: 'LIVE VERIFIED BENEFICIARY',
-            account_status: 'ACTIVE',
-            account_exists: true,
-            is_valid: true
-          }
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
+              result_code: 102,
+              request_id: requestId,
+              client_ref_num: clientRef,
+              message: 'Server Error. Please try again later.',
+              status_message: 'Server Error',
+              result: null,
+              data: null
+            };
       }
+    } else {
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        status: {
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
+        },
+        http_response_code: 500,
+        result_code: 103,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        status_message: 'Server Error',
+        result: null,
+        data: null
+      };
     }
 
     const durationMs = Date.now() - startTime;
 
     // 3. Cache valid verification results in Redis for 24 hours (86,400 seconds) 🚀
-    if (isSuccess && cleanAccount && cleanIfsc) {
+    if (isSuccess && cleanAccount && cleanIfsc && (finalResponse?.result || finalResponse?.data)) {
       await CacheService.setVerification('bank', cacheKeyIdentifier, finalResponse, 86400);
       console.log(`💾 [BANK CACHED] Key verify:bank:${cacheKeyIdentifier} stored for 24h`);
     }

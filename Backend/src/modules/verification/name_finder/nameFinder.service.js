@@ -128,59 +128,50 @@ export class NameFinderVerificationService {
           isSuccess = resultCode === 101 || (upstreamData.status && upstreamData.status.code === 200 && upstreamData.result_code !== 103);
         }
       } catch (err) {
-        console.error('⚠️ IDSPay Name Finder upstream provider call failed:', err.message);
-        if (isUpstreamLowBalance(err.message)) {
-          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
-          resultCode = 102;
-          isSuccess = false;
-        }
-      }
-    }
-
-    // Fallback sandbox simulation if upstream was not called or failed
-    if (!finalResponse) {
-      if (!isValidMobile || cleanMobile.startsWith('0000')) {
+        console.error('⚠️ Name Finder call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 102,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Invalid Mobile Number',
-          result: null,
-          data: null
-        };
-      } else {
-        resultCode = 101;
-        isSuccess = true;
-
-        finalResponse = {
-          http_response_code: 200,
-          result_code: 101,
-          request_id: requestId,
-          client_ref_num: clientRef,
-          message: 'Request processed successfully.',
-          result: {
-            full_name: 'ROHIT SHARMA',
-            mobile: cleanMobile,
-            operator: 'AIRTEL',
-            circle: 'DELHI NCR'
-          },
-          data: {
-            full_name: 'ROHIT SHARMA',
-            mobile: cleanMobile,
-            operator: 'AIRTEL',
-            circle: 'DELHI NCR'
-          }
-        };
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
+              result_code: 102,
+              request_id: requestId,
+              client_ref_num: clientRef,
+              message: 'Server Error. Please try again later.',
+              data: null,
+              result: null,
+            };
       }
+    } else {
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        status: {
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
+        },
+        http_response_code: 500,
+        result_code: 103,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        data: null,
+        result: null,
+      };
     }
 
     const durationMs = Date.now() - startTime;
 
     // 3. Cache valid verification results in Redis for 24 hours (86,400 seconds) 🚀
-    if (isSuccess && cleanMobile) {
+    if (isSuccess && cleanMobile && (finalResponse?.data || finalResponse?.result)) {
       await CacheService.setVerification('name_finder', cacheKeyIdentifier, finalResponse, 86400);
       console.log(`💾 [NAME FINDER CACHED] Key verify:name_finder:${cacheKeyIdentifier} stored for 24h`);
     }

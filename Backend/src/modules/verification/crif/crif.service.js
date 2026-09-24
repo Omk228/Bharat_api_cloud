@@ -121,128 +121,20 @@ export class CrifVerificationService {
         data: outData,
       };
     } else {
-      // 2. High-Quality Realistic Simulated CRIF High Mark Response
-      isSuccess = true;
-      const maskedMobile = `${cleanMobile.slice(0, 3)}XXXX${cleanMobile.slice(-3)}`;
-      const fullName = `${cleanFirstName} ${cleanLastName}`.toUpperCase();
-      const randomScore = Math.floor(720 + Math.random() * 85); // 720 - 805
-
-      let scoreBand = 'Good';
-      if (randomScore >= 775) scoreBand = 'Excellent';
-      else if (randomScore >= 700) scoreBand = 'Good';
-      else if (randomScore >= 600) scoreBand = 'Fair';
-      else scoreBand = 'Poor';
-
+      isSuccess = false;
       finalResponse = {
         status: {
-          code: 200,
-          type: 'success',
-          message: 'CRIF High Mark credit report fetched successfully.',
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
         },
-        message: 'CRIF High Mark credit report fetched successfully.',
-        data: {
-          status: 'success',
-          report_id: `CRF_REP_${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
-          client_ref_num: clientRef,
-          order_id: `ORD_${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
-          score: String(randomScore),
-          score_name: 'CRIF High Mark Consumer Credit Score',
-          score_band: scoreBand,
-          score_confidence_level: 'High',
-          scoring_date: new Date().toISOString().split('T')[0],
-          personal_details: {
-            first_name: cleanFirstName.toUpperCase(),
-            last_name: cleanLastName.toUpperCase(),
-            full_name: fullName,
-            mobile: maskedMobile,
-            date_of_birth: '1991-06-20',
-            gender: 'Male',
-            pan: `XXXXX${Math.floor(1000 + Math.random() * 9000)}X`,
-            address: 'PLOT 45, GREEN GLEN LAYOUT, BELLANDUR, BENGALURU, KARNATAKA - 560103',
-          },
-          credit_summary: {
-            credit_score: randomScore,
-            total_active_accounts: 4,
-            total_closed_accounts: 3,
-            total_outstanding_balance: 248500,
-            total_sanctioned_amount: 850000,
-            total_overdue_balance: 0,
-            overdue_accounts_count: 0,
-            recent_inquiries_30_days: 1,
-            recent_inquiries_12_months: 3,
-            credit_card_utilization_percent: 18.5,
-            on_time_payment_rate_percent: 99.2,
-            oldest_account_vintage_months: 64,
-          },
-          accounts: [
-            {
-              account_type: 'Credit Card',
-              institution: 'HDFC Bank Ltd',
-              account_number: 'XXXX-XXXX-XXXX-3819',
-              sanctioned_amount: 200000,
-              current_balance: 24500,
-              overdue_amount: 0,
-              payment_status: 'Current / No DPD',
-              opened_date: '2020-03-15',
-              last_payment_date: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0],
-              repayment_tenure_months: 0,
-              interest_rate: '3.49% p.m.',
-            },
-            {
-              account_type: 'Auto Loan',
-              institution: 'State Bank of India',
-              account_number: 'XXXX-XXXX-9102',
-              sanctioned_amount: 450000,
-              current_balance: 142000,
-              overdue_amount: 0,
-              payment_status: 'Standard Regular',
-              opened_date: '2022-08-10',
-              last_payment_date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0],
-              repayment_tenure_months: 60,
-              emi_amount: 9550,
-            },
-            {
-              account_type: 'Consumer Durable Loan',
-              institution: 'Bajaj Finance Ltd',
-              account_number: 'XXXX-XXXX-4421',
-              sanctioned_amount: 55000,
-              current_balance: 12000,
-              overdue_amount: 0,
-              payment_status: 'Standard Regular',
-              opened_date: '2023-11-05',
-              last_payment_date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
-              repayment_tenure_months: 12,
-              emi_amount: 4950,
-            },
-            {
-              account_type: 'Personal Loan',
-              institution: 'ICICI Bank',
-              account_number: 'XXXX-XXXX-7731',
-              sanctioned_amount: 145000,
-              current_balance: 70000,
-              overdue_amount: 0,
-              payment_status: 'Standard Regular',
-              opened_date: '2023-01-20',
-              last_payment_date: new Date(Date.now() - 12 * 86400000).toISOString().split('T')[0],
-              repayment_tenure_months: 36,
-              emi_amount: 4890,
-            },
-          ],
-          inquiries: [
-            {
-              date: new Date(Date.now() - 18 * 86400000).toISOString().split('T')[0],
-              institution: 'Axis Bank Ltd',
-              purpose: 'Credit Card',
-              amount: 150000,
-            },
-            {
-              date: new Date(Date.now() - 110 * 86400000).toISOString().split('T')[0],
-              institution: 'Kotak Mahindra Bank',
-              purpose: 'Personal Loan',
-              amount: 200000,
-            },
-          ],
-        },
+        http_response_code: 500,
+        result_code: 102,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Server Error. Please try again later.',
+        status_message: 'Server Error',
+        data: null,
       };
     }
 

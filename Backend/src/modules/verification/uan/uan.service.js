@@ -156,76 +156,41 @@ export class UanService {
           resultCode = isSuccess ? 101 : 102;
         }
       } catch (err) {
-        console.error('⚠️ Upstream Mobile To UAN call failed:', err.message);
-        if (isUpstreamLowBalance(err.message)) {
-          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
-          resultCode = 102;
-          isSuccess = false;
-        }
+        console.error('⚠️ Mobile To UAN call failed:', err.message);
+        resultCode = 102;
+        isSuccess = false;
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
+              result_code: 102,
+              request_id: requestId,
+              client_ref_num: clientRef,
+              message: 'Server Error. Please try again later.',
+              data: null,
+            };
       }
-    }
-
-    // Fallback sandbox simulation if upstream was not called or errored
-    if (!finalResponse) {
-      resultCode = 101;
-      isSuccess = true;
+    } else {
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
       finalResponse = {
         status: {
-          code: 200,
-          type: 'success',
-          message: 'Success',
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
         },
-        message: 'Success',
-        data: {
-          uan: ['101610621681'],
-          summary: {
-            recent_employer_data: {
-              member_id: 'BRXXXXXXXX12278',
-              establishment_id: 'BRMXXXXX000',
-              date_of_exit: '',
-              date_of_joining: '2020-09-01',
-              establishment_name: 'DISTRICT EDUCATION OFFICE, SARAN, CHHAPRA',
-              employer_confidence_score: null,
-              matching_uan: '101610621681',
-            },
-            matching_uan: '101610621681',
-            is_employed: true,
-            employee_name_match: null,
-            employer_name_match: null,
-            uan_count: 1,
-            date_of_exit_marked: false,
-          },
-          uan_details: {
-            '101610621681': {
-              basic_details: {
-                gender: 'MALE',
-                date_of_birth: '1990-03-05',
-                employee_confidence_score: null,
-                name: 'VERIFIED EMPLOYEE',
-                mobile: cleanMobile,
-                aadhaar_verification_status: 1,
-              },
-              employment_details: {
-                member_id: 'BRMXXXXXXXX2278',
-                establishment_id: 'BXXXXXXXX24000',
-                date_of_exit: '',
-                date_of_joining: '2020-09-01',
-                leave_reason: '',
-                establishment_name: 'DISTRICT EDUCATION OFFICE, SARAN, CHHAPRA',
-                employer_confidence_score: null,
-              },
-            },
-          },
-          uan_source: [
-            {
-              uan: '101610621681',
-              source: 'mobile',
-            },
-          ],
-          name_dob_filtering_score: null,
-        },
+        http_response_code: 500,
+        result_code: 103,
         request_id: requestId,
         client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        data: null,
       };
     }
 
@@ -389,83 +354,48 @@ export class UanService {
           resultCode = isSuccess ? 101 : 102;
         }
       } catch (err) {
-        console.error('⚠️ Upstream UAN Direct call failed:', err.message);
-        if (isUpstreamLowBalance(err.message)) {
-          finalResponse = formatUpstreamLowBalanceResponse(requestId, clientRef);
-          resultCode = 102;
-          isSuccess = false;
-        }
+        console.error('⚠️ UAN Direct call failed:', err.message);
+        resultCode = 102;
+        isSuccess = false;
+        finalResponse = isUpstreamLowBalance(err.message)
+          ? formatUpstreamLowBalanceResponse(requestId, clientRef)
+          : {
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
+              result_code: 102,
+              request_id: requestId,
+              client_ref_num: clientRef,
+              message: 'Server Error. Please try again later.',
+              data: null,
+            };
       }
-    }
-
-    // Fallback sandbox simulation if upstream was not called or errored
-    if (!finalResponse) {
-      resultCode = 101;
-      isSuccess = true;
+    } else {
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
       finalResponse = {
         status: {
-          code: 200,
-          type: 'success',
-          message: 'Success',
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
         },
-        message: 'Success',
-        data: {
-          uan: [cleanUan],
-          summary: {
-            recent_employer_data: {
-              member_id: 'BRXXXXXXXX12278',
-              establishment_id: 'BRMXXXXX000',
-              date_of_exit: '',
-              date_of_joining: '2020-09-01',
-              establishment_name: 'DISTRICT EDUCATION OFFICE, SARAN, CHHAPRA',
-              employer_confidence_score: null,
-              matching_uan: cleanUan,
-            },
-            matching_uan: cleanUan,
-            is_employed: true,
-            employee_name_match: null,
-            employer_name_match: null,
-            uan_count: 1,
-            date_of_exit_marked: false,
-          },
-          uan_details: {
-            [cleanUan]: {
-              basic_details: {
-                gender: 'MALE',
-                date_of_birth: '1990-03-05',
-                employee_confidence_score: null,
-                name: 'VERIFIED EMPLOYEE',
-                mobile: '',
-                aadhaar_verification_status: 1,
-              },
-              employment_details: {
-                member_id: 'BRMXXXXXXXX2278',
-                establishment_id: 'BXXXXXXXX24000',
-                date_of_exit: '',
-                date_of_joining: '2020-09-01',
-                leave_reason: '',
-                establishment_name: 'DISTRICT EDUCATION OFFICE, SARAN, CHHAPRA',
-                employer_confidence_score: null,
-              },
-            },
-          },
-          uan_source: [
-            {
-              uan: cleanUan,
-              source: 'uan',
-            },
-          ],
-          name_dob_filtering_score: null,
-        },
+        http_response_code: 500,
+        result_code: 103,
         request_id: requestId,
         client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        data: null,
       };
     }
 
     const durationMs = Date.now() - startTime;
 
     // 3. Cache valid verification results in Redis for 24 hours (86,400s)
-    if (isSuccess && cleanUan) {
+    if (isSuccess && cleanUan && finalResponse?.data) {
       await CacheService.setVerification('uan_direct', cacheKeyIdentifier, finalResponse, 86400);
       console.log(`💾 [UAN DIRECT CACHED] Key verify:uan_direct:${cacheKeyIdentifier} stored for 24h`);
     }

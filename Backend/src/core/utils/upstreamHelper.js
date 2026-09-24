@@ -38,13 +38,19 @@ export function isUpstreamLowBalance(dataOrError) {
  */
 export function formatUpstreamLowBalanceResponse(requestId = '', clientRef = '') {
   return {
-    http_response_code: 503,
+    status: {
+      code: 500,
+      type: 'failed',
+      message: 'Server Error',
+    },
+    http_response_code: 500,
     result_code: 102,
     request_id: requestId || `req_${Date.now()}`,
     client_ref_num: clientRef || null,
-    message: 'There is an unexpected issue with the upstream provider. Please try again later.',
-    status_message: 'Unexpected issue',
-    result: null
+    message: 'Server Error. Please try again later.',
+    status_message: 'Server Error',
+    result: null,
+    data: null,
   };
 }
 

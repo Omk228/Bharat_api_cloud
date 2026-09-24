@@ -159,60 +159,52 @@ export class MobileUpiVerificationService {
           }
         }
       } catch (err) {
-        console.error('⚠️ Mobile To UPI upstream provider call failed:', err.message);
+        console.error('⚠️ Mobile To UPI call failed:', err.message);
         resultCode = 102;
         isSuccess = false;
         finalResponse = isUpstreamLowBalance(err.message)
           ? formatUpstreamLowBalanceResponse(requestId, clientRef)
           : {
-              http_response_code: 502,
+              status: {
+                code: 500,
+                type: 'failed',
+                message: 'Server Error',
+              },
+              http_response_code: 500,
               client_ref_num: clientRef,
               request_id: requestId,
               result_code: 102,
-              message: 'Upstream verification service temporarily unavailable.',
-              status_message: 'Verification failed',
+              message: 'Server Error. Please try again later.',
+              status_message: 'Server Error',
               result: null,
+              data: null,
             };
       }
     } else {
-      console.log('ℹ️ No IDSPay master keys found in .env, using gateway simulated sandbox.');
-    }
-
-    let isSimulated = false;
-    // Fallback sandbox simulation if upstream was not called (e.g. Missing master keys in local dev)
-    if (!finalResponse) {
-      isSimulated = true;
-      if (!isValidMobile || cleanMobile.startsWith('0000')) {
-        resultCode = 103;
-        isSuccess = false;
-        finalResponse = {
-          http_response_code: 200,
-          client_ref_num: clientRef,
-          request_id: requestId,
-          result_code: 103,
-          message: 'No linked name found',
-          result: null,
-        };
-      } else {
-        resultCode = 101;
-        isSuccess = true;
-        finalResponse = {
-          http_response_code: 200,
-          client_ref_num: clientRef,
-          request_id: requestId,
-          result_code: 101,
-          result: {
-            mobile_linked_name: 'ROHIT SHARMA',
-            vpa: `${cleanMobile}@paytm`,
-          },
-        };
-      }
+      console.log('ℹ️ No master keys found in DB or .env');
+      resultCode = 103;
+      isSuccess = false;
+      finalResponse = {
+        status: {
+          code: 500,
+          type: 'failed',
+          message: 'Server Error',
+        },
+        http_response_code: 500,
+        result_code: 103,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Server Error. Service configuration missing.',
+        status_message: 'Server Error',
+        result: null,
+        data: null,
+      };
     }
 
     const durationMs = Date.now() - startTime;
 
-    // 3. Store result in Cache (24 Hours for valid lookups, never cache simulation)
-    if (cleanMobile && finalResponse && isSuccess && !isSimulated) {
+    // 3. Store result in Cache (24 Hours for valid lookups)
+    if (cleanMobile && finalResponse && isSuccess && finalResponse.result) {
       await CacheService.setVerification('mobile_upi', cacheKeyIdentifier, finalResponse, 86400);
       console.log(`💾 [MOBILE UPI CACHED] Key verify:mobile_upi:${cacheKeyIdentifier} stored for 24h`);
     }

@@ -13,14 +13,15 @@ export const upstreamAgent = new Agent({
   connections: 50,
   // Pipelining factor
   pipelining: 1,
-  // Socket connect configuration (30 seconds for slow upstream government portals)
+  // Socket connect configuration (generous 120s for slow portals)
   connect: {
-    timeout: 30_000,
+    timeout: 120_000,
     keepAlive: true,
-    keepAliveInitialDelay: 30_000
+    keepAliveInitialDelay: 60_000
   },
-  headersTimeout: 30_000,
-  bodyTimeout: 30_000
+  // 0 disables undici header and body timeouts so upstream can take its time
+  headersTimeout: 0,
+  bodyTimeout: 0
 });
 
 /**
