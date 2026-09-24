@@ -9,6 +9,7 @@
     "dev": "node --watch --env-file=.env src/server.js",
     "dev:nodemon": "nodemon src/server.js",
     "test": "node src/test-server.js",
+    "generate:test-report": "node scripts/generateTestReport.js",
     "db:view": "node src/scripts/view-db.js",
     "redis:start": "node src/scripts/setup-redis.js"
   },

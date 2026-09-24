@@ -52,6 +52,7 @@ import { apiClient } from "@/lib/api-client";
 import { BASE_URL } from "@/lib/api-catalog";
 import { getStoredUserEmail } from "@/lib/demo-store";
 import { generateTransUnionPdfFromApiResponse } from "@/lib/transunionPdfGenerator";
+import { generateCrifPdfFromApiResponse, normalizeCrifReportData } from "@/lib/crifPdfGenerator";
 
 export function isUpstreamLowBalanceError(dataOrError: unknown): boolean {
   if (!dataOrError) return false;
@@ -174,10 +175,10 @@ export type ApiResponseEnvelope = {
     upi?: string;
     [key: string]: unknown;
   };
-  data?: VerificationResult;
-  result?: VerificationResult;
+  data?: any;
+  result?: any;
   request_id?: string;
-  client_ref_num?: string;
+  client_ref_num?: string | null | undefined;
   _cached?: boolean;
   ip?: string;
   place_id?: string;
@@ -409,7 +410,7 @@ function TestApiPage() {
       const result = e.target?.result as string;
       if (result) {
         const b64 = result.includes(";base64,") ? result.split(";base64,")[1] : result;
-        setStatementFileBase64(b64);
+        setStatementFileBase64(b64 || "");
         toast.success(`Loaded "${file.name}" (${(file.size / 1024).toFixed(1)} KB)`);
       }
     };
@@ -544,8 +545,159 @@ function TestApiPage() {
       setTuExtracted(null);
       setTuPdfLoading(false);
       setTuPdfError(null);
+      return undefined;
     }
   }, [responseJson, selectedService, tuForename, tuSurname, tuPan, tuPhone, tuDob, tuGender]);
+
+  // CRIF High Mark PDF State
+  const [crifPdfBlobUrl, setCrifPdfBlobUrl] = useState<string | null>(null);
+  const [crifPdfLoading, setCrifPdfLoading] = useState<boolean>(false);
+  const [crifPdfError, setCrifPdfError] = useState<string | null>(null);
+
+  // Generate CRIF PDF automatically when responseJson arrives for crif
+  useEffect(() => {
+    if (selectedService === "crif" && responseJson) {
+      let active = true;
+      setCrifPdfLoading(true);
+      setCrifPdfError(null);
+      generateCrifPdfFromApiResponse(responseJson, {
+        first_name: crifFirstName.trim(),
+        last_name: crifLastName.trim(),
+        mobile_no: crifMobile.trim(),
+      })
+        .then((res) => {
+          if (!active) return;
+          setCrifPdfBlobUrl(res.blobUrl);
+          setCrifPdfLoading(false);
+        })
+        .catch((err) => {
+          if (!active) return;
+          console.error("CRIF PDF Generation Error:", err);
+          setCrifPdfError(err?.message || "Failed to generate CRIF PDF report");
+          setCrifPdfLoading(false);
+        });
+
+      return () => {
+        active = false;
+      };
+    } else {
+      setCrifPdfBlobUrl(null);
+      setCrifPdfLoading(false);
+      setCrifPdfError(null);
+      return undefined;
+    }
+  }, [responseJson, selectedService, crifFirstName, crifLastName, crifMobile]);
+
+  const handleOpenTuPdf = async () => {
+    try {
+      if (tuPdfBlobUrl) {
+        window.open(tuPdfBlobUrl, "_blank");
+        return;
+      }
+      toast.info("Generating TransUnion CIBIL PDF report...");
+      setTuPdfLoading(true);
+      const res = await generateTransUnionPdfFromApiResponse(responseJson, {
+        fullName: `${tuForename.trim()} ${tuSurname.trim()}`.trim() || "PRASHANT KUMAR",
+        panNumber: tuPan.trim() || "ABCDE1234F",
+        mobileNumber: tuPhone.trim() || "8976543210",
+        dob: tuDob.trim() || undefined,
+        gender: tuGender || "Male",
+      });
+      setTuPdfBlobUrl(res.blobUrl);
+      setTuExtracted(res.extracted);
+      setTuPdfLoading(false);
+      window.open(res.blobUrl, "_blank");
+    } catch (err: any) {
+      setTuPdfLoading(false);
+      toast.error(err?.message || "Failed to open TransUnion PDF");
+    }
+  };
+
+  const handleDownloadTuPdf = async () => {
+    try {
+      let targetUrl = tuPdfBlobUrl;
+      if (!targetUrl) {
+        toast.info("Generating TransUnion CIBIL PDF report...");
+        setTuPdfLoading(true);
+        const res = await generateTransUnionPdfFromApiResponse(responseJson, {
+          fullName: `${tuForename.trim()} ${tuSurname.trim()}`.trim() || "PRASHANT KUMAR",
+          panNumber: tuPan.trim() || "ABCDE1234F",
+          mobileNumber: tuPhone.trim() || "8976543210",
+          dob: tuDob.trim() || undefined,
+          gender: tuGender || "Male",
+        });
+        targetUrl = res.blobUrl;
+        setTuPdfBlobUrl(res.blobUrl);
+        setTuExtracted(res.extracted);
+        setTuPdfLoading(false);
+      }
+      const a = document.createElement("a");
+      a.href = targetUrl;
+      a.download = `TransUnion_CIBIL_Report_${tuPan.trim() || "Customer"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("TransUnion CIBIL PDF download started!");
+    } catch (err: any) {
+      setTuPdfLoading(false);
+      toast.error(err?.message || "Failed to download TransUnion PDF");
+    }
+  };
+
+  const handleOpenCrifPdf = async () => {
+    try {
+      if (crifPdfBlobUrl) {
+        window.open(crifPdfBlobUrl, "_blank");
+        return;
+      }
+      const rawData = (responseJson?.data || responseJson?.result || responseJson || {}) as any;
+      const backendReportUrl = rawData?.report_url || rawData?.web_token_url || rawData?.pdf_url || (responseJson as any)?.report_url || (responseJson as any)?.web_token_url;
+      if (backendReportUrl && typeof backendReportUrl === "string") {
+        window.open(backendReportUrl, "_blank");
+      }
+      toast.info("Generating CRIF High Mark PDF report...");
+      setCrifPdfLoading(true);
+      const res = await generateCrifPdfFromApiResponse(responseJson, {
+        first_name: crifFirstName.trim(),
+        last_name: crifLastName.trim(),
+        mobile_no: crifMobile.trim(),
+      });
+      setCrifPdfBlobUrl(res.blobUrl);
+      setCrifPdfLoading(false);
+      window.open(res.blobUrl, "_blank");
+    } catch (err: any) {
+      setCrifPdfLoading(false);
+      toast.error(err?.message || "Failed to open CRIF PDF");
+    }
+  };
+
+  const handleDownloadCrifPdf = async () => {
+    try {
+      let targetUrl = crifPdfBlobUrl;
+      if (!targetUrl) {
+        toast.info("Generating CRIF High Mark PDF report...");
+        setCrifPdfLoading(true);
+        const res = await generateCrifPdfFromApiResponse(responseJson, {
+          first_name: crifFirstName.trim(),
+          last_name: crifLastName.trim(),
+          mobile_no: crifMobile.trim(),
+        });
+        targetUrl = res.blobUrl;
+        setCrifPdfBlobUrl(res.blobUrl);
+        setCrifPdfLoading(false);
+      }
+      const a = document.createElement("a");
+      a.href = targetUrl;
+      a.download = `CRIF_HighMark_Report_${crifMobile.trim() || "Customer"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("CRIF High Mark PDF download started!");
+    } catch (err: any) {
+      setCrifPdfLoading(false);
+      toast.error(err?.message || "Failed to download CRIF PDF");
+    }
+  };
 
   // Sync credentials when loaded
   useEffect(() => {
@@ -1275,6 +1427,13 @@ function TestApiPage() {
       Boolean((responseJson?.data as any)?.txn_id) ||
       Boolean((responseJson as any)?.web_token_url) ||
       Boolean((responseJson?.data as any)?.web_token_url) ||
+      Boolean((responseJson as any)?.report_url) ||
+      Boolean((responseJson?.data as any)?.report_url) ||
+      Boolean((responseJson as any)?.pdf_url) ||
+      Boolean((responseJson?.data as any)?.pdf_url) ||
+      Boolean((responseJson?.data as any)?.result_json) ||
+      Boolean((responseJson?.data as any)?.credit_report) ||
+      Boolean((responseJson as any)?.credit_report) ||
       Boolean((responseJson as any)?.IFSC) ||
       Boolean((responseJson as any)?.BANK) ||
       Boolean((responseJson as any)?.bank) ||
@@ -1283,6 +1442,8 @@ function TestApiPage() {
       responseJson?.message === "success" ||
       Boolean(resData.vpa) ||
       Boolean(resData.mobile_linked_name) ||
+      Boolean((resData as any).score) ||
+      Boolean((responseJson?.data as any)?.score) ||
       Boolean(responseJson?.ip) ||
       Boolean(responseJson?.place_id) ||
       Boolean(responseJson?.osm_id) ||
@@ -1312,7 +1473,9 @@ function TestApiPage() {
       !(responseJson?.data as any)?.token &&
       !(responseJson?.data as any)?.txn_id &&
       !(responseJson as any)?.web_token_url &&
-      !(responseJson?.data as any)?.web_token_url
+      !(responseJson?.data as any)?.web_token_url &&
+      !(responseJson as any)?.report_url &&
+      !(responseJson?.data as any)?.report_url
     );
 
   const extractedFullName =
@@ -3013,7 +3176,7 @@ function TestApiPage() {
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <Sparkles className="h-3.5 w-3.5" /> Visual Identity Card
+                      <Sparkles className="h-3.5 w-3.5" /> {selectedService === "transunion" || selectedService === "crif" ? "Visual & PDF Report" : "Visual Identity Card"}
                     </button>
                     <button
                       onClick={() => setActiveViewTab("json")}
@@ -3023,7 +3186,7 @@ function TestApiPage() {
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <FileText className="h-3.5 w-3.5" /> {selectedService === "transunion" ? "PDF Report View" : "Raw JSON Response"}
+                      <FileText className="h-3.5 w-3.5" /> Raw JSON Response
                     </button>
                   </div>
                 </div>
@@ -3067,15 +3230,39 @@ function TestApiPage() {
                       )}
                       {responseJson && (
                         selectedService === "transunion" ? (
-                          tuPdfBlobUrl ? (
-                            <a
-                              href={tuPdfBlobUrl}
-                              download={`TransUnion_CIBIL_Report_${tuPan.trim() || "Customer"}.pdf`}
-                              className="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:underline"
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleOpenTuPdf}
+                              className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600/90 hover:bg-cyan-500 px-3 py-1 text-xs text-white font-bold shadow transition-colors"
                             >
-                              <Download className="h-3.5 w-3.5" /> Download CIBIL PDF
-                            </a>
-                          ) : null
+                              <FileText className="h-3.5 w-3.5" /> View CIBIL PDF
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDownloadTuPdf}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/50 px-2.5 py-1 text-xs text-cyan-300 font-bold transition-colors"
+                            >
+                              <Download className="h-3.5 w-3.5" /> Download
+                            </button>
+                          </div>
+                        ) : selectedService === "crif" ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleOpenCrifPdf}
+                              className="inline-flex items-center gap-1.5 rounded-md bg-[#0C3875] hover:bg-[#092c5d] border border-cyan-400/50 px-3 py-1 text-xs text-white font-bold shadow transition-colors"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-cyan-300" /> View CRIF PDF
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDownloadCrifPdf}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/40 bg-cyan-950/50 hover:bg-cyan-900/50 px-2.5 py-1 text-xs text-cyan-300 font-bold transition-colors"
+                            >
+                              <Download className="h-3.5 w-3.5" /> Download
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={() => {
@@ -3086,7 +3273,7 @@ function TestApiPage() {
                             }}
                             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                           >
-                            {copiedRes ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} Copy JSON
+                            {copiedRes ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copiedRes ? "Copied JSON" : "Copy JSON"}
                           </button>
                         )
                       )}
@@ -3144,10 +3331,10 @@ function TestApiPage() {
                         {/* ========================================================= */}
                         {selectedService === "statement_analyzer" ? (
                           (() => {
-                            const anyRes = (responseJson || {}) as Record<string, unknown>;
-                            const data = ((responseJson?.data || responseJson?.result || responseJson) || {}) as Record<string, unknown>;
-                            const accountInfo = (data.account_info || data.account_information || data.account_details || data.accountDetails || (data as any)?.data?.account_info || {}) as Record<string, unknown>;
-                            const summary = (data.summary || data.financial_summary || data.analytics || (data as any)?.data?.summary || {}) as Record<string, unknown>;
+                            const anyRes: any = responseJson || {};
+                            const data: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const accountInfo: any = (data.account_info || data.account_information || data.account_details || data.accountDetails || data?.data?.account_info || {});
+                            const summary: any = (data.summary || data.financial_summary || data.analytics || data?.data?.summary || {});
 
                             // Session tracking
                             const stepToken = String(data.token || anyRes.token || statementToken || "—");
@@ -3164,7 +3351,7 @@ function TestApiPage() {
                             const branchVal = String(accountInfo.branch || accountInfo.branch_name || "—");
 
                             // Period
-                            const periodObj = (accountInfo.statement_period || data.statement_period || {}) as Record<string, unknown>;
+                            const periodObj: any = (accountInfo.statement_period || data.statement_period || {});
                             const periodFrom = String(periodObj.from || periodObj.start_date || accountInfo.start_date || "—");
                             const periodTo = String(periodObj.to || periodObj.end_date || accountInfo.end_date || "—");
 
@@ -3189,7 +3376,7 @@ function TestApiPage() {
                             const totalTransactions = Number(data.total_transactions || summary.total_transactions || (creditTxnCount + debitTxnCount) || 0);
                             const totalPages = Number(data.total_pages || 0);
 
-                            const monthlyData = (data.monthly_analysis || data.monthly_summary || summary.monthly_breakdown || []) as Array<Record<string, unknown>>;
+                            const monthlyData: any[] = Array.isArray(data.monthly_analysis) ? data.monthly_analysis : Array.isArray(data.monthly_summary) ? data.monthly_summary : Array.isArray(summary.monthly_breakdown) ? summary.monthly_breakdown : [];
                             const hasFullReport = Boolean(accountInfo.bank_name || summary.total_credits || totalCredits > 0 || avgMonthlyBalance > 0);
 
                             return (
@@ -3396,7 +3583,7 @@ function TestApiPage() {
                                               </tr>
                                             </thead>
                                             <tbody className="divide-y divide-border/40">
-                                              {monthlyData.slice(0, 6).map((m, idx) => (
+                                              {monthlyData.slice(0, 6).map((m: any, idx) => (
                                                 <tr key={idx} className="hover:bg-secondary/30">
                                                   <td className="py-2 px-2 font-medium text-foreground">{String(m.month || m.month_name || `Month ${idx + 1}`)}</td>
                                                   <td className="py-2 px-2 text-right text-emerald-400">₹{Number(m.total_credits || m.credits || 0).toLocaleString("en-IN")}</td>
@@ -3404,7 +3591,7 @@ function TestApiPage() {
                                                   <td className="py-2 px-2 text-right text-foreground font-bold">₹{Number(m.closing_balance || m.balance || 0).toLocaleString("en-IN")}</td>
                                                   <td className="py-2 px-2 text-center">
                                                     {Number(m.bounce_count || 0) > 0 ? (
-                                                      <span className="text-rose-400 font-bold">{m.bounce_count}</span>
+                                                      <span className="text-rose-400 font-bold">{String(m.bounce_count)}</span>
                                                     ) : (
                                                       <span className="text-muted-foreground">0</span>
                                                     )}
@@ -3425,7 +3612,7 @@ function TestApiPage() {
                                       <span className="text-xs font-bold">Workflow Step Output</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                      {anyRes.message || "Step executed successfully. Session tokens have been auto-populated into your console."}
+                                      {String(anyRes.message || "Step executed successfully. Session tokens have been auto-populated into your console.")}
                                     </p>
                                     <div className="flex flex-wrap items-center gap-2 pt-1">
                                       {statementStep === "INITIATE_UPLOAD" && (
@@ -3485,10 +3672,10 @@ function TestApiPage() {
                           })()
                         ) : selectedService === "transunion" ? (
                           (() => {
-                            const tuData = (responseJson?.data || responseJson?.result || responseJson || {}) as Record<string, unknown>;
+                            const tuData: any = responseJson?.data || responseJson?.result || responseJson || {};
                             const webTokenUrl = String(tuData.web_token_url || (responseJson as any)?.web_token_url || "");
                             const clientKey = String(tuData.client_key || (responseJson as any)?.client_key || "—");
-                            const stepsSummary = Array.isArray(tuData.steps_summary) ? (tuData.steps_summary as Array<Record<string, unknown>>) : [];
+                            const stepsSummary: any[] = Array.isArray(tuData.steps_summary) ? tuData.steps_summary : [];
                             const message = String(responseJson?.message || tuData.message || "CIBIL report ready!");
 
                             const scoreVal = tuExtracted?.cibilScore ?? (typeof tuData.score === "number" ? tuData.score : null);
@@ -3543,13 +3730,75 @@ function TestApiPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleOpenTuPdf}
+                                      className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 text-xs font-bold text-white shadow-md transition-all hover:scale-[1.02] cursor-pointer"
+                                    >
+                                      <FileText className="h-3.5 w-3.5" /> View CIBIL PDF
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleDownloadTuPdf}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-950/60 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-900/60 shadow-sm transition-all cursor-pointer"
+                                    >
+                                      <Download className="h-3.5 w-3.5" /> Download
+                                    </button>
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
                                       <CheckCircle2 className="h-3.5 w-3.5" /> REPORT READY
                                     </span>
-                                    <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
+                                    <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-1 text-[11px] font-semibold text-amber-400">
                                       ₹75.00 Billed
                                     </span>
+                                  </div>
+                                </div>
+
+                                {/* Prominent Top TransUnion PDF Action Card */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-cyan-500/50 bg-gradient-to-r from-cyan-950/50 via-cyan-950/30 to-card p-4 shadow-lg">
+                                  <div className="flex items-center gap-3">
+                                    <div className="rounded-xl bg-cyan-500/25 p-2.5 text-cyan-300 border border-cyan-400/50 shadow-inner">
+                                      <FileText className="h-6 w-6 text-cyan-300" />
+                                    </div>
+                                    <div>
+                                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                        Official TransUnion CIBIL CIR Report (PDF Ready)
+                                        {tuPdfLoading && (
+                                          <span className="text-[10px] text-cyan-300 font-mono bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30 animate-pulse">
+                                            Generating...
+                                          </span>
+                                        )}
+                                      </h4>
+                                      <p className="text-xs text-cyan-200/80">
+                                        Complete multi-page authentic CIBIL report with Tradelines, 36-Month DPD grids, Inquiries &amp; Score Factors.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={handleOpenTuPdf}
+                                      className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-extrabold text-black hover:bg-cyan-400 shadow-md transition-all hover:scale-105 cursor-pointer"
+                                    >
+                                      <ExternalLink className="h-4 w-4 text-black" /> View PDF in New Tab
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleDownloadTuPdf}
+                                      className="inline-flex items-center gap-2 rounded-lg border-2 border-cyan-400/60 bg-cyan-950/80 px-4 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900 transition-all shadow-md cursor-pointer"
+                                    >
+                                      <Download className="h-4 w-4" /> Download PDF Report
+                                    </button>
+                                    {webTokenUrl && (
+                                      <a
+                                        href={webTokenUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 px-3.5 py-2 text-xs font-bold text-white shadow transition-colors"
+                                      >
+                                        <Sparkles className="h-3.5 w-3.5" /> Interactive Portal
+                                      </a>
+                                    )}
                                   </div>
                                 </div>
 
@@ -3975,10 +4224,10 @@ function TestApiPage() {
                                   <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                                     <span className="text-xs font-bold text-foreground">Pipeline Execution Summary</span>
                                     <div className="grid gap-2 sm:grid-cols-4">
-                                      {stepsSummary.map((st, i) => (
+                                      {stepsSummary.map((st: any, i) => (
                                         <div key={i} className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs space-y-1">
                                           <div className="flex items-center justify-between">
-                                            <span className="font-semibold text-foreground text-[11px]">Step {st.step}: {String(st.name)}</span>
+                                            <span className="font-semibold text-foreground text-[11px]">Step {String(st.step)}: {String(st.name)}</span>
                                             <span className="text-emerald-400 text-[10px] font-bold uppercase">{String(st.status)}</span>
                                           </div>
                                         </div>
@@ -3991,41 +4240,65 @@ function TestApiPage() {
                           })()
                         ) : selectedService === "crif" ? (
                           (() => {
-                            const cData = (responseJson?.data || responseJson?.result || responseJson || {}) as Record<string, unknown>;
-                            const scoreVal = Number(cData.score || cData.credit_score || (cData as any)?.credit_summary?.credit_score || (cData as any)?.credit_summary?.score || 765);
-                            const scoreName = String(cData.score_name || "CRIF High Mark Consumer Credit Score");
-                            const scoreBand = String(cData.score_band || (scoreVal >= 750 ? "Excellent" : scoreVal >= 700 ? "Good" : scoreVal >= 600 ? "Fair" : "Poor"));
-                            const scoringDate = String(cData.scoring_date || new Date().toISOString().split("T")[0]);
-                            const reportId = String(cData.report_id || (responseJson as any)?.request_id || "CRF_REP_ACTIVE");
-                            const clientRef = String(cData.client_ref_num || (responseJson as any)?.client_ref_num || "—");
+                            const rawData = (responseJson?.data || responseJson?.result || responseJson || {}) as any;
+                            const norm = normalizeCrifReportData(responseJson, {
+                              first_name: crifFirstName.trim(),
+                              last_name: crifLastName.trim(),
+                              mobile_no: crifMobile.trim(),
+                            });
+                            
+                            // Demographics
+                            const fullName = norm.applicant.name || `${crifFirstName} ${crifLastName}`.trim().toUpperCase() || "CUSTOMER";
+                            const mobile = norm.applicant.phone || crifMobile;
+                            const dob = norm.applicant.dob || "—";
+                            const pan = norm.applicant.pan || "—";
+                            const email = norm.applicant.email || "—";
+                            const address = norm.applicant.currentAddress || "—";
 
-                            const personal = ((cData.personal_details || cData.borrower || {}) as Record<string, unknown>);
-                            const fullName = String(personal.full_name || personal.name || `${personal.first_name || crifFirstName} ${personal.last_name || crifLastName}`.trim().toUpperCase());
-                            const mobile = String(personal.mobile || personal.phone_number || crifMobile);
-                            const dob = String(personal.date_of_birth || personal.dob || "—");
-                            const gender = String(personal.gender || "Male");
-                            const pan = String(personal.pan || personal.pan_id || "—");
-                            const address = String(personal.address || personal.primary_address || "—");
+                            // Score calculation
+                            const scoreVal = typeof norm.score.value === "number"
+                              ? norm.score.value
+                              : (norm.score.value !== "—" && !isNaN(Number(norm.score.value)) ? Number(norm.score.value) : Number(rawData.score || rawData.credit_score || 0));
+                            const scoreName = norm.score.scoreName || "CRIF High Mark Consumer Credit Score";
+                            const scoreBand = scoreVal >= 750 ? "Excellent" : scoreVal >= 700 ? "Good" : scoreVal >= 600 ? "Fair" : "Poor";
+                            const scoringDate = norm.reportMeta.dateOfIssue || String(rawData.scoring_date || new Date().toISOString().split("T")[0]);
+                            const reportId = norm.reportMeta.chmRef || String(rawData.report_id || (responseJson as any)?.request_id || "CRF_PROV2_ACTIVE");
+                            const reportUrl = String(
+                              rawData.report_url ||
+                              rawData.web_token_url ||
+                              rawData.pdf_url ||
+                              (responseJson as any)?.report_url ||
+                              (responseJson as any)?.web_token_url ||
+                              (responseJson as any)?.pdf_url ||
+                              (responseJson as any)?.data?.report_url ||
+                              (responseJson as any)?.data?.web_token_url ||
+                              (responseJson as any)?.data?.pdf_url ||
+                              (responseJson as any)?.data?.result_json?.report_url ||
+                              (responseJson as any)?.data?.result_json?.web_token_url ||
+                              (responseJson as any)?.data?.result_json?.pdf_url ||
+                              (responseJson as any)?.result_json?.report_url ||
+                              (responseJson as any)?.result_json?.web_token_url ||
+                              (responseJson as any)?.result_json?.pdf_url ||
+                              ""
+                            );
+                            const activePdfUrl = crifPdfBlobUrl || reportUrl;
 
-                            const summary = ((cData.credit_summary || cData.summary || {}) as Record<string, unknown>);
-                            const activeAccounts = Number(summary.total_active_accounts || summary.active_accounts || 4);
-                            const closedAccounts = Number(summary.total_closed_accounts || summary.closed_accounts || 3);
-                            const outstanding = Number(summary.total_outstanding_balance || summary.outstanding_balance || 248500);
-                            const overdue = Number(summary.total_overdue_balance || summary.overdue_amount || 0);
-                            const utilization = Number(summary.credit_card_utilization_percent || summary.utilization_percent || 18.5);
-                            const onTimeRate = Number(summary.on_time_payment_rate_percent || summary.payment_history_rate || 99.2);
-                            const recentInquiries = Number(summary.recent_inquiries_30_days || summary.inquiries_30_days || 1);
-                            const vintageMonths = Number(summary.oldest_account_vintage_months || summary.vintage_months || 64);
+                            // Summary
+                            const activeAccounts = norm.primaryAccountSummary.activeAccounts;
+                            const closedAccounts = Math.max(0, norm.primaryAccountSummary.numberOfAccounts - norm.primaryAccountSummary.activeAccounts);
+                            const outstanding = norm.primaryAccountSummary.totalCurrentBalance || norm.primaryAccountSummary.currentBalanceUnsecured;
+                            const overdue = norm.primaryAccountSummary.totalAmountOverdue;
 
-                            const accountsList = Array.isArray(cData.accounts) ? (cData.accounts as Array<Record<string, unknown>>) : [];
-                            const inquiriesList = Array.isArray(cData.inquiries) ? (cData.inquiries as Array<Record<string, unknown>>) : [];
+                            // Tradelines & Inquiries
+                            const accountsList = norm.accounts;
+                            const inquiriesList = norm.inquiries;
 
                             return (
                               <div className="space-y-4">
                                 {/* Top Badge Banner */}
                                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
                                   <div className="flex items-center gap-2.5">
-                                    <div className="rounded-lg bg-rose-500/15 p-2 text-rose-400 border border-rose-500/30">
+                                    <div className="rounded-lg bg-[#0C3875]/20 p-2 text-cyan-400 border border-[#0C3875]">
                                       <ShieldCheck className="h-5 w-5" />
                                     </div>
                                     <div>
@@ -4040,7 +4313,7 @@ function TestApiPage() {
                                             ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
                                             : "bg-rose-500/15 border-rose-500/30 text-rose-400"
                                         }`}>
-                                          {scoreBand} ({scoreVal})
+                                          {scoreBand} ({scoreVal || "—"})
                                         </span>
                                       </div>
                                       <p className="text-xs text-muted-foreground font-mono">
@@ -4048,26 +4321,88 @@ function TestApiPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleOpenCrifPdf}
+                                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C3875] border border-cyan-400/60 px-3 py-1.5 text-xs font-bold text-white hover:bg-[#092c5d] shadow-md transition-all hover:scale-[1.02] cursor-pointer"
+                                    >
+                                      <FileText className="h-3.5 w-3.5 text-cyan-300" /> View CRIF PDF
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleDownloadCrifPdf}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-950/60 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-900/60 shadow-sm transition-all cursor-pointer"
+                                    >
+                                      <Download className="h-3.5 w-3.5" /> Download
+                                    </button>
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
                                       <CheckCircle2 className="h-3.5 w-3.5" /> BUREAU VERIFIED
                                     </span>
-                                    <span className="rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-semibold text-rose-400">
+                                    <span className="rounded-full bg-[#0C3875]/30 border border-[#0C3875] px-2 py-1 text-[11px] font-semibold text-cyan-300">
                                       ₹25.00 Billed
                                     </span>
+                                  </div>
+                                </div>
+
+                                {/* Prominent Top CRIF PDF Action Card */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-cyan-500/50 bg-gradient-to-r from-[#0C3875]/50 via-[#0C3875]/30 to-card p-4 shadow-lg">
+                                  <div className="flex items-center gap-3">
+                                    <div className="rounded-xl bg-cyan-500/25 p-2.5 text-cyan-300 border border-cyan-400/50 shadow-inner">
+                                      <FileText className="h-6 w-6 text-cyan-300" />
+                                    </div>
+                                    <div>
+                                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                        Official CRIF High Mark Report (12-Page PROV2 PDF Ready)
+                                        {crifPdfLoading && (
+                                          <span className="text-[10px] text-cyan-300 font-mono bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30 animate-pulse">
+                                            Generating...
+                                          </span>
+                                        )}
+                                      </h4>
+                                      <p className="text-xs text-cyan-200/80">
+                                        Complete high-fidelity credit report with Tradelines, Score Trends, 12-Month Payment Matrix &amp; Inquiries.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={handleOpenCrifPdf}
+                                      className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-extrabold text-black hover:bg-cyan-400 shadow-md transition-all hover:scale-105 cursor-pointer"
+                                    >
+                                      <ExternalLink className="h-4 w-4 text-black" /> View PDF in New Tab
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleDownloadCrifPdf}
+                                      className="inline-flex items-center gap-2 rounded-lg border-2 border-cyan-400/60 bg-cyan-950/80 px-4 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900 transition-all shadow-md cursor-pointer"
+                                    >
+                                      <Download className="h-4 w-4" /> Download PDF Report
+                                    </button>
+                                    {reportUrl && (
+                                      <a
+                                        href={reportUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow transition-all"
+                                      >
+                                        <Sparkles className="h-3.5 w-3.5" /> Direct Report URL
+                                      </a>
+                                    )}
                                   </div>
                                 </div>
 
                                 {/* Score Gauge & Personal Details Grid */}
                                 <div className="grid gap-3 sm:grid-cols-3">
                                   {/* Score Box */}
-                                  <div className="rounded-xl border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-background to-card p-4 flex flex-col justify-between items-center text-center space-y-2">
+                                  <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-[#0C3875]/20 via-background to-card p-4 flex flex-col justify-between items-center text-center space-y-2">
                                     <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Bureau Credit Score</span>
                                     <div className="space-y-0.5">
                                       <div className={`text-4xl font-extrabold font-mono tracking-tight ${
                                         scoreVal >= 750 ? "text-emerald-400" : scoreVal >= 700 ? "text-blue-400" : scoreVal >= 600 ? "text-amber-400" : "text-rose-400"
                                       }`}>
-                                        {scoreVal}
+                                        {scoreVal || "—"}
                                       </div>
                                       <p className="text-[11px] font-medium text-muted-foreground">Scale: 300 – 900</p>
                                     </div>
@@ -4079,7 +4414,7 @@ function TestApiPage() {
                                         style={{ width: `${Math.min(100, Math.max(10, ((scoreVal - 300) / 600) * 100))}%` }}
                                       />
                                     </div>
-                                    <span className="text-[10px] text-muted-foreground font-mono">{scoreName}</span>
+                                    <span className="text-[10px] text-muted-foreground font-mono truncate max-w-full">{scoreName}</span>
                                   </div>
 
                                   {/* Personal Details (2 Columns span) */}
@@ -4104,6 +4439,12 @@ function TestApiPage() {
                                         <span className="text-[10px] text-muted-foreground block">PAN / Tax ID</span>
                                         <p className="font-mono font-bold text-foreground">{pan}</p>
                                       </div>
+                                      {email !== "—" && (
+                                        <div className="col-span-2">
+                                          <span className="text-[10px] text-muted-foreground block">Email</span>
+                                          <p className="font-mono text-[11px] text-foreground truncate">{email}</p>
+                                        </div>
+                                      )}
                                       {address !== "—" && (
                                         <div className="col-span-2 pt-1 border-t border-border/40">
                                           <span className="text-[10px] text-muted-foreground block">Reported Address</span>
@@ -4145,31 +4486,11 @@ function TestApiPage() {
                                   </div>
                                 </div>
 
-                                {/* Additional Health Indicators */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
-                                    <span className="text-[10px] text-muted-foreground">Card Utilization</span>
-                                    <p className="font-bold text-foreground font-mono">{utilization}%</p>
-                                  </div>
-                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
-                                    <span className="text-[10px] text-muted-foreground">On-Time Repayment</span>
-                                    <p className="font-bold text-emerald-400 font-mono">{onTimeRate}%</p>
-                                  </div>
-                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
-                                    <span className="text-[10px] text-muted-foreground">Inquiries (30d)</span>
-                                    <p className="font-bold text-foreground font-mono">{recentInquiries}</p>
-                                  </div>
-                                  <div className="rounded-lg border border-border bg-card/60 p-2.5 space-y-0.5">
-                                    <span className="text-[10px] text-muted-foreground">Oldest Vintage</span>
-                                    <p className="font-bold text-foreground font-mono">{Math.floor(vintageMonths / 12)} yrs ({vintageMonths}m)</p>
-                                  </div>
-                                </div>
-
                                 {/* Trade Lines / Accounts Table */}
                                 {accountsList.length > 0 && (
                                   <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                                     <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                      <Building2 className="h-3.5 w-3.5 text-primary" /> Active &amp; Historical Loan Accounts ({accountsList.length})
+                                      <Building2 className="h-3.5 w-3.5 text-primary" /> Active &amp; Historical Accounts ({accountsList.length})
                                     </span>
                                     <div className="overflow-x-auto">
                                       <table className="w-full text-left text-xs font-mono">
@@ -4182,16 +4503,20 @@ function TestApiPage() {
                                             <th className="py-1.5 px-2 text-center">Status</th>
                                           </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-border/40">
+                                        <tbody className="divide-y border-border/40">
                                           {accountsList.map((acc, i) => (
                                             <tr key={i} className="hover:bg-secondary/30">
-                                              <td className="py-2 px-2 font-medium text-foreground">{String(acc.institution || acc.lender || "Bank")}</td>
-                                              <td className="py-2 px-2 text-muted-foreground">{String(acc.account_type || acc.type || "Loan")}</td>
-                                              <td className="py-2 px-2 text-right text-foreground font-bold">₹{Number(acc.current_balance || acc.balance || 0).toLocaleString("en-IN")}</td>
-                                              <td className="py-2 px-2 text-right text-muted-foreground">₹{Number(acc.sanctioned_amount || acc.credit_limit || 0).toLocaleString("en-IN")}</td>
+                                              <td className="py-2 px-2 font-medium text-foreground">{acc.creditGrantor}</td>
+                                              <td className="py-2 px-2 text-muted-foreground">{acc.accountType}</td>
+                                              <td className="py-2 px-2 text-right text-foreground font-bold">₹{acc.currentBalance.toLocaleString("en-IN")}</td>
+                                              <td className="py-2 px-2 text-right text-muted-foreground">₹{acc.disbursedAmount.toLocaleString("en-IN")}</td>
                                               <td className="py-2 px-2 text-center">
-                                                <span className="rounded bg-emerald-500/15 text-emerald-400 font-semibold px-2 py-0.5 text-[10px]">
-                                                  {String(acc.payment_status || "Standard Regular")}
+                                                <span className={`rounded font-semibold px-2 py-0.5 text-[10px] ${
+                                                  acc.status === "Closed"
+                                                    ? "bg-rose-500/15 text-rose-400"
+                                                    : "bg-emerald-500/15 text-emerald-400"
+                                                }`}>
+                                                  {acc.status}
                                                 </span>
                                               </td>
                                             </tr>
@@ -4221,15 +4546,100 @@ function TestApiPage() {
                                         <tbody className="divide-y divide-border/40">
                                           {inquiriesList.map((inq, i) => (
                                             <tr key={i} className="hover:bg-secondary/30">
-                                              <td className="py-2 px-2 text-muted-foreground">{String(inq.date || "—")}</td>
-                                              <td className="py-2 px-2 font-medium text-foreground">{String(inq.institution || "Bank")}</td>
-                                              <td className="py-2 px-2 text-muted-foreground">{String(inq.purpose || "Credit Assessment")}</td>
-                                              <td className="py-2 px-2 text-right text-foreground font-bold">₹{Number(inq.amount || 0).toLocaleString("en-IN")}</td>
+                                              <td className="py-2 px-2 text-muted-foreground">{inq.inquiryDate}</td>
+                                              <td className="py-2 px-2 font-medium text-foreground">{inq.creditGrantor}</td>
+                                              <td className="py-2 px-2 text-muted-foreground">{inq.accountType}</td>
+                                              <td className="py-2 px-2 text-right text-foreground font-bold">₹{inq.amount.toLocaleString("en-IN")}</td>
                                             </tr>
                                           ))}
                                         </tbody>
                                       </table>
                                     </div>
+                                  </div>
+                                )}
+
+                                {/* CRIF PDF Download & Action Toolbar */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#0C3875]/40 bg-[#0C3875]/10 p-4">
+                                  <div className="space-y-0.5">
+                                    <h4 className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                                      <FileText className="h-4 w-4" /> Official CRIF High Mark PROV2 Report (PDF Generated)
+                                    </h4>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Multi-page high-fidelity CRIF Credit Information Report PROV2 with Score Trends, 12-Month Repayment Matrix, Tradelines &amp; Inquiries.
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {activePdfUrl && (
+                                      <>
+                                        <a
+                                          href={activePdfUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C3875] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#092c5d] shadow transition-colors"
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5" /> View PDF in New Tab
+                                        </a>
+                                        <a
+                                          href={activePdfUrl}
+                                          download={`CRIF_HighMark_Report_${crifMobile.trim() || "Customer"}.pdf`}
+                                          className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-900/50 transition-colors shadow"
+                                        >
+                                          <Download className="h-3.5 w-3.5" /> Download PDF Report
+                                        </a>
+                                      </>
+                                    )}
+                                    {reportUrl && reportUrl !== crifPdfBlobUrl && (
+                                      <a
+                                        href={reportUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-rose-600 shadow transition-colors"
+                                      >
+                                        <Sparkles className="h-3.5 w-3.5" /> Direct Report URL
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {crifPdfLoading && (
+                                  <div className="flex items-center justify-center py-12 text-xs text-muted-foreground gap-2">
+                                    <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />
+                                    Generating authentic CRIF High Mark PROV2 CIR PDF document...
+                                  </div>
+                                )}
+
+                                {crifPdfError && !reportUrl && (
+                                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300">
+                                    ⚠️ {crifPdfError}
+                                  </div>
+                                )}
+
+                                {/* Embedded Full-Page CRIF PDF Viewer */}
+                                {activePdfUrl && (
+                                  <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg space-y-0">
+                                    <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900 border-b border-border">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-cyan-400" />
+                                        <span className="text-xs font-bold text-foreground">
+                                          CRIF High Mark CIR PROV2 PDF Preview
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <a
+                                          href={activePdfUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-[11px] text-cyan-400 hover:underline font-mono inline-flex items-center gap-1"
+                                        >
+                                          <ExternalLink className="h-3 w-3" /> Open full page
+                                        </a>
+                                      </div>
+                                    </div>
+                                    <iframe
+                                      src={`${activePdfUrl}#toolbar=1&navpanes=0`}
+                                      title="CRIF High Mark Report PDF"
+                                      className="w-full h-[650px] border-0 bg-zinc-950"
+                                    />
                                   </div>
                                 )}
                               </div>
@@ -6329,11 +6739,11 @@ function TestApiPage() {
                                   <span className="font-medium uppercase tracking-wider text-[10px]">Registered Addresses ({extractedAddresses.length})</span>
                                 </div>
                                 <div className="space-y-2 divide-y divide-border/40">
-                                  {extractedAddresses.map((addr, idx) => (
+                                  {extractedAddresses.map((addr: any, idx) => (
                                     <div key={idx} className="pt-2 first:pt-0 text-[11px] text-muted-foreground space-y-0.5">
-                                      {addr.first_line_of_address && <p className="text-foreground font-medium">{addr.first_line_of_address}</p>}
-                                      {addr.second_line_of_address && <p>{addr.second_line_of_address}</p>}
-                                      {addr.third_line_of_address && <p>{addr.third_line_of_address}</p>}
+                                      {addr?.first_line_of_address && <p className="text-foreground font-medium">{String(addr.first_line_of_address)}</p>}
+                                      {addr?.second_line_of_address && <p>{String(addr.second_line_of_address)}</p>}
+                                      {addr?.third_line_of_address && <p>{String(addr.third_line_of_address)}</p>}
                                     </div>
                                   ))}
                                 </div>

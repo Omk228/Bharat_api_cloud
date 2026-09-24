@@ -13,10 +13,12 @@ import geocodingRoutes from '../modules/geocoding/geocoding.routes.js';
 import idfyRoutes from '../modules/idfy/idfy.routes.js';
 import uanRoutes from '../modules/verification/uan/uan.routes.js';
 import mobileUpiRoutes from '../modules/verification/mobile_upi/mobileUpi.routes.js';
-import domainRoutes from '../modules/domain/domain.routes.js';
 import ifscRoutes from '../modules/ifsc/ifsc.routes.js';
 import pricingRoutes from '../modules/pricing/pricing.routes.js';
 import mobileToBankRoutes from '../modules/verification/mobile_to_bank/mobileToBank.routes.js';
+import transunionRoutes from '../modules/verification/transunion/transunion.routes.js';
+import crifRoutes from '../modules/verification/crif/crif.routes.js';
+import domainRoutes from '../modules/domain/domain.routes.js';
 
 const apiRouter = Router();
 
@@ -26,6 +28,9 @@ apiRouter.use('/auth', authRoutes);
 apiRouter.use('/credentials', credentialRoutes);
 apiRouter.use('/wallet', walletRoutes);
 apiRouter.use('/pricing', pricingRoutes);
+apiRouter.use('/', transunionRoutes);
+apiRouter.use('/', crifRoutes);
+apiRouter.use('/crif', crifRoutes);
 apiRouter.use('/', panRoutes);
 apiRouter.use('/', aadhaarRoutes);
 apiRouter.use('/', bankRoutes);

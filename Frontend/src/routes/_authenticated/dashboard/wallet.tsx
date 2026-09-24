@@ -55,9 +55,19 @@ export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
   component: WalletPage,
 });
 
-const RECHARGE_PACKS = [
+interface RechargePack {
+  amount: number;
+  label: string;
+  bonus: number;
+  tag: string;
+  popular?: boolean;
+  special?: boolean;
+  badge?: string;
+}
+
+const RECHARGE_PACKS: RechargePack[] = [
   { amount: 10000, label: "Starter", bonus: 0, tag: "Standard" },
-  { amount: 20000, label: "Growth", bonus: 0, tag: "Standard" },
+  { amount: 20000, label: "Growth", bonus: 0, tag: "Standard", popular: true },
   { amount: 30000, label: "Scale", bonus: 3000, tag: "+₹3,000 Bonus", special: true, badge: "+₹3,000 BONUS" },
   { amount: 50000, label: "Enterprise", bonus: 5000, tag: "+₹5,000 Bonus", special: true, badge: "+₹5,000 BONUS" },
 ];

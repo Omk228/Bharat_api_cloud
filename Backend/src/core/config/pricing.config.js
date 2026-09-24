@@ -44,6 +44,10 @@ export const API_PRICING = {
   '/geocode': 0.20,
   '/srv5/transunion-Score-Hybrid': 15.00,
   '/transunion-Score-Hybrid': 15.00,
+  '/crif/Credit-ScoreV4': 25.00,
+  '/crif/credit-scorev4': 25.00,
+  '/credit-scorev4': 25.00,
+  '/api/v1/crif/Credit-ScoreV4': 25.00,
   default: 2.00,
 };
 

@@ -93,6 +93,8 @@ const SERVICE_NAME_MAP: Record<string, string> = {
   "/crif/Credit-ScoreV4": "CRIF High Mark Credit Score V4",
   "/api/v1/crif/Credit-ScoreV4": "CRIF High Mark Credit Score V4",
   "/Credit-ScoreV4": "CRIF High Mark Credit Score V4",
+  "/reports/crif": "CRIF High Mark PDF Report",
+  "/api/v1/reports/crif": "CRIF High Mark PDF Report",
   "/reports/cibil": "Transunion PDF Report",
   "/api/v1/reports/cibil": "Transunion PDF Report",
   "/aa/consent": "Create Consent Request",
@@ -167,7 +169,7 @@ function LogsContent({ data }: { data: DashboardData }) {
 
     for (const log of rawLogs) {
       const name = resolveLogServiceName(log);
-      const ep = (log.endpoint || "").split("?")[0].trim();
+      const ep = (log.endpoint || "").split("?")[0]?.trim() || "";
       const group = log.group || "KYC";
       const cost = parseFloat(String(log.cost_deducted)) || 0;
 
@@ -196,7 +198,7 @@ function LogsContent({ data }: { data: DashboardData }) {
     setCurrentPage(1);
 
     const today = new Date();
-    const toYMD = (d: Date) => d.toISOString().split("T")[0];
+    const toYMD = (d: Date): string => d.toISOString().split("T")[0] || "";
 
     if (preset === "all") {
       setStartDate("");
@@ -240,7 +242,7 @@ function LogsContent({ data }: { data: DashboardData }) {
       // 1. Service / Endpoint Filter
       if (selectedService !== "all") {
         const sName = resolveLogServiceName(log);
-        const ep = (log.endpoint || "").split("?")[0].trim();
+        const ep = (log.endpoint || "").split("?")[0]?.trim() || "";
         const matchesName = sName.toLowerCase() === selectedService.toLowerCase();
         const matchesEp =
           ep.toLowerCase() === selectedService.toLowerCase() ||

@@ -1013,18 +1013,18 @@ export const apiClient = {
   },
 
   async verifyStatementAnalyzer(data: {
-    method?: string;
-    acceptance_policy?: string;
-    token?: string;
-    request_id?: string;
-    file?: string;
-    txn_id?: string;
-    report_type?: string;
-    report_subtype?: string;
-    client_ref_num?: string;
-    api_id?: string;
-    api_key?: string;
-    token_id?: string;
+    method?: string | undefined;
+    acceptance_policy?: string | undefined;
+    token?: string | undefined;
+    request_id?: string | undefined;
+    file?: string | undefined;
+    txn_id?: string | undefined;
+    report_type?: string | undefined;
+    report_subtype?: string | undefined;
+    client_ref_num?: string | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
   }): Promise<Record<string, unknown>> {
     const host = API_BASE.replace('/api/v1', '');
     const effectiveApiId = data?.api_id || DEFAULT_API_ID;
@@ -1055,11 +1055,11 @@ export const apiClient = {
     phone_number: string;
     gender: string;
     pan_id: string;
-    date_of_birth?: string;
-    client_ref_num?: string;
-    api_id?: string;
-    api_key?: string;
-    token_id?: string;
+    date_of_birth?: string | undefined;
+    client_ref_num?: string | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
   }): Promise<Record<string, unknown>> {
     const host = API_BASE.replace('/api/v1', '');
     const effectiveApiId = data?.api_id || DEFAULT_API_ID;
@@ -1088,10 +1088,10 @@ export const apiClient = {
     mobile_no: string;
     first_name: string;
     last_name: string;
-    name_lookup?: number;
-    api_id?: string;
-    api_key?: string;
-    token_id?: string;
+    name_lookup?: number | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
   }): Promise<Record<string, unknown>> {
     const host = API_BASE.replace('/api/v1', '');
     const effectiveApiId = data?.api_id || DEFAULT_API_ID;

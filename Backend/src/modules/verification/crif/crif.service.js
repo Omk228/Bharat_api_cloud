@@ -4,8 +4,12 @@ import { ENV } from '../../../core/config/env.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
 import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
 import { upstreamFetch } from '../../../core/utils/httpAgent.js';
+import CacheService from '../../../core/cache/cache.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import QueueService from '../../../core/queue/queue.service.js';
+
+// In-memory fallback map for high-speed CRIF report retrieval
+const localReportStore = new Map();
 
 export class CrifVerificationService {
   /**
@@ -14,6 +18,44 @@ export class CrifVerificationService {
   static isValidMobileNumber(phone) {
     const clean = String(phone || '').replace(/\D/g, '');
     return /^[6-9]\d{9}$/.test(clean);
+  }
+
+  /**
+   * Store report in cache and in-memory store (24 hours TTL)
+   */
+  static async saveReport(token, reportData) {
+    localReportStore.set(token, { data: reportData, expiresAt: Date.now() + 86400000 });
+    localReportStore.set(token.toLowerCase(), { data: reportData, expiresAt: Date.now() + 86400000 });
+    localReportStore.set(token.toUpperCase(), { data: reportData, expiresAt: Date.now() + 86400000 });
+
+    try {
+      await CacheService.setVerification('crif_rep', token, reportData, 86400);
+    } catch (e) {
+      // Ignore cache store error
+    }
+  }
+
+  /**
+   * Retrieve report by token
+   */
+  static async getReport(token) {
+    const cleanToken = String(token || '').replace(/\.pdf$/i, '').trim();
+    const mem = localReportStore.get(cleanToken) ||
+      localReportStore.get(cleanToken.toLowerCase()) ||
+      localReportStore.get(cleanToken.toUpperCase());
+
+    if (mem && mem.expiresAt > Date.now()) {
+      return mem.data;
+    }
+
+    try {
+      const cached = await CacheService.getVerification('crif_rep', cleanToken);
+      if (cached) return cached;
+    } catch (e) {
+      // Ignore cache fetch error
+    }
+
+    return mem?.data || null;
   }
 
   /**
@@ -87,17 +129,47 @@ export class CrifVerificationService {
         });
 
         console.log(`⏱️ [CRIF UPSTREAM LATENCY]: ${upstreamRes.upstreamLatencyMs}ms`);
-        const data = await upstreamRes.json();
-        console.log(`📥 [CRIF UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(data, null, 2));
+        const rawText = await upstreamRes.text();
+        let data = null;
+        try {
+          data = JSON.parse(rawText);
+          console.log(`📥 [CRIF UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(data, null, 2));
+        } catch (parseErr) {
+          console.error(`⚠️ [CRIF UPSTREAM NON-JSON] Status ${upstreamRes.status}:`, rawText);
+        }
 
-        if (isUpstreamLowBalance(data)) {
+        if (data && isUpstreamLowBalance(data)) {
           console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during CRIF verification.');
           return formatUpstreamLowBalanceResponse(requestId, clientRef);
         }
 
-        if (data && (data.status?.code === 200 || data.http_response_code === 200 || data.data?.status === 'success' || data.data?.score)) {
+        const isUpstreamOk = Boolean(
+          data && (
+            data.status?.code === 200 ||
+            data.status === 200 ||
+            data.status === true ||
+            data.status === 'success' ||
+            data.statusCode === 200 ||
+            data.http_response_code === 200 ||
+            data.result_code === 101 ||
+            data.result_code === 200 ||
+            data.success === true ||
+            data.data?.status === 'success' ||
+            data.data?.score ||
+            data.data?.credit_report ||
+            data.data?.result_json ||
+            data.result_json ||
+            data.credit_report ||
+            (data.data && typeof data.data === 'object' && Object.keys(data.data).length > 0 && !data.error)
+          )
+        );
+
+        if (isUpstreamOk) {
           upstreamResult = data;
           isSuccess = true;
+        } else if (data) {
+          upstreamResult = data;
+          isSuccess = false;
         }
       } catch (err) {
         console.error('⚠️ CRIF upstream provider error:', err.message);
@@ -107,10 +179,34 @@ export class CrifVerificationService {
       }
     }
 
+    // 2. Generate secure report token & PDF URL
+    const reportToken = `crif_${crypto.randomBytes(10).toString('hex')}`;
+    const reportUrl = `${baseUrl.replace(/\/$/, '')}/api/v1/reports/crif/${reportToken}.pdf`;
+
     let finalResponse;
 
     if (upstreamResult && isSuccess) {
       const outData = upstreamResult.data || upstreamResult;
+      
+      // Save report data for PDF rendering
+      await CrifVerificationService.saveReport(reportToken, {
+        first_name: cleanFirstName,
+        last_name: cleanLastName,
+        mobile_no: cleanMobile,
+        client_ref_num: clientRef,
+        ...outData,
+      });
+
+      let updatedData = typeof outData === 'object' ? { ...outData } : { result: outData };
+      if (updatedData.result_json && typeof updatedData.result_json === 'object') {
+        updatedData.result_json = {
+          ...updatedData.result_json,
+          report_url: reportUrl,
+          web_token_url: reportUrl,
+          pdf_url: reportUrl,
+        };
+      }
+
       finalResponse = {
         status: {
           code: 200,
@@ -118,8 +214,19 @@ export class CrifVerificationService {
           message: 'CRIF High Mark credit report fetched successfully.',
         },
         message: 'CRIF High Mark credit report fetched successfully.',
-        data: outData,
+        web_token_url: reportUrl,
+        report_url: reportUrl,
+        pdf_url: reportUrl,
+        data: {
+          status: 'success',
+          web_token_url: reportUrl,
+          report_url: reportUrl,
+          pdf_url: reportUrl,
+          ...updatedData,
+        },
       };
+    } else if (upstreamResult && !isSuccess) {
+      finalResponse = upstreamResult;
     } else {
       isSuccess = false;
       finalResponse = {
@@ -140,7 +247,7 @@ export class CrifVerificationService {
 
     const durationMs = Date.now() - startTime;
 
-    // 3. Asynchronously dispatch audit job and wallet debit
+    // 3. Asynchronously dispatch audit job and wallet debit (only debit on true success)
     if (apiClient?.user_id) {
       QueueService.addAuditJob({
         userId: apiClient.user_id,
@@ -149,13 +256,13 @@ export class CrifVerificationService {
         method: 'POST',
         requestId,
         clientRefNum: clientRef,
-        statusCode: 200,
-        resultCode: 'SUCCESS',
+        statusCode: isSuccess ? 200 : (finalResponse?.status?.code || finalResponse?.http_response_code || 500),
+        resultCode: isSuccess ? 'SUCCESS' : 'FAILED',
         durationMs,
         clientIp: apiClient.client_ip,
-        cost: hitCost,
+        cost: isSuccess ? hitCost : 0,
         environment: apiClient.environment || 'production',
-        isSuccess: true,
+        isSuccess,
       }).catch((err) => {
         console.error('Queue dispatch error in CRIF service:', err.message);
       });

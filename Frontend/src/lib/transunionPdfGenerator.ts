@@ -3,30 +3,30 @@ import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont, PDFImage } from 'pdf
 export interface TransUnionIdentifier {
   type: string;
   number: string;
-  issueDate?: string;
-  expirationDate?: string;
+  issueDate?: string | undefined;
+  expirationDate?: string | undefined;
 }
 
 export interface TransUnionTelephone {
   type: string;
   number: string;
-  extension?: string;
+  extension?: string | undefined;
 }
 
 export interface TransUnionAddress {
   address: string;
-  category?: string;
-  residenceCode?: string;
-  dateReported?: string;
+  category?: string | undefined;
+  residenceCode?: string | undefined;
+  dateReported?: string | undefined;
 }
 
 export interface TransUnionEmployment {
-  accountType?: string;
-  dateReported?: string;
-  occupationCode?: string;
-  income?: string;
-  netGrossIndicator?: string;
-  monthlyAnnualIndicator?: string;
+  accountType?: string | undefined;
+  dateReported?: string | undefined;
+  occupationCode?: string | undefined;
+  income?: string | undefined;
+  netGrossIndicator?: string | undefined;
+  monthlyAnnualIndicator?: string | undefined;
 }
 
 export interface TransUnionDpdHistoryItem {
@@ -35,7 +35,7 @@ export interface TransUnionDpdHistoryItem {
 }
 
 export interface TransUnionTradeline {
-  id?: number | string;
+  id?: number | string | undefined;
   member: string;
   accountNumber: string;
   type: string;
@@ -51,12 +51,12 @@ export interface TransUnionTradeline {
   emi: number | string;
   paymentFrequency: string;
   repaymentTenure: number | string;
-  dateClosed?: string;
-  settlementAmount?: number | string;
-  writtenOffPrincipal?: number | string;
-  writtenOffTotal?: number | string;
+  dateClosed?: string | undefined;
+  settlementAmount?: number | string | undefined;
+  writtenOffPrincipal?: number | string | undefined;
+  writtenOffTotal?: number | string | undefined;
   dpdHistory: TransUnionDpdHistoryItem[];
-  status?: 'ACTIVE' | 'CLOSED' | string;
+  status?: 'ACTIVE' | 'CLOSED' | string | undefined;
 }
 
 export interface TransUnionInquiry {
@@ -69,26 +69,26 @@ export interface TransUnionInquiry {
 export interface TransUnionPdfData {
   applicant: {
     name: string;
-    fatherName?: string;
+    fatherName?: string | undefined;
     pan: string;
     mobile: string;
-    dob?: string | null;
-    gender?: string | null;
-    leadId?: string | number | null;
-    controlNumber?: string | null;
-    memberId?: string | null;
-    memberReferenceNumber?: string | null;
-    reportDate?: string;
-    reportTime?: string;
+    dob?: string | null | undefined;
+    gender?: string | null | undefined;
+    leadId?: string | number | null | undefined;
+    controlNumber?: string | null | undefined;
+    memberId?: string | null | undefined;
+    memberReferenceNumber?: string | null | undefined;
+    reportDate?: string | undefined;
+    reportTime?: string | undefined;
   };
   score: number | string | null;
-  scoreName?: string;
-  scoringFactors?: string[];
-  identifications?: TransUnionIdentifier[];
-  telephones?: TransUnionTelephone[];
-  emails?: string[];
-  addresses?: TransUnionAddress[];
-  employment?: TransUnionEmployment[];
+  scoreName?: string | undefined;
+  scoringFactors?: string[] | undefined;
+  identifications?: TransUnionIdentifier[] | undefined;
+  telephones?: TransUnionTelephone[] | undefined;
+  emails?: string[] | undefined;
+  addresses?: TransUnionAddress[] | undefined;
+  employment?: TransUnionEmployment[] | undefined;
   summary: {
     totalAccounts: number;
     overdueAccounts: number;
@@ -119,11 +119,11 @@ export function cleanText(str: string | number | undefined | null): string {
 
 export function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr || dateStr === 'N/A' || dateStr === '-1' || dateStr === '-') return '-';
-  const clean = String(dateStr).split('T')[0].split('+')[0].trim();
+  const clean = (String(dateStr).split('T')[0] || '').split('+')[0]?.trim() || '';
   if (!clean) return '-';
   if (clean.includes('-')) {
     const parts = clean.split('-');
-    if (parts.length === 3) {
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
       if (parts[0].length === 4) {
         return `${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[0]}`;
       } else {
@@ -517,16 +517,16 @@ export async function generateTransUnionReportPdf(data: TransUnionPdfData): Prom
     ? data.employment
     : [{ accountType: '13', dateReported: '09-08-2026', occupationCode: '03', income: '', netGrossIndicator: '', monthlyAnnualIndicator: '' }];
 
-  const empRow = empList[0];
+  const empRow = empList[0] || { accountType: '13', dateReported: '09-08-2026', occupationCode: '03' };
   const empY = 115.86;
   currentPage.drawRectangle({ x: LEFT_X, y: empY, width: 67.28, height: 16.49, color: boxGrey });
-  currentPage.drawText(cleanText(empRow.accountType) || '13', { x: 21, y: 122.0, size: 7, font: fontRegular, color: textBlack });
+  currentPage.drawText(cleanText(empRow?.accountType) || '13', { x: 21, y: 122.0, size: 7, font: fontRegular, color: textBlack });
 
   currentPage.drawRectangle({ x: 85.28, y: empY, width: 72.55, height: 16.49, color: boxGrey });
-  currentPage.drawText(formatDate(empRow.dateReported) || repDate, { x: 88.3, y: 122.0, size: 7, font: fontRegular, color: textBlack });
+  currentPage.drawText(formatDate(empRow?.dateReported) || repDate, { x: 88.3, y: 122.0, size: 7, font: fontRegular, color: textBlack });
 
   currentPage.drawRectangle({ x: 157.83, y: empY, width: 83.07, height: 16.49, color: boxGrey });
-  currentPage.drawText(cleanText(empRow.occupationCode) || '03', { x: 160.8, y: 122.0, size: 7, font: fontRegular, color: textBlack });
+  currentPage.drawText(cleanText(empRow?.occupationCode) || '03', { x: 160.8, y: 122.0, size: 7, font: fontRegular, color: textBlack });
 
   currentPage.drawRectangle({ x: 240.9, y: empY, width: 36.57, height: 16.49, color: boxGrey });
   currentPage.drawRectangle({ x: 277.47, y: empY, width: 135.74, height: 16.49, color: boxGrey });
@@ -971,25 +971,25 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
   dpd_120_days: string;
   dpd_overall: string;
   dpd_history_6m: any[];
-  dpd30Days?: string;
-  dpd60Days?: string;
-  dpd90Days?: string;
-  dpd120Days?: string;
-  dpdOverall?: string;
-  dpdHistory6m?: any[];
+  dpd30Days?: string | undefined;
+  dpd60Days?: string | undefined;
+  dpd90Days?: string | undefined;
+  dpd120Days?: string | undefined;
+  dpdOverall?: string | undefined;
+  dpdHistory6m?: any[] | undefined;
   borrower?: {
-    name?: string;
-    fatherName?: string;
-    dob?: string;
-    gender?: string;
-  };
-  scoreName?: string;
-  scoringFactors?: string[];
-  identifications?: Array<{ type: string; number: string; issueDate?: string; expirationDate?: string }>;
-  telephones?: Array<{ type: string; number: string; extension?: string }>;
-  emails?: string[];
-  addresses?: Array<{ address: string; category?: string; residenceCode?: string; dateReported?: string }>;
-  employment?: Array<{ accountType?: string; dateReported?: string; occupationCode?: string; income?: string; netGrossIndicator?: string; monthlyAnnualIndicator?: string }>;
+    name?: string | undefined;
+    fatherName?: string | undefined;
+    dob?: string | undefined;
+    gender?: string | undefined;
+  } | undefined;
+  scoreName?: string | undefined;
+  scoringFactors?: string[] | undefined;
+  identifications?: Array<{ type: string; number: string; issueDate?: string | undefined; expirationDate?: string | undefined }> | undefined;
+  telephones?: Array<{ type: string; number: string; extension?: string | undefined }> | undefined;
+  emails?: string[] | undefined;
+  addresses?: Array<{ address: string; category?: string | undefined; residenceCode?: string | undefined; dateReported?: string | undefined }> | undefined;
+  employment?: Array<{ accountType?: string | undefined; dateReported?: string | undefined; occupationCode?: string | undefined; income?: string | undefined; netGrossIndicator?: string | undefined; monthlyAnnualIndicator?: string | undefined }> | undefined;
   summaryObj?: {
     totalAccounts: number;
     overdueAccounts: number;
@@ -999,14 +999,14 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
     overdueBalance: number;
     recentOpenedDate: string;
     oldestOpenedDate: string;
-  };
+  } | undefined;
   enquiriesSummary?: {
     total: number;
     past30Days: number;
     past12Months: number;
     past24Months: number;
-  };
-  tradelinesFull?: any[];
+  } | undefined;
+  tradelinesFull?: any[] | undefined;
 } {
   let resp = apiResponse;
   if (typeof resp === 'string') {
@@ -1067,7 +1067,7 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
     parsedFatherName = (parts[1] || '').trim();
   }
   const borrowerNameClean = [forename, surname].filter(Boolean).join(' ').trim();
-  const borrowerDob = b.Birth?.date ? String(b.Birth.date).split('T')[0].split('+')[0] : '';
+  const borrowerDob = b.Birth?.date ? ((String(b.Birth.date).split('T')[0] || '').split('+')[0] || '') : '';
   const borrowerGender = b.Gender || 'Male';
 
   // Identifications (TaxId, SocialId, CkycId, etc.)
@@ -1105,7 +1105,7 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
     const fullStr = [street, city, reg, pin].filter(Boolean).join(', ');
     const category = a.Dwelling?.symbol || a.Dwelling || '02';
     const resCode = a.Ownership?.symbol || '';
-    const dateRep = a.dateReported ? String(a.dateReported).split('T')[0].split('+')[0] : '';
+    const dateRep = a.dateReported ? ((String(a.dateReported).split('T')[0] || '').split('+')[0] || '') : '';
     return { address: fullStr, category, residenceCode: resCode, dateReported: dateRep };
   }).filter((ad: any) => Boolean(ad.address));
 
@@ -1113,7 +1113,7 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
   const rawEmp = ensureArr(b.Employer);
   const employment = rawEmp.map((emp: any) => ({
     accountType: emp.account || emp.accountType || '13',
-    dateReported: emp.dateReported ? String(emp.dateReported).split('T')[0].split('+')[0] : '',
+    dateReported: emp.dateReported ? ((String(emp.dateReported).split('T')[0] || '').split('+')[0] || '') : '',
     occupationCode: emp.OccupationCode?.symbol || emp.OccupationCode || emp.occupationCode || '03',
     income: emp.income || '',
     netGrossIndicator: emp.NetGrossIndicator || '',
@@ -1157,12 +1157,12 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
     loan_amount: number | string;
     facility_type: string;
     month: string;
-    month_raw?: string;
+    month_raw?: string | undefined;
     dpd: string;
     dpd_numeric: number;
     status_code: string;
     is_overdue: boolean;
-    account_number?: string;
+    account_number?: string | undefined;
   }> = [];
 
   partitions.forEach((p: any, idx: number) => {
@@ -1210,11 +1210,11 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
 
       // 36-month full history
       payHistory.slice(0, 36).forEach((h: any) => {
-        const rawDate = String(h.date || h.paymentDate || h.month || '').split('T')[0].split('+')[0];
+        const rawDate = (String(h.date || h.paymentDate || h.month || '').split('T')[0] || '').split('+')[0] || '';
         let mLabel = '00-00';
-        if (rawDate.includes('-')) {
+        if (rawDate && rawDate.includes('-')) {
           const parts = rawDate.split('-');
-          if (parts.length >= 2) {
+          if (parts.length >= 2 && parts[0] && parts[1]) {
             mLabel = `${parts[1].padStart(2, '0')}-${parts[0].slice(-2)}`;
           }
         }
@@ -1243,15 +1243,15 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
         else if (dpdVal > 60 && dpdVal <= 90) count90++;
         else if (dpdVal > 90) count120++;
 
-        const dateRaw = String(h.date || h.paymentDate || h.month || '').split('T')[0].split('+')[0];
+        const dateRaw = (String(h.date || h.paymentDate || h.month || '').split('T')[0] || '').split('+')[0] || '';
         let formattedMonth = dateRaw;
         if (dateRaw && dateRaw.includes('-')) {
           const parts = dateRaw.split('-');
-          if (parts.length >= 2) {
+          if (parts.length >= 2 && parts[0] && parts[1]) {
             const year = parts[0];
             const monthNum = parseInt(parts[1], 10);
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            if (monthNum >= 1 && monthNum <= 12) {
+            if (monthNum >= 1 && monthNum <= 12 && monthNames[monthNum - 1]) {
               formattedMonth = `${monthNames[monthNum - 1]} ${year}`;
             }
           }
@@ -1277,7 +1277,7 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
           loan_amount: sanctionAmount,
           facility_type: facilityType,
           month: formattedMonth || 'Recent Month',
-          month_raw: dateRaw,
+          month_raw: dateRaw || undefined,
           dpd: dpdLabel,
           dpd_numeric: dpdVal,
           status_code: rawStatus,
@@ -1313,12 +1313,12 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
       }
     }
 
-    const openDate = t.dateOpened ? String(t.dateOpened).split('T')[0].split('+')[0] : 'N/A';
-    const closeDate = t.dateClosed ? String(t.dateClosed).split('T')[0].split('+')[0] : (t.dateAccountStatus ? String(t.dateAccountStatus).split('T')[0].split('+')[0] : 'N/A');
-    const rDate = t.dateReported ? String(t.dateReported).split('T')[0].split('+')[0] : 'N/A';
-    const pmtStart = gt.PayStatusHistory?.startDate ? String(gt.PayStatusHistory.startDate).split('T')[0].split('+')[0] : rDate;
-    const pmtEnd = gt.PayStatusHistory?.endDate ? String(gt.PayStatusHistory.endDate).split('T')[0].split('+')[0] : openDate;
-    const lastPmt = t.dateClosed ? String(t.dateClosed).split('T')[0].split('+')[0] : (payHistory?.[0]?.date ? String(payHistory[0].date).split('T')[0].split('+')[0] : 'N/A');
+    const openDate = t.dateOpened ? ((String(t.dateOpened).split('T')[0] || '').split('+')[0] || 'N/A') : 'N/A';
+    const closeDate = t.dateClosed ? ((String(t.dateClosed).split('T')[0] || '').split('+')[0] || 'N/A') : (t.dateAccountStatus ? ((String(t.dateAccountStatus).split('T')[0] || '').split('+')[0] || 'N/A') : 'N/A');
+    const rDate = t.dateReported ? ((String(t.dateReported).split('T')[0] || '').split('+')[0] || 'N/A') : 'N/A';
+    const pmtStart = gt.PayStatusHistory?.startDate ? ((String(gt.PayStatusHistory.startDate).split('T')[0] || '').split('+')[0] || rDate) : rDate;
+    const pmtEnd = gt.PayStatusHistory?.endDate ? ((String(gt.PayStatusHistory.endDate).split('T')[0] || '').split('+')[0] || openDate) : openDate;
+    const lastPmt = t.dateClosed ? ((String(t.dateClosed).split('T')[0] || '').split('+')[0] || 'N/A') : (payHistory?.[0]?.date ? ((String(payHistory[0].date).split('T')[0] || '').split('+')[0] || 'N/A') : 'N/A');
 
     const emiVal = gt.EMIAmount && gt.EMIAmount !== '-1' && Number(gt.EMIAmount) > 0 ? String(gt.EMIAmount) : '';
     const pmtFreqVal = gt.PaymentFrequency?.symbol || '';
@@ -1409,7 +1409,7 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
     const typeCode = String(item.inquiryType || '').padStart(2, '0');
     return {
       enquiry: item.subscriberName || 'Institution',
-      date: item.inquiryDate ? String(item.inquiryDate).split('T')[0].split('+')[0] : 'N/A',
+      date: item.inquiryDate ? ((String(item.inquiryDate).split('T')[0] || '').split('+')[0] || 'N/A') : 'N/A',
       purpose: `${CIBIL_ACCOUNT_TYPE_MAP[typeCode] || typeCode || '05'}`,
       amount: Number(item.amount || 0)
     };
@@ -1543,13 +1543,13 @@ export function extractTransUnionFromApiResponse(apiResponse: any): {
 export async function generateTransUnionPdfFromApiResponse(
   apiResponse: any,
   fallbackParams?: {
-    fullName?: string;
-    panNumber?: string;
-    mobileNumber?: string;
-    dob?: string | null;
-    gender?: string | null;
-    leadId?: string | number | null;
-  }
+    fullName?: string | undefined;
+    panNumber?: string | undefined;
+    mobileNumber?: string | undefined;
+    dob?: string | null | undefined;
+    gender?: string | null | undefined;
+    leadId?: string | number | null | undefined;
+  } | undefined
 ): Promise<{
   pdfBytes: Uint8Array;
   blobUrl: string;
@@ -1603,7 +1603,7 @@ export async function generateTransUnionPdfFromApiResponse(
     oldestOpenedDate: ''
   };
 
-  const pdfData: TransUnionPdfData = {
+  const pdfData: any = {
     applicant: {
       name: fullName,
       fatherName: extracted.borrower?.fatherName || '',
@@ -1636,7 +1636,7 @@ export async function generateTransUnionPdfFromApiResponse(
   };
 
   const pdfBytes = await generateTransUnionReportPdf(pdfData);
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
   const blobUrl = URL.createObjectURL(blob);
 
   return {

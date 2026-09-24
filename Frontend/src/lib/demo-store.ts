@@ -94,6 +94,7 @@ export type WalletTransactionRow = {
 export type ApiHitLogRow = {
   id: string;
   request_id: string;
+  client_ref_num?: string | null;
   service_name?: string;
   endpoint: string;
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -108,6 +109,7 @@ export type ApiHitLogRow = {
   request_payload?: Record<string, unknown> | null;
   response_payload?: Record<string, unknown> | null;
   created_at: string;
+  [key: string]: unknown;
 };
 
 export type IpWhitelistRow = {

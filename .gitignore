@@ -19,6 +19,9 @@ dist-ssr/
 .tanstack/
 .nitro/
 *.zip
+output/
+*/output/
+
 
 # Logs
 logs/

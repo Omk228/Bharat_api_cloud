@@ -263,7 +263,7 @@ function NavRouteLink({
   active: boolean;
   icon: React.ReactNode;
   label: string;
-  badge?: string;
+  badge?: string | undefined;
 }) {
   return (
     <Link

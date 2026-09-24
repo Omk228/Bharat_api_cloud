@@ -6,13 +6,13 @@ import { startAuditWorker, stopAuditWorker } from './core/queue/audit.worker.js'
 
 const PORT = ENV.PORT;
 
-const server = app.listen(PORT, async () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log('====================================================');
   console.log(`🚀 Bharat API Cloud Backend Server (Modular Monolith)`);
   console.log(`📡 Environment: ${ENV.NODE_ENV}`);
-  console.log(`🌐 Server URL : http://localhost:${PORT}`);
-  console.log(`🔗 API Route  : http://localhost:${PORT}/api/v1`);
-  console.log(`🩺 Health API : http://localhost:${PORT}/api/v1/health`);
+  console.log(`🌐 Server URL : http://127.0.0.1:${PORT} / http://localhost:${PORT}`);
+  console.log(`🔗 API Route  : http://127.0.0.1:${PORT}/api/v1`);
+  console.log(`🩺 Health API : http://127.0.0.1:${PORT}/api/v1/health`);
   console.log('====================================================');
 
   // Verify Database Connection & Initialize Tables
