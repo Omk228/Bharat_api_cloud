@@ -1,7 +1,18 @@
-const API_BASE = 
-  (typeof window !== 'undefined' && (window as unknown as { __API_URL__?: string }).__API_URL__) ||
-  (import.meta.env as unknown as Record<string, string>)['VITE_API_URL'] ||
-  'https://brown-goldfish-546701.hostingersite.com/api/v1';
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:5002/api/v1';
+    }
+    if ((window as unknown as { __API_URL__?: string }).__API_URL__) {
+      return (window as unknown as { __API_URL__?: string }).__API_URL__!;
+    }
+  }
+  const envUrl = (import.meta.env as unknown as Record<string, string>)?.['VITE_API_URL'];
+  if (envUrl && !envUrl.includes('hostingersite.com')) return envUrl;
+  return 'https://brown-goldfish-546701.hostingersite.com/api/v1';
+}
+
+const API_BASE = getApiBase();
 
 export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return '';
