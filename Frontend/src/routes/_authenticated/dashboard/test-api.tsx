@@ -218,13 +218,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "work_email_plus" || search["service"] === "work-email-plus" || search["service"] === "work-email-verifier-plus" || search["service"] === "email_plus" || search["service"] === "email-plus"
+      search["service"] === "bank_v2" || search["service"] === "bank-v2" || search["service"] === "bank-account-v2" || search["service"] === "bank_account_v2" || search["service"] === "bank-account-validation-v2"
+        ? "bank_v2"
+        : search["service"] === "work_email_plus" || search["service"] === "work-email-plus" || search["service"] === "work-email-verifier-plus" || search["service"] === "email_plus" || search["service"] === "email-plus"
         ? "work_email_plus"
         : search["service"] === "work_email" || search["service"] === "work-email" || search["service"] === "work-email-verifier" || search["service"] === "corporate-email" || search["service"] === "corporate_email" || search["service"] === "email" || search["service"] === "email_verifier"
         ? "work_email"
@@ -281,8 +283,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus">(
-    searchParams.service === "work_email_plus"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus">(
+    searchParams.service === "bank_v2"
+      ? "bank_v2"
+      : searchParams.service === "work_email_plus"
       ? "work_email_plus"
       : searchParams.service === "work_email"
       ? "work_email"
@@ -371,6 +375,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "bank_v2" || serviceKey === "bank-account-v2" || serviceKey === "bank_account_v2") return 2.0;
     if (serviceKey === "work_email_plus" || serviceKey === "work-email-verifier-plus" || serviceKey === "work-email-plus" || serviceKey === "email_plus") return 2.0;
     if (serviceKey === "work_email" || serviceKey === "work-email-verifier" || serviceKey === "work-email") return 2.0;
     if (serviceKey === "statement_analyzer" || serviceKey === "statement-upload" || serviceKey === "statement-analyzer") return 25.0;
@@ -445,6 +450,11 @@ function TestApiPage() {
   // Work / Corporate Email Verifier (Standard) fields
   const [workEmailInput, setWorkEmailInput] = useState("support@geetpay.in");
   const [workEmailClientRef, setWorkEmailClientRef] = useState("");
+
+  // Bank Account Validation V2 fields
+  const [bankV2AccountNumber, setBankV2AccountNumber] = useState("");
+  const [bankV2IfscCode, setBankV2IfscCode] = useState("");
+  const [bankV2ClientRef, setBankV2ClientRef] = useState("");
 
   // Work Email Verifier Plus fields
   const [workEmailPlusInput, setWorkEmailPlusInput] = useState("");
@@ -785,7 +795,16 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "work_email_plus"
+    selectedService === "bank_v2"
+      ? {
+          account_number: bankV2AccountNumber.trim() || "1234567890",
+          ifsc_code: bankV2IfscCode.trim().toUpperCase() || "HDFC0001234",
+          ...(bankV2ClientRef.trim() ? { client_ref_num: bankV2ClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "work_email_plus"
       ? {
           email: workEmailPlusInput.trim().toLowerCase() || "name@company.com",
           ...(workEmailPlusClientRef.trim() ? { client_ref_num: workEmailPlusClientRef.trim() } : {}),
@@ -1025,6 +1044,16 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "bank_v2") {
+      if (!bankV2AccountNumber.trim()) {
+        toast.error("Please enter a Bank Account Number.");
+        return;
+      }
+      if (!bankV2IfscCode.trim()) {
+        toast.error("Please enter an IFSC Code.");
+        return;
+      }
+    }
     if (selectedService === "work_email_plus" && !workEmailPlusInput.trim()) {
       toast.error("Please enter a business email address (e.g. emma.thompson@example.com)");
       return;
@@ -1154,7 +1183,16 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "work_email_plus") {
+      if (selectedService === "bank_v2") {
+        rawData = await apiClient.verifyBankAccountV2({
+          account_number: bankV2AccountNumber.trim(),
+          ifsc_code: bankV2IfscCode.trim().toUpperCase(),
+          client_ref_num: bankV2ClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "work_email_plus") {
         rawData = await apiClient.verifyWorkEmailPlus({
           email: workEmailPlusInput.trim().toLowerCase(),
           client_ref_num: workEmailPlusClientRef.trim() || undefined,
@@ -1616,7 +1654,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "work_email_plus"
+    selectedService === "bank_v2"
+      ? "/api/v1/bank/account-validation"
+      : selectedService === "work_email_plus"
       ? "/api/v1/verify/work-email-plus"
       : selectedService === "work_email"
       ? "/api/v1/verify/work-email"
@@ -1659,7 +1699,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "work_email_plus"
+    selectedService === "bank_v2"
+      ? "Bank Account Validation V2"
+      : selectedService === "work_email_plus"
       ? "Work Email Verifier Plus"
       : selectedService === "work_email"
       ? "Work Email Verifier (Corporate Domain, DNS & SMTP Probe)"
@@ -1728,7 +1770,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "work_email_plus"
+                {selectedService === "bank_v2"
+                  ? "Direct live Bank Account Validation V2 gateway: real-time account holder verification, bank institution, branch state, and penny-drop status powered by Bharat API Cloud."
+                  : selectedService === "work_email_plus"
                   ? "Direct live Work Email Verifier Plus gateway: deep deliverability, syntax validation, corporate domain detection, spam/disposable classification, catch-all policy, role accounts, and full MX record inspection powered by Bharat API Cloud."
                   : selectedService === "work_email"
                   ? "Direct live Corporate Work Email Verification, DNS MX/SPF/DMARC analysis, and SMTP mailbox probe gateway powered by Bharat API Cloud."
@@ -1767,7 +1811,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "work_email_plus"
+                    selectedService === "bank_v2"
+                      ? "bank-account-v2"
+                      : selectedService === "work_email_plus"
                       ? "work-email-verifier-plus"
                       : selectedService === "work_email"
                       ? "work-email-verifier"
@@ -1825,6 +1871,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "bank_v2" && <Landmark className="h-4 w-4 text-sky-400" />}
                   {selectedService === "work_email_plus" && <Mail className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "work_email" && <Mail className="h-4 w-4 text-violet-400" />}
                   {selectedService === "statement_analyzer" && <FileSpreadsheet className="h-4 w-4 text-indigo-400" />}
@@ -1847,6 +1894,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "bank_v2" && "Bank Account Validation V2 (/api/v1/bank/account-validation)"}
                     {selectedService === "work_email_plus" && "Work Email Verifier Plus (/api/v1/verify/work-email-plus)"}
                     {selectedService === "work_email" && "Work Email Verifier (/api/v1/verify/work-email)"}
                     {selectedService === "statement_analyzer" && "Bank Statement Analyzer V2 (/srv2/statement-upload)"}
@@ -2087,7 +2135,65 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "work_email_plus" ? (
+                  {selectedService === "bank_v2" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Landmark className="h-3.5 w-3.5 text-sky-400" /> Bank Account Number *
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={bankV2AccountNumber}
+                          onChange={(e) => setBankV2AccountNumber(e.target.value)}
+                          placeholder="e.g. 1234567890"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-sky-400"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-sky-400" /> Bank IFSC Code *
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={bankV2IfscCode}
+                          onChange={(e) => setBankV2IfscCode(e.target.value.toUpperCase())}
+                          placeholder="e.g. HDFC0001234"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide uppercase outline-none focus:border-sky-400"
+                        />
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={bankV2ClientRef}
+                          onChange={(e) => setBankV2ClientRef(e.target.value)}
+                          placeholder="e.g. BNK_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-sky-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-sky-500/10 border border-sky-500/20 p-2.5 text-xs text-sky-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-sky-400">₹{getServicePrice("bank_v2").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Validates Indian bank account details, beneficiary account holder name, bank institution, branch state, and real-time penny-drop status.
+                      </p>
+                    </>
+                  ) : selectedService === "work_email_plus" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -3589,9 +3695,169 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* ✉️ WORK EMAIL VERIFIER PLUS DEDICATED VISUAL CARD          */}
+                        {/* 🏦 BANK ACCOUNT VALIDATION V2 DEDICATED VISUAL CARD       */}
                         {/* ========================================================= */}
-                        {selectedService === "work_email_plus" ? (
+                        {selectedService === "bank_v2" ? (
+                          (() => {
+                            const anyRes: any = responseJson || {};
+                            const bData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const rawResult: any = bData?.result && typeof bData.result === 'object' ? bData.result : bData;
+
+                            const accNum = String(rawResult.account_number || rawResult.creditorAccountId || bankV2AccountNumber || "—");
+                            const ifsc = String(rawResult.ifsc_code || rawResult.ifscCode || rawResult.ifsc || bankV2IfscCode || "—");
+                            const accHolder = String(rawResult.account_holder || rawResult.beneficiary_name || rawResult.creditorName || rawResult.fullname || "—");
+                            const bankName = String(rawResult.bank_name || "—");
+                            const branchName = String(rawResult.branch_name || "—");
+                            const branchState = String(rawResult.branch_state || "—");
+                            const isPennyDrop = Boolean(rawResult.is_penny_drop ?? true);
+
+                            const orderId = String(anyRes.order_id || bData.order_id || "—");
+                            const isCharged = Boolean(anyRes.charged ?? bData.charged ?? true);
+                            const durationMs = bData.duration_ms || responseTime || 0;
+                            const verifiedAt = bData.verified_at || new Date().toISOString();
+
+                            const isStatusSuccess = isSuccess || anyRes.status === "SUCCESS" || anyRes.status_code === 200 || (accHolder && accHolder !== "—");
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="rounded-xl p-2.5 bg-sky-500/20 text-sky-400">
+                                      <Landmark className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-mono text-base font-bold text-foreground">
+                                          {accHolder !== "—" ? accHolder : accNum}
+                                        </h3>
+                                        {accHolder !== "—" && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopyField(accHolder, "Account Holder Name")}
+                                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                            title="Copy Account Holder Name"
+                                          >
+                                            {copiedField === "Account Holder Name" ? (
+                                              <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                            ) : (
+                                              <Copy className="h-3.5 w-3.5" />
+                                            )}
+                                          </button>
+                                        )}
+                                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider border ${
+                                          isStatusSuccess
+                                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                            : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                        }`}>
+                                          ● {isStatusSuccess ? "VALID / ACTIVE" : "INVALID"}
+                                        </span>
+                                        {isPennyDrop && (
+                                          <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                            <CheckCircle2 className="h-3 w-3" /> Penny Drop Verified
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                                        <span>Bank: <strong className="text-foreground font-semibold font-mono">{bankName}</strong></span>
+                                        <span>·</span>
+                                        <span>IFSC: <strong className="text-foreground font-semibold font-mono">{ifsc}</strong></span>
+                                        <span>·</span>
+                                        <span className="font-mono">{durationMs}ms latency</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Gateway Status</span>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCharged ? "bg-emerald-400" : "bg-amber-400"}`} />
+                                      <span className="font-mono text-xs font-bold text-foreground">
+                                        {isCharged ? "Charged (200 OK)" : "Free / Cached"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Bank & Beneficiary Details Cards */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                  {/* Beneficiary Name */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Registered Beneficiary</span>
+                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground truncate select-all">{accHolder}</p>
+                                    <span className="text-[10px] text-muted-foreground">Official name registered in core banking</span>
+                                  </div>
+
+                                  {/* Account Number */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Bank Account Number</span>
+                                      <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground select-all">{accNum}</p>
+                                    <span className="text-[10px] text-muted-foreground">Verified creditor account</span>
+                                  </div>
+
+                                  {/* IFSC Code */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">IFSC Code</span>
+                                      <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-sky-400 select-all">{ifsc}</p>
+                                    <span className="text-[10px] text-muted-foreground">Branch routing code</span>
+                                  </div>
+
+                                  {/* Bank Institution */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Bank Institution</span>
+                                      <Landmark className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground truncate">{bankName}</p>
+                                    <span className="text-[10px] text-muted-foreground">Banking entity</span>
+                                  </div>
+
+                                  {/* Branch Name */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Branch Name</span>
+                                      <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground truncate">{branchName}</p>
+                                    <span className="text-[10px] text-muted-foreground">Location branch</span>
+                                  </div>
+
+                                  {/* State */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Branch State</span>
+                                      <Compass className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground truncate">{branchState}</p>
+                                    <span className="text-[10px] text-muted-foreground">Jurisdiction state</span>
+                                  </div>
+                                </div>
+
+                                {/* Audit & Metadata Footer */}
+                                <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1 text-muted-foreground">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Verification Audit</span>
+                                    <span className="text-sky-400 font-semibold text-[10px]">Verified at: {new Date(verifiedAt).toLocaleString("en-IN")}</span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3 text-[11px] pt-1">
+                                    <p className="truncate">Order ID: <span className="text-foreground">{orderId}</span></p>
+                                    <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
+                                    <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || bankV2ClientRef || "—"}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "work_email_plus" ? (
                           (() => {
                             const anyRes: any = responseJson || {};
                             const plusData: any = (responseJson?.data || responseJson?.result || responseJson) || {};

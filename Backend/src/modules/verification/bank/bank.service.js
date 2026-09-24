@@ -261,6 +261,258 @@ export class BankVerificationService {
 
     return finalResponse;
   }
+
+  /**
+   * Bank Account Validation V2 (100% Dynamic Upstream Provider)
+   */
+  static async verifyBankAccountV2({
+    account_number,
+    creditorAccountId,
+    account_no,
+    accountNumber,
+    ifsc_code,
+    ifsc,
+    ifscCode,
+    client_ref_num,
+    apiClient,
+    endpoint = '/api/v1/bank/account-validation',
+  }) {
+    const startTime = Date.now();
+    const rawAccount = String(account_number || creditorAccountId || account_no || accountNumber || '').trim();
+    const rawIfsc = String(ifsc_code || ifsc || ifscCode || '').trim().toUpperCase();
+    const requestId = `req_${crypto.randomUUID()}`;
+    const clientRef = client_ref_num || `BNKV2_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    if (!rawAccount) {
+      throw ApiError.badRequest('Missing required parameter: account_number is mandatory.');
+    }
+
+    if (!rawIfsc) {
+      throw ApiError.badRequest('Missing required parameter: ifsc_code is mandatory.');
+    }
+
+    if (!this.isValidAccountNumber(rawAccount)) {
+      throw ApiError.badRequest(`Invalid account number format: "${rawAccount}". Account number must be 9 to 18 digits.`);
+    }
+
+    if (!this.isValidIfsc(rawIfsc)) {
+      throw ApiError.badRequest(`Invalid IFSC code format: "${rawIfsc}". IFSC must be 4 alphabetic characters, followed by '0', and 6 alphanumeric characters.`);
+    }
+
+    const hitCost = await getEffectiveApiPrice(endpoint, apiClient?.user_id);
+
+    // Pre-flight wallet balance check for authenticated API clients
+    if (apiClient?.user_id && apiClient.wallet_balance < hitCost) {
+      throw ApiError.paymentRequired(
+        `Insufficient wallet balance (₹${hitCost.toFixed(2)} required, current balance: ₹${apiClient.wallet_balance.toFixed(2)}). Please recharge your wallet.`
+      );
+    }
+
+    const cacheKeyIdentifier = `${rawAccount}_${rawIfsc}`;
+
+    // 1. Check Smart Result Cache first (<1ms)
+    const cachedResult = await CacheService.getVerification('bank_v2', cacheKeyIdentifier);
+    if (cachedResult && cachedResult.status) {
+      const durationMs = Date.now() - startTime;
+      console.log(`⚡ [BANK V2 CACHE HIT] Returned from Cache in ${durationMs}ms: Account=${rawAccount.slice(0, 4)}XXXX${rawAccount.slice(-3)}, IFSC=${rawIfsc}`);
+
+      const cachedResponse = {
+        ...cachedResult,
+        http_response_code: 200,
+        result_code: 101,
+        request_id: requestId,
+        client_ref_num: clientRef,
+      };
+
+      if (apiClient?.user_id) {
+        QueueService.addAuditJob({
+          userId: apiClient.user_id,
+          credentialId: apiClient.credential_id,
+          endpoint,
+          method: 'POST',
+          requestId,
+          clientRefNum: clientRef,
+          statusCode: 200,
+          resultCode: 101,
+          durationMs,
+          clientIp: apiClient.client_ip,
+          cost: hitCost,
+          environment: apiClient.environment || 'production',
+          isSuccess: true,
+        }).catch((err) => {
+          console.error('Queue dispatch error on bank v2 cache hit:', err.message);
+        });
+      }
+
+      return cachedResponse;
+    }
+
+    // 2. Resolve Upstream Credentials
+    const creds = await credentialResolver.getBankValidationV2Credentials();
+    const upstreamUrl = creds.baseUrl || 'https://app.way2api.com/api/v1/bank/account_validation';
+    const apiKey = creds.apiKey || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082';
+
+    let responseJson = null;
+
+    try {
+      console.log(`📡 [BANK V2 PROXY] Calling Upstream Gateway: ${upstreamUrl} for Account=${rawAccount.slice(0, 4)}XXXX, IFSC=${rawIfsc}`);
+
+      const upstreamRes = await upstreamFetch(upstreamUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          account_number: rawAccount,
+          ifsc_code: rawIfsc,
+        }),
+        timeout: 15000,
+      });
+
+      const responseText = await upstreamRes.text();
+
+      try {
+        responseJson = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.warn(`⚠️ [BANK V2 PARSE WARNING] Upstream returned non-JSON: ${responseText.slice(0, 150)}`);
+      }
+
+      console.log(`📥 [BANK V2 UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(responseJson, null, 2));
+
+      if (responseJson && isUpstreamLowBalance(responseJson)) {
+        console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Bank Account Validation V2.');
+        return formatUpstreamLowBalanceResponse(clientRef, requestId);
+      }
+
+      if (!upstreamRes.ok && (!responseJson || responseJson.status !== 'SUCCESS')) {
+        const errorMsg = responseJson?.message || responseJson?.error || `Upstream returned status ${upstreamRes.status}`;
+        throw new Error(errorMsg);
+      }
+    } catch (upstreamErr) {
+      console.error(`❌ [BANK V2 UPSTREAM ERROR]:`, upstreamErr.message);
+
+      if (isUpstreamLowBalance(upstreamErr.message)) {
+        return formatUpstreamLowBalanceResponse(clientRef, requestId);
+      }
+
+      // Zero Fallback / Zero Mock Data: Return clean structured failure
+      const durationMs = Date.now() - startTime;
+
+      const errorResponse = {
+        status: 'error',
+        status_message: 'failed',
+        http_response_code: 502,
+        result_code: 102,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: upstreamErr.message || 'Upstream bank validation service temporarily unavailable.',
+        error: upstreamErr.message,
+        data: null,
+        result: null,
+      };
+
+      if (apiClient?.user_id) {
+        QueueService.addAuditJob({
+          userId: apiClient.user_id,
+          credentialId: apiClient.credential_id,
+          endpoint,
+          method: 'POST',
+          requestId,
+          clientRefNum: clientRef,
+          statusCode: 502,
+          resultCode: 102,
+          durationMs,
+          clientIp: apiClient.client_ip,
+          cost: 0,
+          environment: apiClient.environment || 'production',
+          isSuccess: false,
+        }).catch(() => {});
+      }
+
+      return errorResponse;
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    // 3. Format Dynamic Upstream Response
+    const upstreamData = responseJson?.data || {};
+    const resultObj = upstreamData?.result || responseJson?.result || {};
+    const orderId = responseJson?.order_id || upstreamData?.order_id || null;
+    const isCharged = Boolean(responseJson?.charged ?? true);
+
+    const accountHolder = resultObj.account_holder || resultObj.beneficiary_name || resultObj.creditorName || resultObj.fullname || '';
+    const bankName = resultObj.bank_name || '';
+    const branchName = resultObj.branch_name || '';
+    const branchState = resultObj.branch_state || '';
+    const isPennyDrop = Boolean(resultObj.is_penny_drop ?? true);
+    const isSuccess = Boolean(
+      responseJson?.status === 'SUCCESS' ||
+      responseJson?.status_code === 200 ||
+      responseJson?.success ||
+      Boolean(accountHolder)
+    );
+
+    const formattedData = {
+      account_number: resultObj.account_number || rawAccount,
+      ifsc_code: resultObj.ifsc_code || rawIfsc,
+      account_holder: accountHolder,
+      name_match_score: resultObj.name_match_score || '',
+      account_type: resultObj.account_type || '',
+      bank_name: bankName,
+      branch_name: branchName,
+      branch_state: branchState,
+      is_penny_drop: isPennyDrop,
+      order_id: orderId,
+      charged: isCharged,
+      duration_ms: durationMs,
+      verified_at: new Date().toISOString(),
+    };
+
+    const finalResponse = {
+      status: isSuccess ? 'success' : 'failed',
+      status_message: isSuccess ? 'completed' : 'failed',
+      http_response_code: 200,
+      result_code: isSuccess ? 101 : 102,
+      request_id: requestId,
+      client_ref_num: clientRef,
+      message: responseJson?.message || (isSuccess ? 'Bank account validated successfully' : 'Bank account validation failed'),
+      order_id: orderId,
+      charged: isCharged,
+      data: formattedData,
+      result: formattedData,
+      raw_upstream: responseJson,
+    };
+
+    // Cache valid result for 24 hours
+    if (isSuccess && accountHolder) {
+      CacheService.setVerification('bank_v2', cacheKeyIdentifier, finalResponse, 86400).catch(() => {});
+    }
+
+    // Asynchronously log and deduct wallet balance
+    if (apiClient?.user_id) {
+      QueueService.addAuditJob({
+        userId: apiClient.user_id,
+        credentialId: apiClient.credential_id,
+        endpoint,
+        method: 'POST',
+        requestId,
+        clientRefNum: clientRef,
+        statusCode: 200,
+        resultCode: isSuccess ? 101 : 102,
+        durationMs,
+        clientIp: apiClient.client_ip,
+        cost: isSuccess ? hitCost : 0.00,
+        environment: apiClient.environment || 'production',
+        isSuccess,
+      }).catch((err) => {
+        console.error('Queue dispatch error on bank v2 verification:', err.message);
+      });
+    }
+
+    return finalResponse;
+  }
 }
 
 export default BankVerificationService;

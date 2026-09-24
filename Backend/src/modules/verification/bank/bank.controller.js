@@ -44,6 +44,40 @@ export class BankVerificationController {
     const statusCode = verificationResult.http_response_code || 200;
     return res.status(statusCode).json(verificationResult);
   });
+
+  /**
+   * Bank Account Validation V2 Handler (POST /api/v1/bank/account-validation)
+   */
+  static verifyBankAccountV2 = asyncHandler(async (req, res) => {
+    const account_number =
+      req.body.account_number ||
+      req.body.accountNumber ||
+      req.body.account_no ||
+      req.body.creditorAccountId ||
+      req.body.account ||
+      req.query.account_number ||
+      req.query.account;
+
+    const ifsc_code =
+      req.body.ifsc_code ||
+      req.body.ifscCode ||
+      req.body.ifsc ||
+      req.query.ifsc_code ||
+      req.query.ifsc;
+
+    const client_ref_num = req.body.client_ref_num || req.body.clientRefNum || null;
+
+    const verificationResult = await BankVerificationService.verifyBankAccountV2({
+      account_number: account_number ? String(account_number) : '',
+      ifsc_code: ifsc_code ? String(ifsc_code) : '',
+      client_ref_num,
+      apiClient: req.apiClient,
+      endpoint: req.originalUrl?.split('?')[0] || '/api/v1/bank/account-validation',
+    });
+
+    const statusCode = verificationResult.http_response_code || 200;
+    return res.status(statusCode).json(verificationResult);
+  });
 }
 
 export default BankVerificationController;

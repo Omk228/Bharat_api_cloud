@@ -153,6 +153,19 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for Bank Account Validation V2 (WAY2API)
+   */
+  async getBankValidationV2Credentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('way2api_bank_master') || this.cache.get('bank_v2_master') || this.cache.get('way2api_email_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.BANK_VALIDATION_V2.BASE_URL,
+      apiKey: cred?.apiKey || ENV.BANK_VALIDATION_V2.API_KEY,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

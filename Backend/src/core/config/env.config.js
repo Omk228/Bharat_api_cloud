@@ -79,7 +79,13 @@ export const ENV = {
 
   WAY2API: {
     EMAIL_BASE_URL: process.env.WAY2API_EMAIL_BASE_URL || 'https://app.way2api.com/api/v1/email/validate',
-    API_KEY: process.env.WAY2API_EMAIL_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
+    BANK_BASE_URL: process.env.WAY2API_BANK_BASE_URL || process.env.BANK_VALIDATION_V2_BASE_URL || 'https://app.way2api.com/api/v1/bank/account_validation',
+    API_KEY: process.env.WAY2API_BANK_API_KEY || process.env.BANK_VALIDATION_V2_API_KEY || process.env.WAY2API_EMAIL_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
+  },
+
+  BANK_VALIDATION_V2: {
+    BASE_URL: process.env.BANK_VALIDATION_V2_BASE_URL || process.env.WAY2API_BANK_BASE_URL || 'https://app.way2api.com/api/v1/bank/account_validation',
+    API_KEY: process.env.BANK_VALIDATION_V2_API_KEY || process.env.WAY2API_BANK_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
   },
 };
 

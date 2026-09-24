@@ -67,6 +67,13 @@ export const API_PRICING = {
   '/api/v1/email-verifier-plus': 2.00,
   '/email-verifier-plus': 2.00,
   'work_email_plus': 2.00,
+  '/api/v1/bank/account-validation': 2.00,
+  '/api/v1/bank/account_validation': 2.00,
+  '/bank/account_validation': 2.00,
+  '/bank/account-validation': 2.00,
+  '/api/v1/verify/bank-v2': 2.00,
+  '/verify/bank-v2': 2.00,
+  'bank_v2': 2.00,
   default: 2.00,
 };
 

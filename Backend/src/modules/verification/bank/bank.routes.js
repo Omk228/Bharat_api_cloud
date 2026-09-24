@@ -12,4 +12,12 @@ router.post('/verification/bank', verifyApiClientCredentials, BankVerificationCo
 router.post('/api/v1/idfc/beneficiary', verifyApiClientCredentials, BankVerificationController.verifyBankPennyLess);
 router.post('/api/v1/verification/bank', verifyApiClientCredentials, BankVerificationController.verifyBankPennyLess);
 
+// 3. Bank Account Validation V2 Endpoints
+router.post('/api/v1/bank/account-validation', verifyApiClientCredentials, BankVerificationController.verifyBankAccountV2);
+router.post('/api/v1/bank/account_validation', verifyApiClientCredentials, BankVerificationController.verifyBankAccountV2);
+router.post('/bank/account_validation', verifyApiClientCredentials, BankVerificationController.verifyBankAccountV2);
+router.post('/bank/account-validation', verifyApiClientCredentials, BankVerificationController.verifyBankAccountV2);
+router.post('/api/v1/verify/bank-v2', verifyApiClientCredentials, BankVerificationController.verifyBankAccountV2);
+router.post('/verify/bank-v2', verifyApiClientCredentials, BankVerificationController.verifyBankAccountV2);
+
 export default router;

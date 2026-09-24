@@ -150,6 +150,15 @@ const ENDPOINT_CATALOG_MAP = {
   '/api/v1/email-verifier-plus': ['api_work_email_plus', 'api_work_email_verifier', '/email-verifier-plus'],
   '/email-verifier-plus': ['api_work_email_plus', 'api_work_email_verifier', '/email-verifier-plus'],
   'work_email_plus': ['api_work_email_plus', 'api_work_email_verifier', '/verify/work-email-plus'],
+
+  // Bank Account Validation V2
+  '/api/v1/bank/account-validation': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
+  '/api/v1/bank/account_validation': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
+  '/bank/account_validation': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
+  '/bank/account-validation': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
+  '/api/v1/verify/bank-v2': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
+  '/verify/bank-v2': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
+  'bank_v2': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -160,6 +169,7 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   digilocker: 'api_digilocker_digital_kyc',
   bank: 'api_bank_penny_less',
   bank_validation: 'api_bank_validation',
+  bank_v2: 'api_bank_v2',
   prefill: 'api_mobile_to_prefill',
   name_finder: 'api_mobile_name_finder',
   mobile_upi: 'api_mobile_to_upi',

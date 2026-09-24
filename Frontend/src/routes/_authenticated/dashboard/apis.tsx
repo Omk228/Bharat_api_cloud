@@ -475,6 +475,15 @@ function ApisPage() {
                         ⚡ Test In Console
                       </Link>
                     )}
+                    {ep.id === "bank-account-v2" && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "bank_v2" }}
+                        className="inline-flex items-center gap-1 rounded bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 font-medium text-sky-400 hover:bg-sky-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {ep.id === "mobile-to-uan" && (
                       <Link
                         to="/dashboard/test-api"
