@@ -224,26 +224,17 @@ export class DigilockerVerificationService {
               };
         }
       } else {
-        isSuccess = true;
-        resultCode = 101;
-        const mockToken = crypto.randomBytes(16).toString('hex');
-        const mockClientId = `digilocker_${crypto.randomBytes(12).toString('base64url')}`;
-        const mockSessionId = crypto.randomUUID();
-
+        isSuccess = false;
+        resultCode = 103;
         finalResponse = {
-          http_response_code: 200,
-          status_code: 200,
-          status_message: 'SUCCESS',
-          result_code: 101,
-          message: 'Digilocker Digital KYC Token generated successfully (Sandbox).',
+          http_response_code: 500,
+          status_code: 500,
+          status_message: 'FAILED',
+          result_code: 103,
+          message: 'Digilocker Digital KYC service configuration missing.',
           client_ref_num: clientRef,
           request_id: requestId,
-          data: {
-            client_id: mockClientId,
-            token: mockToken,
-            url: `${hostBase}/srv2/v1/digilocker/start/${mockSessionId}`,
-            expiry_seconds: 1800,
-          },
+          data: null,
         };
       }
     } else {
@@ -347,26 +338,17 @@ export class DigilockerVerificationService {
               };
         }
       } else {
-        isSuccess = true;
-        resultCode = 101;
-
+        isSuccess = false;
+        resultCode = 103;
         finalResponse = {
-          http_response_code: 200,
-          status_code: 200,
-          status_message: 'SUCCESS',
-          result_code: 101,
-          message: 'Digilocker Digital KYC Details fetched successfully (Sandbox).',
+          http_response_code: 500,
+          status_code: 500,
+          status_message: 'FAILED',
+          result_code: 103,
+          message: 'Digilocker Digital KYC service configuration missing.',
           client_ref_num: clientRef,
           request_id: requestId,
-          data: {
-            client_id: effectiveClientId,
-            kyc_status: 'COMPLETED',
-            aadhaar_number: 'XXXXXXXX1445',
-            name: 'Aarav Sharma',
-            dob: '1990-04-12',
-            gender: 'M',
-            address: 'New Delhi, India',
-          },
+          data: null,
         };
       }
     }

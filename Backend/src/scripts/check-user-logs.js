@@ -14,10 +14,10 @@ async function main() {
   const [pricingRows] = await dbPool.query('SELECT * FROM user_api_pricing WHERE user_id = ?', [userId]);
   console.log('User custom pricing rows:', pricingRows);
 
-  const [catalog] = await dbPool.query('SELECT id, name, endpoint_path, base_price, default_gst_percent FROM api_catalog WHERE id IN (?, ?, ?)', ['api_transunion_cibil_v5', 'api_crif_credit_score_v4', 'api_bank_statement']);
+  const [catalog] = await dbPool.query('SELECT * FROM catalog WHERE id IN (?, ?, ?)', ['api_transunion_cibil_v5', 'api_crif_credit_score_v4', 'api_bank_statement']);
   console.log('Catalog rows:', catalog);
 
-  const [recentLogs] = await dbPool.query("SELECT id, endpoint, cost, is_success, created_at, DATE_FORMAT(CONVERT_TZ(created_at, '+00:00', '+05:30'), '%Y-%m-%d %h:%i:%s %p') as ist FROM api_hit_logs WHERE user_id = ? ORDER BY id DESC LIMIT 15", [userId]);
+  const [recentLogs] = await dbPool.query("SELECT id, endpoint, cost, status_code, result_code, created_at, DATE_FORMAT(CONVERT_TZ(created_at, '+00:00', '+05:30'), '%Y-%m-%d %h:%i:%s %p') as ist FROM api_hit_logs WHERE user_id = ? ORDER BY id DESC LIMIT 15", [userId]);
   console.log('Recent api_hit_logs for user:');
   console.table(recentLogs);
 

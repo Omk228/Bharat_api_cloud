@@ -12,8 +12,9 @@ export class ApiLayerController {
         req.body?.ip ||
         req.body?.ip_address ||
         req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        '182.156.19.94';
+        req.ip ||
+        req.socket?.remoteAddress ||
+        '';
 
       const result = await ApiLayerService.lookupIp(targetIp, req.apiClient, req.originalUrl || req.path);
       return res.status(200).json(result);
@@ -32,8 +33,9 @@ export class ApiLayerController {
         req.body?.ip ||
         req.body?.ip_address ||
         req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-        req.socket.remoteAddress ||
-        '182.156.19.94';
+        req.ip ||
+        req.socket?.remoteAddress ||
+        '';
 
       const result = await ApiLayerService.lookupIp(targetIp, req.apiClient, req.originalUrl || req.path);
       return res.status(200).json(result);

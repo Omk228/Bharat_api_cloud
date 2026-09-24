@@ -109,11 +109,11 @@ export class ApiLayerService {
    * Fetch Geolocation from high-availability backup providers and format to IPStack schema
    */
   static async fetchFallbackIp(targetIp) {
-    // 1. Primary Fallback: ip-api.com
+    // 1. Primary Live Fallback: ip-api.com
     try {
       const res = await fetch(
         `http://ip-api.com/json/${targetIp}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query`,
-        { signal: AbortSignal.timeout(3500) }
+        { signal: AbortSignal.timeout(6000) }
       );
       if (res.ok) {
         const data = await res.json();
@@ -126,28 +126,28 @@ export class ApiLayerService {
             continent_name: 'Asia',
             country_code: data.countryCode || 'IN',
             country_name: data.country || 'India',
-            region_code: data.region || 'DL',
-            region_name: data.regionName || 'Delhi',
-            city: data.city || 'New Delhi',
-            zip: data.zip || '110001',
-            latitude: data.lat || 28.6139,
-            longitude: data.lon || 77.209,
+            region_code: data.region || '',
+            region_name: data.regionName || '',
+            city: data.city || '',
+            zip: data.zip || '',
+            latitude: data.lat || 0,
+            longitude: data.lon || 0,
             msa: null,
             dma: null,
             radius: null,
             ip_routing_type: 'fixed',
             connection_type: 'tx',
             location: {
-              geoname_id: 1261481,
-              capital: 'New Delhi',
+              geoname_id: null,
+              capital: '',
               languages: [
                 { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
                 { code: 'en', name: 'English', native: 'English' },
               ],
               country_flag: `https://assets.ipstack.com/flags/${countryCode}.svg`,
-              country_flag_emoji: '🇮🇳',
-              country_flag_emoji_unicode: 'U+1F1EE U+1F1F3',
-              calling_code: '91',
+              country_flag_emoji: '',
+              country_flag_emoji_unicode: '',
+              calling_code: '',
               is_eu: false,
             },
           };
@@ -157,10 +157,10 @@ export class ApiLayerService {
       console.warn('⚠️ [APILAYER FALLBACK 1] ip-api error:', err.message);
     }
 
-    // 2. Secondary Fallback: freeipapi.com
+    // 2. Secondary Live Fallback: freeipapi.com
     try {
       const res = await fetch(`https://freeipapi.com/api/json/${targetIp}`, {
-        signal: AbortSignal.timeout(3500),
+        signal: AbortSignal.timeout(6000),
       });
       if (res.ok) {
         const data = await res.json();
@@ -173,27 +173,27 @@ export class ApiLayerService {
             continent_name: data.continent || 'Asia',
             country_code: data.countryCode || 'IN',
             country_name: data.countryName || 'India',
-            region_code: data.regionCode || 'DL',
-            region_name: data.regionName || 'Delhi',
-            city: data.cityName || 'New Delhi',
-            zip: data.zipCode || '110001',
-            latitude: data.latitude || 28.6139,
-            longitude: data.longitude || 77.209,
+            region_code: data.regionCode || '',
+            region_name: data.regionName || '',
+            city: data.cityName || '',
+            zip: data.zipCode || '',
+            latitude: data.latitude || 0,
+            longitude: data.longitude || 0,
             msa: null,
             dma: null,
             radius: null,
             ip_routing_type: 'fixed',
             connection_type: 'tx',
             location: {
-              capital: data.capital || 'New Delhi',
+              capital: data.capital || '',
               languages: [
                 { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
                 { code: 'en', name: 'English', native: 'English' },
               ],
               country_flag: `https://assets.ipstack.com/flags/${countryCode}.svg`,
-              country_flag_emoji: '🇮🇳',
-              country_flag_emoji_unicode: 'U+1F1EE U+1F1F3',
-              calling_code: String(data.phoneCodes?.[0] || '91'),
+              country_flag_emoji: '',
+              country_flag_emoji_unicode: '',
+              calling_code: String(data.phoneCodes?.[0] || ''),
               is_eu: false,
             },
           };
@@ -203,43 +203,14 @@ export class ApiLayerService {
       console.warn('⚠️ [APILAYER FALLBACK 2] freeipapi error:', err.message);
     }
 
-    // 3. Static Resilient Fallback (Guaranteed Success)
-    return {
-      ip: targetIp,
-      type: targetIp.includes(':') ? 'ipv6' : 'ipv4',
-      continent_code: 'AS',
-      continent_name: 'Asia',
-      country_code: 'IN',
-      country_name: 'India',
-      region_code: 'DL',
-      region_name: 'Delhi',
-      city: 'New Delhi',
-      zip: '110001',
-      latitude: 28.6139,
-      longitude: 77.209,
-      msa: null,
-      dma: null,
-      radius: null,
-      ip_routing_type: 'fixed',
-      connection_type: 'tx',
-      location: {
-        geoname_id: 1261481,
-        capital: 'New Delhi',
-        languages: [
-          { code: 'hi', name: 'Hindi', native: 'हिन्दी' },
-          { code: 'en', name: 'English', native: 'English' },
-        ],
-        country_flag: 'https://assets.ipstack.com/flags/in.svg',
-        country_flag_emoji: '🇮🇳',
-        country_flag_emoji_unicode: 'U+1F1EE U+1F1F3',
-        calling_code: '91',
-        is_eu: false,
-      },
-    };
+    // No hardcoded mock fallback: throw real upstream error
+    const error = new Error(`Unable to resolve IP geolocation for ${targetIp}: Upstream providers unavailable`);
+    error.statusCode = 502;
+    throw error;
   }
 
   /**
-   * Lookup IP Geolocation via APILAYER / IPStack with 99-request Key Rotation & Resilient Fallback
+   * Lookup IP Geolocation via APILAYER / IPStack with 99-request Key Rotation & Live Fallback
    * @param {string} ip - Target IP address or 'check'
    * @param {object|null} apiClient - Authenticated API Client from middleware
    * @param {string} endpoint - Invoked route endpoint path
@@ -248,9 +219,10 @@ export class ApiLayerService {
     const startTime = Date.now();
     let targetIp = String(ip || '').trim();
 
-    // Default to the requested user IP if testing on localhost or empty
-    if (!targetIp || this.isLocalOrPrivateIp(targetIp)) {
-      targetIp = '182.156.19.94';
+    if (!targetIp) {
+      const error = new Error('Target IP address is required (e.g. 103.234.186.75 or 8.8.8.8)');
+      error.statusCode = 400;
+      throw error;
     }
 
     // 1. Check Redis Cache first (<2ms)

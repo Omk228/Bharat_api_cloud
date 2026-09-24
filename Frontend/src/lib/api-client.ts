@@ -12,14 +12,47 @@ export function getApiBase(): string {
   return 'https://brown-goldfish-546701.hostingersite.com/api/v1';
 }
 
-const API_BASE = getApiBase();
+export function getHostBase(): string {
+  return getApiBase().replace(/\/api\/v1\/?$/, '');
+}
+
+export const API_BASE = {
+  toString() {
+    return getApiBase();
+  },
+  valueOf() {
+    return getApiBase();
+  },
+  replace(searchValue: string | RegExp, replaceValue: string) {
+    return getApiBase().replace(searchValue, replaceValue);
+  }
+};
+
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit, timeoutMs = 25000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, {
+      ...init,
+      signal: init?.signal || controller.signal,
+    });
+    return res;
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs / 1000}s. Please check backend server.`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
-  const serverOrigin = API_BASE.replace(/\/api\/v1\/?$/, '');
+  const serverOrigin = getHostBase();
   return `${serverOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 

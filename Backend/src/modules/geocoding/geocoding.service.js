@@ -15,14 +15,20 @@ export class GeocodingService {
   static async reverseGeocode(latitude, longitude, apiClient = null, endpoint = '/reverse') {
     const startTime = Date.now();
 
-    // Default to Delhi (Kartavya Path) if missing
-    let lat = latitude !== undefined && latitude !== null && latitude !== ''
-      ? parseFloat(latitude)
-      : 28.6139;
+    if (latitude === undefined || latitude === null || String(latitude).trim() === '') {
+      const error = new Error('Latitude coordinate is required (e.g. 19.0760 or 28.6139)');
+      error.statusCode = 400;
+      throw error;
+    }
 
-    let lon = longitude !== undefined && longitude !== null && longitude !== ''
-      ? parseFloat(longitude)
-      : 77.2090;
+    if (longitude === undefined || longitude === null || String(longitude).trim() === '') {
+      const error = new Error('Longitude coordinate is required (e.g. 72.8777 or 77.2090)');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const lat = parseFloat(latitude);
+    const lon = parseFloat(longitude);
 
     if (isNaN(lat) || lat < -90 || lat > 90) {
       const error = new Error('Invalid latitude: must be a number between -90 and 90');
@@ -44,7 +50,7 @@ export class GeocodingService {
     // 1. Check Redis Cache first (<2ms)
     try {
       const cached = await CacheService.getVerification('geocoding', cacheKey);
-      if (cached) {
+      if (cached && !cached.error && cached.place_id && cached.address) {
         const durationMs = Date.now() - startTime;
         console.log(`⚡ [GEOCODING CACHE HIT] Returned in ${durationMs}ms for Lat=${latStr}, Lon=${lonStr}`);
 
@@ -77,7 +83,7 @@ export class GeocodingService {
 
     // 2. Query Nominatim Upstream
     const baseUrl = (ENV.NOMINATIM?.BASE_URL || 'https://nominatim.openstreetmap.org').replace(/\/+$/, '');
-    const upstreamUrl = `${baseUrl}/reverse?lat=${latStr}&lon=${lonStr}&format=json`;
+    const upstreamUrl = `${baseUrl}/reverse?lat=${latStr}&lon=${lonStr}&format=json&addressdetails=1`;
 
     console.log(`📡 [NOMINATIM UPSTREAM] Fetching Reverse Geocoding: ${upstreamUrl}`);
 
@@ -91,40 +97,35 @@ export class GeocodingService {
           'User-Agent': 'BharatApiCloud/1.0 (contact@bharatapicloud.in)',
           'Accept': 'application/json',
         },
-        signal: AbortSignal.timeout(4500),
+        signal: AbortSignal.timeout(10000),
       });
 
       resStatus = res.status;
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        const error = new Error(`Upstream geocoding service returned status ${res.status}: ${errText || res.statusText}`);
+        error.statusCode = res.status >= 500 ? 502 : res.status;
+        throw error;
+      }
+
       data = await res.json();
       console.log(`📥 [NOMINATIM RESPONSE] Status ${res.status}:`, JSON.stringify(data, null, 2));
+
+      if (data?.error) {
+        const error = new Error(`Reverse geocoding failed: ${data.error}`);
+        error.statusCode = 404;
+        throw error;
+      }
     } catch (err) {
-      console.warn(`⚠️ [GEOCODING NOMINATIM FAIL]:`, err.message);
-      // Fallback response for Indian coordinates
-      data = {
-        place_id: 1001,
-        licence: 'Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright',
-        osm_type: 'node',
-        osm_id: 12345678,
-        lat: latStr,
-        lon: lonStr,
-        display_name: 'Connaught Place, New Delhi, Delhi, 110001, India',
-        address: {
-          road: 'Connaught Place',
-          suburb: 'Connaught Place',
-          city: 'New Delhi',
-          state_district: 'New Delhi',
-          state: 'Delhi',
-          ISO3166_2_lvl4: 'IN-DL',
-          postcode: '110001',
-          country: 'India',
-          country_code: 'in',
-        },
-        boundingbox: [latStr, latStr, lonStr, lonStr],
-      };
+      console.error(`❌ [GEOCODING UPSTREAM ERROR]:`, err.message);
+      if (!err.statusCode) {
+        err.statusCode = 502;
+      }
+      throw err;
     }
 
     // 3. Cache valid response in Redis for 24 hours (86400s)
-    if (data && !data.error) {
+    if (data && !data.error && data.place_id && data.address) {
       try {
         await CacheService.setVerification('geocoding', cacheKey, data, 86400);
       } catch {

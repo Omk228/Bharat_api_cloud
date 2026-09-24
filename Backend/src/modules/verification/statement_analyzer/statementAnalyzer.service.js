@@ -458,83 +458,17 @@ export class StatementAnalyzerService {
             };
       }
     } else {
-      // Sandbox Simulation Fallback
-      isSuccess = true;
-      resultCode = 101;
-      const mockTxnId = `txn_${crypto.randomBytes(6).toString('hex')}`;
-      const mockUploadToken = `TOK_${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
-
-      let mockData = {};
-      if (effectiveMethod === 'INITIATE_UPLOAD') {
-        mockData = {
-          method: 'INITIATE_UPLOAD',
-          request_id: generatedRequestId,
-          token: mockUploadToken,
-          status: 'INITIATED',
-          upload_url: `${hostBase}/srv2/statement-upload`,
-          instructions: 'Upload the PDF file in step 2 with the generated token and request_id.',
-        };
-      } else if (effectiveMethod === 'COMPLETE_UPLOAD') {
-        mockData = {
-          method: 'COMPLETE_UPLOAD',
-          request_id: generatedRequestId,
-          txn_id: mockTxnId,
-          status: 'PROCESSING',
-          message: 'File upload marked as complete. Analysis in progress.',
-        };
-      } else if (effectiveMethod === 'CHECK_STATUS') {
-        mockData = {
-          method: 'CHECK_STATUS',
-          request_id: generatedRequestId,
-          txn_id: mockTxnId,
-          status: 'COMPLETED',
-          progress_percent: 100,
-          total_pages: 5,
-          total_transactions: 142,
-        };
-      } else if (effectiveMethod === 'RETRIEVE_STATEMENT') {
-        mockData = {
-          method: 'RETRIEVE_STATEMENT',
-          txn_id: txn_id || mockTxnId,
-          account_info: {
-            bank_name: 'HDFC Bank',
-            account_number: '50100234567890',
-            account_type: 'Savings',
-            holder_name: 'Aarav Sharma',
-            statement_period: {
-              from: '2026-01-01',
-              to: '2026-06-30',
-            },
-          },
-          summary: {
-            total_credits: 450000.0,
-            total_debits: 310000.0,
-            average_monthly_balance: 125000.0,
-            net_inflow: 140000.0,
-            salary_detected: true,
-            monthly_salary_estimate: 75000.0,
-          },
-          report_type: report_type || 'json',
-          report_subtype: report_subtype || 'type3',
-        };
-      } else if (effectiveMethod === 'CANCEL_REQUEST') {
-        mockData = {
-          method: 'CANCEL_REQUEST',
-          request_id: generatedRequestId,
-          status: 'CANCELLED',
-          message: 'Statement analysis request cancelled successfully.',
-        };
-      }
-
+      isSuccess = false;
+      resultCode = 103;
       finalResponse = {
-        http_response_code: 200,
-        status_code: 200,
-        status_message: 'SUCCESS',
-        result_code: 101,
-        message: `Statement Analyzer [${effectiveMethod}] processed successfully (Sandbox).`,
+        http_response_code: 500,
+        status_code: 500,
+        status_message: 'FAILED',
+        result_code: 103,
+        message: 'Statement Analyzer service configuration missing.',
         client_ref_num: clientRef,
         request_id: generatedRequestId,
-        data: mockData,
+        data: null,
       };
     }
 

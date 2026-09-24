@@ -48,8 +48,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { apiClient } from "@/lib/api-client";
-import { BASE_URL } from "@/lib/api-catalog";
+import { apiClient, getHostBase } from "@/lib/api-client";
 import { getStoredUserEmail } from "@/lib/demo-store";
 import { generateTransUnionPdfFromApiResponse } from "@/lib/transunionPdfGenerator";
 import { generateCrifPdfFromApiResponse, normalizeCrifReportData } from "@/lib/crifPdfGenerator";
@@ -322,6 +321,7 @@ function TestApiPage() {
   );
 
   const userEmail = getStoredUserEmail();
+  const baseGatewayUrl = typeof window !== 'undefined' ? getHostBase() : "https://brown-goldfish-546701.hostingersite.com";
 
   const { data: creds, isLoading: credsLoading } = useQuery({
     queryKey: ["credentials", userEmail],
@@ -522,7 +522,22 @@ function TestApiPage() {
 
   // Generate TransUnion PDF automatically when responseJson arrives for transunion
   useEffect(() => {
-    if (selectedService === "transunion" && responseJson) {
+    const isTransunionSuccess =
+      responseJson &&
+      responseJson.http_response_code !== 500 &&
+      responseJson.status?.type !== "failed" &&
+      responseJson.status?.type !== "error" &&
+      responseJson.result_code !== 102 &&
+      responseJson.result_code !== 103 &&
+      (responseJson.result_code === 101 ||
+        responseJson.status?.type === "success" ||
+        responseJson.data?.status === "success" ||
+        Boolean(responseJson.data?.web_token_url) ||
+        Boolean(responseJson.data?.cibilScore) ||
+        Boolean(responseJson.data?.steps_summary) ||
+        Boolean((responseJson as any)?.web_token_url));
+
+    if (selectedService === "transunion" && isTransunionSuccess) {
       let active = true;
       setTuPdfLoading(true);
       setTuPdfError(null);
@@ -556,7 +571,7 @@ function TestApiPage() {
       setTuPdfError(null);
       return undefined;
     }
-  }, [responseJson, selectedService, tuForename, tuSurname, tuPan, tuPhone, tuDob, tuGender]);
+  }, [responseJson, selectedService]);
 
   // CRIF High Mark PDF State
   const [crifPdfBlobUrl, setCrifPdfBlobUrl] = useState<string | null>(null);
@@ -565,7 +580,21 @@ function TestApiPage() {
 
   // Generate CRIF PDF automatically when responseJson arrives for crif
   useEffect(() => {
-    if (selectedService === "crif" && responseJson) {
+    const isCrifSuccess =
+      responseJson &&
+      responseJson.http_response_code !== 500 &&
+      responseJson.status?.type !== "failed" &&
+      responseJson.status?.type !== "error" &&
+      responseJson.result_code !== 102 &&
+      responseJson.result_code !== 103 &&
+      (responseJson.result_code === 101 ||
+        responseJson.status?.type === "success" ||
+        responseJson.data?.status === "success" ||
+        Boolean(responseJson.data?.score) ||
+        Boolean(responseJson.data?.cibil_score) ||
+        Boolean((responseJson as any)?.credit_report));
+
+    if (selectedService === "crif" && isCrifSuccess) {
       let active = true;
       setCrifPdfLoading(true);
       setCrifPdfError(null);
@@ -595,12 +624,16 @@ function TestApiPage() {
       setCrifPdfError(null);
       return undefined;
     }
-  }, [responseJson, selectedService, crifFirstName, crifLastName, crifMobile]);
+  }, [responseJson, selectedService]);
 
   const handleOpenTuPdf = async () => {
     try {
       if (tuPdfBlobUrl) {
         window.open(tuPdfBlobUrl, "_blank");
+        return;
+      }
+      if (!responseJson || responseJson.http_response_code === 500 || responseJson.status?.type === 'failed' || !responseJson.data) {
+        toast.error("No TransUnion report available to view.");
         return;
       }
       toast.info("Generating TransUnion CIBIL PDF report...");
@@ -626,6 +659,10 @@ function TestApiPage() {
     try {
       let targetUrl = tuPdfBlobUrl;
       if (!targetUrl) {
+        if (!responseJson || responseJson.http_response_code === 500 || responseJson.status?.type === 'failed' || !responseJson.data) {
+          toast.error("No TransUnion report available to download.");
+          return;
+        }
         toast.info("Generating TransUnion CIBIL PDF report...");
         setTuPdfLoading(true);
         const res = await generateTransUnionPdfFromApiResponse(responseJson, {
@@ -659,6 +696,10 @@ function TestApiPage() {
         window.open(crifPdfBlobUrl, "_blank");
         return;
       }
+      if (!responseJson || responseJson.http_response_code === 500 || responseJson.status?.type === 'failed' || !responseJson.data) {
+        toast.error("No CRIF report available to view.");
+        return;
+      }
       const rawData = (responseJson?.data || responseJson?.result || responseJson || {}) as any;
       const backendReportUrl = rawData?.report_url || rawData?.web_token_url || rawData?.pdf_url || (responseJson as any)?.report_url || (responseJson as any)?.web_token_url;
       if (backendReportUrl && typeof backendReportUrl === "string") {
@@ -684,6 +725,10 @@ function TestApiPage() {
     try {
       let targetUrl = crifPdfBlobUrl;
       if (!targetUrl) {
+        if (!responseJson || responseJson.http_response_code === 500 || responseJson.status?.type === 'failed' || !responseJson.data) {
+          toast.error("No CRIF report available to download.");
+          return;
+        }
         toast.info("Generating CRIF High Mark PDF report...");
         setCrifPdfLoading(true);
         const res = await generateCrifPdfFromApiResponse(responseJson, {
@@ -1801,23 +1846,22 @@ function TestApiPage() {
               </div>
             </div>
 
-
             <div className="grid gap-2.5 sm:grid-cols-2 text-muted-foreground">
               {/* Base Gateway URL */}
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border/80 bg-background/80 p-2.5 text-xs shadow-xs">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold text-foreground shrink-0 text-[11px] sm:text-xs">Base Gateway URL:</span>
                   <code
-                    onClick={() => handleCopyField(BASE_URL, "Base Gateway URL")}
+                    onClick={() => handleCopyField(baseGatewayUrl, "Base Gateway URL")}
                     title="Click to copy Base Gateway URL"
                     className="font-mono text-primary truncate select-all cursor-pointer hover:underline text-[11px] sm:text-xs"
                   >
-                    {BASE_URL}
+                    {baseGatewayUrl}
                   </code>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleCopyField(BASE_URL, "Base Gateway URL")}
+                  onClick={() => handleCopyField(baseGatewayUrl, "Base Gateway URL")}
                   title="Copy Base Gateway URL"
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground border border-border/60 hover:border-border transition-all cursor-pointer shadow-xs active:scale-95"
                 >
@@ -1852,7 +1896,7 @@ function TestApiPage() {
                     type="button"
                     onClick={() => handleCopyField(currentEndpoint, "Endpoint")}
                     title="Copy Endpoint Path"
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground border border-border/60 hover:border-border transition-all cursor-pointer shadow-xs active:scale-95"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground border border-border/60 hover:border-border transition-all cursor-pointer shadow-xs active:scale-95"
                   >
                     {copiedField === "Endpoint" ? (
                       <>
@@ -1868,9 +1912,9 @@ function TestApiPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleCopyField(`${BASE_URL}${currentEndpoint}`, "Full Endpoint URL")}
+                    onClick={() => handleCopyField(`${baseGatewayUrl}${currentEndpoint}`, "Full Endpoint URL")}
                     title="Copy Full Endpoint URL (Base URL + Path)"
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 transition-all cursor-pointer shadow-xs active:scale-95"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 transition-all cursor-pointer shadow-xs active:scale-95"
                   >
                     {copiedField === "Full Endpoint URL" ? (
                       <>
@@ -3281,7 +3325,7 @@ function TestApiPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopyField(`${BASE_URL}${currentEndpoint}`, "Full Endpoint URL")}
+                      onClick={() => handleCopyField(`${baseGatewayUrl}${currentEndpoint}`, "Full Endpoint URL")}
                       title="Copy Full Endpoint URL"
                       className="inline-flex items-center gap-1 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
                     >
@@ -3344,7 +3388,7 @@ function TestApiPage() {
                               : "NOT FOUND · UNLINKED"
                             : isSuccess
                             ? "VERIFIED"
-                            : "VERIFICATION FAILED"
+                              : "VERIFICATION FAILED"
                         }
                       </span>
                     </div>
@@ -3415,7 +3459,7 @@ function TestApiPage() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">Querying Bharat API Cloud Gateway...</p>
                       <p className="mt-1 text-xs text-muted-foreground font-mono">
-                        POST {BASE_URL}{currentEndpoint}
+                        POST {baseGatewayUrl}{currentEndpoint}
                       </p>
                     </div>
                   </div>

@@ -231,13 +231,13 @@ export class TransunionVerificationService {
         method: 'POST',
         requestId,
         clientRefNum: clientRef,
-        statusCode: 200,
-        resultCode: 101,
+        statusCode: isSuccess ? 200 : 500,
+        resultCode: isSuccess ? 101 : 102,
         durationMs,
         clientIp: apiClient.client_ip,
-        cost: hitCost,
+        cost: isSuccess ? hitCost : 0,
         environment: apiClient.environment || 'production',
-        isSuccess: true,
+        isSuccess: isSuccess,
       }).catch((err) => {
         console.error('Queue dispatch note:', err.message);
       });
