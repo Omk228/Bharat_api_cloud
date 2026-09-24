@@ -48,6 +48,16 @@ export const API_PRICING = {
   '/crif/credit-scorev4': 25.00,
   '/credit-scorev4': 25.00,
   '/api/v1/crif/Credit-ScoreV4': 25.00,
+  '/api/v1/verify/work-email': 2.00,
+  '/verify/work-email': 2.00,
+  '/api/v1/work-email/verify': 2.00,
+  '/work-email/verify': 2.00,
+  '/api/v1/corporate-email/verify': 2.00,
+  '/corporate-email/verify': 2.00,
+  '/api/v1/corp-email/verify': 2.00,
+  '/corp-email/verify': 2.00,
+  '/api/v1/email/verify': 2.00,
+  '/email/verify': 2.00,
   default: 2.00,
 };
 

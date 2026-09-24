@@ -65,6 +65,12 @@ export const ENV = {
   RAZORPAY_IFSC: {
     BASE_URL: process.env.RAZORPAY_IFSC_BASE_URL || 'https://ifsc.razorpay.com',
   },
+
+  WORK_EMAIL: {
+    BASE_URL: process.env.WORK_EMAIL_VERIFIER_BASE_URL || 'https://corp-email-verifier.onrender.com/api/verify',
+    CLIENT_ID: process.env.WORK_EMAIL_VERIFIER_CLIENT_ID || 'bharat_api_cloud',
+    API_KEY: process.env.WORK_EMAIL_VERIFIER_API_KEY || 'bac_live_7f8e3a2b1c0d4e5f',
+  },
 };
 
 export default ENV;

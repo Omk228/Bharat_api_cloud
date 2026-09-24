@@ -218,13 +218,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "statement_analyzer" || search["service"] === "statement-analyzer" || search["service"] === "statement-upload" || search["service"] === "statement_upload" || search["service"] === "bank-statement"
+      search["service"] === "work_email" || search["service"] === "work-email" || search["service"] === "work-email-verifier" || search["service"] === "corporate-email" || search["service"] === "corporate_email" || search["service"] === "email" || search["service"] === "email_verifier"
+        ? "work_email"
+        : search["service"] === "statement_analyzer" || search["service"] === "statement-analyzer" || search["service"] === "statement-upload" || search["service"] === "statement_upload" || search["service"] === "bank-statement"
         ? "statement_analyzer"
         : search["service"] === "transunion" || search["service"] === "transunion-score-hybrid" || search["service"] === "cibil" || search["service"] === "transunion_score"
         ? "transunion"
@@ -267,7 +269,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
+        content: "Live sandbox test console for Work Email Verifier, Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
       },
     ],
   }),
@@ -277,8 +279,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif">(
-    searchParams.service === "statement_analyzer"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email">(
+    searchParams.service === "work_email"
+      ? "work_email"
+      : searchParams.service === "statement_analyzer"
       ? "statement_analyzer"
       : searchParams.service === "transunion"
       ? "transunion"
@@ -362,6 +366,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "work_email" || serviceKey === "work-email-verifier" || serviceKey === "work-email") return 2.0;
     if (serviceKey === "statement_analyzer" || serviceKey === "statement-upload" || serviceKey === "statement-analyzer") return 25.0;
     if (serviceKey === "transunion" || serviceKey === "transunion-score-hybrid") return 75.0;
     if (serviceKey === "crif" || serviceKey === "crif-credit-score-v4" || serviceKey === "crif_score") return 25.0;
@@ -430,6 +435,10 @@ function TestApiPage() {
   const [crifFirstName, setCrifFirstName] = useState("Rahul");
   const [crifLastName, setCrifLastName] = useState("CHAUDHARI");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // Work / Corporate Email Verifier fields
+  const [workEmailInput, setWorkEmailInput] = useState("support@geetpay.in");
+  const [workEmailClientRef, setWorkEmailClientRef] = useState("");
 
   // PAN fields
   const [pan, setPan] = useState("");
@@ -721,7 +730,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "statement_analyzer"
+    selectedService === "work_email"
+      ? {
+          email: workEmailInput.trim().toLowerCase() || "support@geetpay.in",
+          ...(workEmailClientRef.trim() ? { client_ref_num: workEmailClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "statement_analyzer"
       ? statementMode === "one_shot"
         ? {
             file: statementFileBase64 ? `[Base64 Encoded PDF — ${statementFileName || "bank_statement.pdf"} (${statementFileSize || "0 KB"})]` : "<Select a PDF bank statement file>",
@@ -945,6 +962,10 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "work_email" && !workEmailInput.trim()) {
+      toast.error("Please enter a corporate email address (e.g. support@geetpay.in)");
+      return;
+    }
     if (selectedService === "statement_analyzer") {
       if (statementMode === "one_shot" && !statementFileBase64) {
         toast.error("Please choose or drag-and-drop a PDF bank statement file.");
@@ -1066,7 +1087,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "statement_analyzer") {
+      if (selectedService === "work_email") {
+        rawData = await apiClient.verifyWorkEmail({
+          email: workEmailInput.trim().toLowerCase(),
+          client_ref_num: workEmailClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "statement_analyzer") {
         if (statementMode === "one_shot") {
           rawData = await apiClient.verifyStatementAnalyzer({
             file: statementFileBase64,
@@ -1419,6 +1448,9 @@ function TestApiPage() {
   const isSuccess =
     responseStatus === 200 &&
     (
+      Boolean((responseJson as any)?.email) ||
+      Boolean((responseJson?.data as any)?.email) ||
+      Boolean((responseJson?.data as any)?.details) ||
       Boolean((responseJson as any)?.account_info) ||
       Boolean((responseJson as any)?.summary) ||
       Boolean((responseJson?.data as any)?.account_info) ||
@@ -1457,6 +1489,8 @@ function TestApiPage() {
     ) &&
     !(
       (responseJson?.result_code === 102 || responseJson?.result_code === 103) &&
+      !(responseJson as any)?.email &&
+      !(responseJson?.data as any)?.email &&
       !resData.vpa &&
       !resData.mobile_linked_name &&
       !resData.name &&
@@ -1507,7 +1541,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "statement_analyzer"
+    selectedService === "work_email"
+      ? "/api/v1/verify/work-email"
+      : selectedService === "statement_analyzer"
       ? "/srv2/statement-upload"
       : selectedService === "transunion"
       ? "/srv5/transunion-Score-Hybrid"
@@ -1546,7 +1582,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "statement_analyzer"
+    selectedService === "work_email"
+      ? "Work Email Verifier (Corporate Domain, DNS & SMTP Probe)"
+      : selectedService === "statement_analyzer"
       ? "Bank Statement Analyzer V2 (PDF Parser & Analytics)"
       : selectedService === "transunion"
       ? "TransUnion CIBIL Score Hybrid (Interactive Link & Summary)"
@@ -1611,7 +1649,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "statement_analyzer"
+                {selectedService === "work_email"
+                  ? "Direct live Corporate Work Email Verification, DNS MX/SPF/DMARC analysis, and SMTP mailbox probe gateway powered by Bharat API Cloud."
+                  : selectedService === "statement_analyzer"
                   ? "Direct PDF Bank Statement OCR parser, salary detector, monthly balance tracker, cashflow analytics, and bounce diagnostics powered by Bharat API Cloud."
                   : selectedService === "transunion"
                   ? "Direct TransUnion CIBIL Score & credit report generation gateway with web token URL and multi-step offer fulfillment."
@@ -1646,7 +1686,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "statement_analyzer"
+                    selectedService === "work_email"
+                      ? "work-email-verifier"
+                      : selectedService === "statement_analyzer"
                       ? "statement-upload"
                       : selectedService === "transunion"
                       ? "transunion-score-hybrid"
@@ -1700,6 +1742,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "work_email" && <Mail className="h-4 w-4 text-violet-400" />}
                   {selectedService === "statement_analyzer" && <FileSpreadsheet className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "transunion" && <ShieldCheck className="h-4 w-4 text-amber-400" />}
                   {selectedService === "crif" && <ShieldCheck className="h-4 w-4 text-rose-400" />}
@@ -1720,6 +1763,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "work_email" && "Work Email Verifier (/api/v1/verify/work-email)"}
                     {selectedService === "statement_analyzer" && "Bank Statement Analyzer V2 (/srv2/statement-upload)"}
                     {selectedService === "transunion" && "TransUnion CIBIL Score Hybrid (/srv5/transunion-Score-Hybrid)"}
                     {selectedService === "crif" && "Crif High Mark Credit Report V4 (/crif/Credit-ScoreV4)"}
@@ -1959,7 +2003,90 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "statement_analyzer" ? (
+                  {selectedService === "work_email" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-violet-400" /> Corporate / Work Email *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">Domain + DNS + SMTP</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="email"
+                            value={workEmailInput}
+                            onChange={(e) => setWorkEmailInput(e.target.value)}
+                            placeholder="e.g. support@geetpay.in or name@company.com"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-violet-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Presets */}
+                      <div>
+                        <span className="block text-[11px] text-muted-foreground mb-1.5 font-medium">
+                          Quick Test Samples:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setWorkEmailInput("support@geetpay.in")}
+                            className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-mono font-medium text-violet-300 hover:bg-violet-500/20 transition-colors"
+                          >
+                            support@geetpay.in (Corporate)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWorkEmailInput("contact@tatamotors.com")}
+                            className="rounded-md border border-border bg-secondary/50 px-2 py-1 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          >
+                            contact@tatamotors.com
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWorkEmailInput("alex@gmail.com")}
+                            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-mono font-medium text-amber-300 hover:bg-amber-500/20 transition-colors"
+                          >
+                            alex@gmail.com (Free Public)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWorkEmailInput("fake-test-user@invalid-domain-xyz-404.com")}
+                            className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[10px] font-mono font-medium text-rose-300 hover:bg-rose-500/20 transition-colors"
+                          >
+                            invalid-domain-xyz-404.com
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={workEmailClientRef}
+                          onChange={(e) => setWorkEmailClientRef(e.target.value)}
+                          placeholder="e.g. CLI_EMAIL_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-violet-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-violet-500/10 border border-violet-500/20 p-2.5 text-xs text-violet-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-violet-400">₹{getServicePrice("work_email").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Validates corporate email existence, MX/SPF/DMARC records, catch-all policy, and SMTP mailbox deliverability in real-time.
+                      </p>
+                    </>
+                  ) : selectedService === "statement_analyzer" ? (
                     <>
                       {/* Mode Selector */}
                       <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-1">
@@ -3296,7 +3423,9 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    {selectedService === "domain_age" ? (
+                    {selectedService === "work_email" ? (
+                      <Mail className="h-8 w-8 opacity-40 text-violet-400" />
+                    ) : selectedService === "domain_age" ? (
                       <Globe className="h-8 w-8 opacity-40 text-indigo-400" />
                     ) : selectedService === "pan" || selectedService === "pan_plus" ? (
                       <CreditCard className="h-8 w-8 opacity-40 text-sky-400" />
@@ -3311,7 +3440,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. geetpay.in or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "work_email" ? "a corporate email address (e.g. support@geetpay.in)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. geetpay.in or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -3322,14 +3451,357 @@ function TestApiPage() {
                     {/* Success Verification / Dedicated Service Card */}
                     {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
                       <div className={`rounded-xl border p-5 space-y-4 ${
-                        selectedService === "mobile_upi" && !isSuccess
+                        selectedService === "work_email"
+                          ? "border-violet-500/30 bg-gradient-to-b from-violet-500/5 to-transparent"
+                          : selectedService === "mobile_upi" && !isSuccess
                           ? "border-amber-500/30 bg-gradient-to-b from-amber-500/5 to-transparent"
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 📊 STATEMENT ANALYZER V2 DEDICATED VISUAL CARD             */}
+                        {/* ✉️ WORK EMAIL VERIFIER DEDICATED VISUAL CARD               */}
                         {/* ========================================================= */}
-                        {selectedService === "statement_analyzer" ? (
+                        {selectedService === "work_email" ? (
+                          (() => {
+                            const anyRes: any = responseJson || {};
+                            const emailData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const emailStr = String(emailData.email || workEmailInput || "—");
+                            const statusStr = String(emailData.status || (isSuccess ? "VALID" : "INVALID")).toUpperCase();
+                            const reasonStr = String(emailData.reason || anyRes.message || "Corporate mailbox verification completed.");
+                            const scoreNum = typeof emailData.score === "number" ? emailData.score : (statusStr === "VALID" ? 100 : statusStr === "RISKY" ? 50 : 0);
+                            const isDeliverable = Boolean(emailData.isDeliverable);
+                            const isCorporate = Boolean(emailData.isCorporate);
+                            const isCatchAll = Boolean(emailData.isCatchAll);
+                            const isRoleAccount = Boolean(emailData.isRoleAccount);
+                            const isDisposable = Boolean(emailData.isDisposable);
+                            const mailProvider = String(emailData.mailProvider || "Corporate Mail Server");
+                            const didYouMean = emailData.didYouMean ? String(emailData.didYouMean) : null;
+
+                            const details = emailData.details || {};
+                            const syntax = details.syntax || {};
+                            const dns = details.dns || {};
+                            const smtp = details.smtp || {};
+
+                            const durationMs = emailData.durationMs || responseTime || 0;
+                            const verifiedAt = emailData.verifiedAt || new Date().toISOString();
+
+                            const isStatusValid = statusStr === "VALID";
+                            const isStatusRisky = statusStr === "RISKY";
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-violet-500/30 bg-violet-500/10 p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`rounded-xl p-2.5 ${
+                                      isStatusValid
+                                        ? "bg-emerald-500/20 text-emerald-400"
+                                        : isStatusRisky
+                                        ? "bg-amber-500/20 text-amber-400"
+                                        : "bg-rose-500/20 text-rose-400"
+                                    }`}>
+                                      <Mail className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-mono text-base font-bold text-foreground">
+                                          {emailStr}
+                                        </h3>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(emailStr, "Email Address")}
+                                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                          title="Copy email address"
+                                        >
+                                          {copiedField === "Email Address" ? (
+                                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                          ) : (
+                                            <Copy className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider border ${
+                                          isStatusValid
+                                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                            : isStatusRisky
+                                            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                            : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                        }`}>
+                                          ● {statusStr}
+                                        </span>
+                                      </div>
+                                      <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                                        <span>Provider: <strong className="text-foreground font-semibold">{mailProvider}</strong></span>
+                                        <span>·</span>
+                                        <span className="font-mono">{durationMs}ms latency</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Quality Score</span>
+                                    <div className="flex items-baseline gap-1">
+                                      <span className={`text-2xl font-black font-mono ${
+                                        scoreNum >= 80
+                                          ? "text-emerald-400"
+                                          : scoreNum >= 50
+                                          ? "text-amber-400"
+                                          : "text-rose-400"
+                                      }`}>
+                                        {scoreNum}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground font-mono">/ 100</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Reason Message & Did-You-Mean */}
+                                <div className={`rounded-xl border p-3.5 text-xs ${
+                                  isStatusValid
+                                    ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-300"
+                                    : isStatusRisky
+                                    ? "bg-amber-500/5 border-amber-500/20 text-amber-300"
+                                    : "bg-rose-500/5 border-rose-500/20 text-rose-300"
+                                }`}>
+                                  <div className="flex items-start gap-2">
+                                    {isStatusValid ? (
+                                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                                    ) : isStatusRisky ? (
+                                      <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-foreground">{reasonStr}</p>
+                                      {didYouMean && (
+                                        <p className="mt-1 text-[11px] text-amber-300">
+                                          💡 Suggested correction: <strong className="font-mono text-white underline cursor-pointer" onClick={() => setWorkEmailInput(didYouMean)}>{didYouMean}</strong>
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 6 Verification Matrix Cards */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                  {/* Deliverability */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Deliverability</span>
+                                      <Send className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isDeliverable ? "bg-emerald-400" : "bg-rose-400"}`} />
+                                      <span className={`font-semibold text-xs ${isDeliverable ? "text-emerald-400" : "text-rose-400"}`}>
+                                        {isDeliverable ? "Deliverable (Active Mailbox)" : "Undeliverable"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Corporate Domain */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Domain Classification</span>
+                                      <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCorporate ? "bg-sky-400" : "bg-amber-400"}`} />
+                                      <span className={`font-semibold text-xs ${isCorporate ? "text-sky-400" : "text-amber-400"}`}>
+                                        {isCorporate ? "Corporate Domain (Verified)" : "Personal / Free Public"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Mailbox Exists */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">SMTP Mailbox Probe</span>
+                                      <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${smtp.mailboxExists ? "bg-emerald-400" : "bg-rose-400"}`} />
+                                      <span className={`font-semibold text-xs ${smtp.mailboxExists ? "text-emerald-400" : "text-rose-400"}`}>
+                                        {smtp.mailboxExists ? "Mailbox Exists (250 OK)" : "Mailbox Rejected / Absent"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Catch-All */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Catch-All Policy</span>
+                                      <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCatchAll ? "bg-amber-400" : "bg-emerald-400"}`} />
+                                      <span className={`font-semibold text-xs ${isCatchAll ? "text-amber-400" : "text-emerald-400"}`}>
+                                        {isCatchAll ? "Catch-All Server" : "Strict Verification (No Catch-All)"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Role Account */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Account Role</span>
+                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isRoleAccount ? "bg-indigo-400" : "bg-blue-400"}`} />
+                                      <span className={`font-semibold text-xs ${isRoleAccount ? "text-indigo-400" : "text-blue-400"}`}>
+                                        {isRoleAccount ? "Role Account (e.g. support/admin)" : "Individual / Personal User"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Disposable Check */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Disposable Email</span>
+                                      <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isDisposable ? "bg-rose-400" : "bg-emerald-400"}`} />
+                                      <span className={`font-semibold text-xs ${isDisposable ? "text-rose-400" : "text-emerald-400"}`}>
+                                        {isDisposable ? "Temporary / Burner Mail" : "Non-Disposable (Permanent)"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Deep Technical Inspection (Syntax, DNS, SMTP) */}
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                  {/* 1. Syntax */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                      <FileText className="h-3.5 w-3.5 text-violet-400" /> Syntax & Domain
+                                    </span>
+                                    <div className="space-y-1 font-mono text-[11px]">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">User:</span>
+                                        <span className="font-bold text-foreground">{String(syntax.user || "—")}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Domain:</span>
+                                        <span className="font-bold text-foreground">{String(syntax.domain || "—")}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Valid Syntax:</span>
+                                        <span className={syntax.isValid ? "text-emerald-400 font-semibold" : "text-rose-400"}>
+                                          {syntax.isValid ? "Valid" : "Invalid"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Free Domain:</span>
+                                        <span className={syntax.isBannedFreeDomain ? "text-amber-400 font-semibold" : "text-emerald-400"}>
+                                          {syntax.isBannedFreeDomain ? "Banned Free" : "Not Free"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* 2. DNS & Security */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                      <Globe className="h-3.5 w-3.5 text-blue-400" /> DNS & Security
+                                    </span>
+                                    <div className="space-y-1 font-mono text-[11px]">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Primary MX:</span>
+                                        <span className="font-bold text-foreground truncate max-w-[120px]" title={dns.primaryMx}>
+                                          {String(dns.primaryMx || "—")}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">SPF Record:</span>
+                                        <span className={dns.hasSpf ? "text-emerald-400 font-semibold" : "text-amber-400"}>
+                                          {dns.hasSpf ? "Configured" : "Missing"}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">DMARC Record:</span>
+                                        <span className={dns.hasDmarc ? "text-emerald-400 font-semibold" : "text-amber-400"}>
+                                          {dns.hasDmarc ? "Configured" : "Missing"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* 3. SMTP Handshake */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> SMTP Probe
+                                    </span>
+                                    <div className="space-y-1 font-mono text-[11px]">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Host:</span>
+                                        <span className="font-bold text-foreground truncate max-w-[120px]" title={smtp.connectedHost}>
+                                          {String(smtp.connectedHost || "—")}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Handshake:</span>
+                                        <span className={smtp.status === "VALID" ? "text-emerald-400 font-semibold" : "text-rose-400"}>
+                                          {String(smtp.status || "—")}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Mailbox Exists:</span>
+                                        <span className={smtp.mailboxExists ? "text-emerald-400 font-semibold" : "text-rose-400"}>
+                                          {smtp.mailboxExists ? "Yes (250 OK)" : "No"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Raw SPF & DMARC Details snippet if present */}
+                                {(dns.spfRecord || dns.dmarcRecord) && (
+                                  <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1.5">
+                                    {dns.spfRecord && (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-muted-foreground shrink-0 text-[10px] uppercase font-bold">SPF:</span>
+                                        <code className="text-foreground truncate text-[11px] select-all flex-1">{dns.spfRecord}</code>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(dns.spfRecord, "SPF Record")}
+                                          className="text-muted-foreground hover:text-foreground shrink-0"
+                                          title="Copy SPF Record"
+                                        >
+                                          {copiedField === "SPF Record" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                                        </button>
+                                      </div>
+                                    )}
+                                    {dns.dmarcRecord && (
+                                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
+                                        <span className="text-muted-foreground shrink-0 text-[10px] uppercase font-bold">DMARC:</span>
+                                        <code className="text-foreground truncate text-[11px] select-all flex-1">{dns.dmarcRecord}</code>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(dns.dmarcRecord, "DMARC Record")}
+                                          className="text-muted-foreground hover:text-foreground shrink-0"
+                                          title="Copy DMARC Record"
+                                        >
+                                          {copiedField === "DMARC Record" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Audit & Metadata Footer */}
+                                <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1 text-muted-foreground">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Verification Audit</span>
+                                    <span className="text-emerald-400 font-semibold text-[10px]">Verified at: {new Date(verifiedAt).toLocaleString("en-IN")}</span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-2 text-[11px] pt-1">
+                                    <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
+                                    <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || workEmailClientRef || "—"}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "statement_analyzer" ? (
                           (() => {
                             const anyRes: any = responseJson || {};
                             const data: any = (responseJson?.data || responseJson?.result || responseJson) || {};

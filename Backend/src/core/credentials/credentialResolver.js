@@ -126,6 +126,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for Work Email / Corporate Email Verifier
+   */
+  async getWorkEmailCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('work_email_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.WORK_EMAIL.BASE_URL,
+      clientId: cred?.apiId || ENV.WORK_EMAIL.CLIENT_ID,
+      apiKey: cred?.apiKey || ENV.WORK_EMAIL.API_KEY,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

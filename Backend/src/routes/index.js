@@ -19,6 +19,7 @@ import mobileToBankRoutes from '../modules/verification/mobile_to_bank/mobileToB
 import transunionRoutes from '../modules/verification/transunion/transunion.routes.js';
 import crifRoutes from '../modules/verification/crif/crif.routes.js';
 import domainRoutes from '../modules/domain/domain.routes.js';
+import workEmailRoutes from '../modules/verification/work_email/workEmail.routes.js';
 
 const apiRouter = Router();
 
@@ -56,5 +57,6 @@ apiRouter.use('/', geocodingRoutes);
 apiRouter.use('/', domainRoutes);
 apiRouter.use('/ifsc', ifscRoutes);
 apiRouter.use('/', ifscRoutes);
+apiRouter.use('/', workEmailRoutes);
 
 export default apiRouter;

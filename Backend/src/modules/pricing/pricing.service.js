@@ -124,6 +124,21 @@ const ENDPOINT_CATALOG_MAP = {
   '/Credit-ScoreV4': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
   'crif': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
   'crif_score': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
+
+  // Work / Corporate Email Verifier
+  '/api/v1/verify/work-email': ['api_work_email_verifier', '/verify/work-email', '/api/v1/verify/work-email'],
+  '/verify/work-email': ['api_work_email_verifier', '/verify/work-email'],
+  '/api/v1/work-email/verify': ['api_work_email_verifier', '/work-email/verify'],
+  '/work-email/verify': ['api_work_email_verifier', '/work-email/verify'],
+  '/api/v1/corporate-email/verify': ['api_work_email_verifier', '/corporate-email/verify'],
+  '/corporate-email/verify': ['api_work_email_verifier', '/corporate-email/verify'],
+  '/api/v1/corp-email/verify': ['api_work_email_verifier', '/corp-email/verify'],
+  '/corp-email/verify': ['api_work_email_verifier', '/corp-email/verify'],
+  '/api/v1/email/verify': ['api_work_email_verifier', '/email/verify'],
+  '/email/verify': ['api_work_email_verifier', '/email/verify'],
+  'work_email': ['api_work_email_verifier', '/verify/work-email'],
+  'corporate_email': ['api_work_email_verifier', '/verify/work-email'],
+  'corp_email': ['api_work_email_verifier', '/verify/work-email'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -147,6 +162,7 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   transunion: 'api_transunion_cibil_v5',
   statement_analyzer: 'api_bank_statement',
   crif: 'api_crif_credit_score_v4',
+  work_email: 'api_work_email_verifier',
 };
 
 export const GST_RATE = 0.18;

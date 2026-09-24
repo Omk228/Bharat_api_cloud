@@ -25,6 +25,7 @@ import statementAnalyzerRoutes from './modules/verification/statement_analyzer/s
 import mobileToBankRoutes from './modules/verification/mobile_to_bank/mobileToBank.routes.js';
 import transunionRoutes from './modules/verification/transunion/transunion.routes.js';
 import crifRoutes from './modules/verification/crif/crif.routes.js';
+import workEmailRoutes from './modules/verification/work_email/workEmail.routes.js';
 
 const app = express();
 
@@ -144,6 +145,8 @@ app.use('/', transunionRoutes);
 app.use('/srv5/transunion-Score-Hybrid', transunionRoutes);
 app.use('/', crifRoutes);
 app.use('/crif/Credit-ScoreV4', crifRoutes);
+app.use('/', workEmailRoutes);
+app.use('/api/v1', workEmailRoutes);
 
 // Serve isolated test-tools statically
 app.use('/test-tools', express.static(path.resolve(process.cwd(), '../test-tools')));
