@@ -225,19 +225,33 @@ export async function generateTransUnionReportPdf(data: TransUnionPdfData): Prom
   // =========================================================================
   // PAGE 1: HEADER & LOGO (Exact y=789 to 762)
   // =========================================================================
+  const cibilNavy = rgb(0.0, 56 / 255, 101 / 255);
+  currentPage.drawCircle({
+    x: LEFT_X + 9,
+    y: 808,
+    size: 7.5,
+    color: cibilCyan,
+  });
+  currentPage.drawText('tu', {
+    x: LEFT_X + 5.5,
+    y: 805.2,
+    size: 8,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
   currentPage.drawText('TransUnion.', {
-    x: LEFT_X,
-    y: 796,
-    size: 14,
+    x: LEFT_X + 20,
+    y: 803,
+    size: 13.5,
     font: fontBold,
     color: cibilCyan,
   });
   currentPage.drawText('CIBIL', {
-    x: LEFT_X + 85,
-    y: 796,
-    size: 14,
+    x: LEFT_X + 104,
+    y: 803,
+    size: 13.5,
     font: fontBold,
-    color: rgb(0, 56 / 255, 101 / 255),
+    color: cibilNavy,
   });
 
   // Top Yellow Banner: CUSTOMER CIR

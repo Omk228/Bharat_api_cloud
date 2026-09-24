@@ -21,7 +21,9 @@ export const TransunionController = {
       client_ref_num,
     } = req.body || {};
 
-    const baseUrl = ENV.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com';
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
+    const baseUrl = host ? `${protocol}://${host}` : (ENV.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com');
 
     const result = await TransunionVerificationService.verifyTransunionScoreHybrid({
       forename,
