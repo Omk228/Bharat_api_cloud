@@ -41,8 +41,9 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  FileCheck,
   Download,
+  ShieldAlert,
+  Inbox,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -217,13 +218,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "work_email" || search["service"] === "work-email" || search["service"] === "work-email-verifier" || search["service"] === "corporate-email" || search["service"] === "corporate_email" || search["service"] === "email" || search["service"] === "email_verifier"
+      search["service"] === "work_email_plus" || search["service"] === "work-email-plus" || search["service"] === "work-email-verifier-plus" || search["service"] === "email_plus" || search["service"] === "email-plus"
+        ? "work_email_plus"
+        : search["service"] === "work_email" || search["service"] === "work-email" || search["service"] === "work-email-verifier" || search["service"] === "corporate-email" || search["service"] === "corporate_email" || search["service"] === "email" || search["service"] === "email_verifier"
         ? "work_email"
         : search["service"] === "statement_analyzer" || search["service"] === "statement-analyzer" || search["service"] === "statement-upload" || search["service"] === "statement_upload" || search["service"] === "bank-statement"
         ? "statement_analyzer"
@@ -268,7 +271,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for Work Email Verifier, Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
+        content: "Live sandbox test console for Work Email Verifier Plus, Work Email Verifier, Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
       },
     ],
   }),
@@ -278,8 +281,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email">(
-    searchParams.service === "work_email"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus">(
+    searchParams.service === "work_email_plus"
+      ? "work_email_plus"
+      : searchParams.service === "work_email"
       ? "work_email"
       : searchParams.service === "statement_analyzer"
       ? "statement_analyzer"
@@ -366,6 +371,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "work_email_plus" || serviceKey === "work-email-verifier-plus" || serviceKey === "work-email-plus" || serviceKey === "email_plus") return 2.0;
     if (serviceKey === "work_email" || serviceKey === "work-email-verifier" || serviceKey === "work-email") return 2.0;
     if (serviceKey === "statement_analyzer" || serviceKey === "statement-upload" || serviceKey === "statement-analyzer") return 25.0;
     if (serviceKey === "transunion" || serviceKey === "transunion-score-hybrid") return 75.0;
@@ -436,9 +442,13 @@ function TestApiPage() {
   const [crifLastName, setCrifLastName] = useState("CHAUDHARI");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
 
-  // Work / Corporate Email Verifier fields
+  // Work / Corporate Email Verifier (Standard) fields
   const [workEmailInput, setWorkEmailInput] = useState("support@geetpay.in");
   const [workEmailClientRef, setWorkEmailClientRef] = useState("");
+
+  // Work Email Verifier Plus fields
+  const [workEmailPlusInput, setWorkEmailPlusInput] = useState("");
+  const [workEmailPlusClientRef, setWorkEmailPlusClientRef] = useState("");
 
   // PAN fields
   const [pan, setPan] = useState("");
@@ -775,7 +785,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "work_email"
+    selectedService === "work_email_plus"
+      ? {
+          email: workEmailPlusInput.trim().toLowerCase() || "name@company.com",
+          ...(workEmailPlusClientRef.trim() ? { client_ref_num: workEmailPlusClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "work_email"
       ? {
           email: workEmailInput.trim().toLowerCase() || "support@geetpay.in",
           ...(workEmailClientRef.trim() ? { client_ref_num: workEmailClientRef.trim() } : {}),
@@ -1007,6 +1025,10 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "work_email_plus" && !workEmailPlusInput.trim()) {
+      toast.error("Please enter a business email address (e.g. emma.thompson@example.com)");
+      return;
+    }
     if (selectedService === "work_email" && !workEmailInput.trim()) {
       toast.error("Please enter a corporate email address (e.g. support@geetpay.in)");
       return;
@@ -1132,7 +1154,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "work_email") {
+      if (selectedService === "work_email_plus") {
+        rawData = await apiClient.verifyWorkEmailPlus({
+          email: workEmailPlusInput.trim().toLowerCase(),
+          client_ref_num: workEmailPlusClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "work_email") {
         rawData = await apiClient.verifyWorkEmail({
           email: workEmailInput.trim().toLowerCase(),
           client_ref_num: workEmailClientRef.trim() || undefined,
@@ -1586,7 +1616,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "work_email"
+    selectedService === "work_email_plus"
+      ? "/api/v1/verify/work-email-plus"
+      : selectedService === "work_email"
       ? "/api/v1/verify/work-email"
       : selectedService === "statement_analyzer"
       ? "/srv2/statement-upload"
@@ -1627,7 +1659,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "work_email"
+    selectedService === "work_email_plus"
+      ? "Work Email Verifier Plus"
+      : selectedService === "work_email"
       ? "Work Email Verifier (Corporate Domain, DNS & SMTP Probe)"
       : selectedService === "statement_analyzer"
       ? "Bank Statement Analyzer V2 (PDF Parser & Analytics)"
@@ -1694,7 +1728,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "work_email"
+                {selectedService === "work_email_plus"
+                  ? "Direct live Work Email Verifier Plus gateway: deep deliverability, syntax validation, corporate domain detection, spam/disposable classification, catch-all policy, role accounts, and full MX record inspection powered by Bharat API Cloud."
+                  : selectedService === "work_email"
                   ? "Direct live Corporate Work Email Verification, DNS MX/SPF/DMARC analysis, and SMTP mailbox probe gateway powered by Bharat API Cloud."
                   : selectedService === "statement_analyzer"
                   ? "Direct PDF Bank Statement OCR parser, salary detector, monthly balance tracker, cashflow analytics, and bounce diagnostics powered by Bharat API Cloud."
@@ -1731,7 +1767,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "work_email"
+                    selectedService === "work_email_plus"
+                      ? "work-email-verifier-plus"
+                      : selectedService === "work_email"
                       ? "work-email-verifier"
                       : selectedService === "statement_analyzer"
                       ? "statement-upload"
@@ -1787,6 +1825,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "work_email_plus" && <Mail className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "work_email" && <Mail className="h-4 w-4 text-violet-400" />}
                   {selectedService === "statement_analyzer" && <FileSpreadsheet className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "transunion" && <ShieldCheck className="h-4 w-4 text-amber-400" />}
@@ -1808,6 +1847,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "work_email_plus" && "Work Email Verifier Plus (/api/v1/verify/work-email-plus)"}
                     {selectedService === "work_email" && "Work Email Verifier (/api/v1/verify/work-email)"}
                     {selectedService === "statement_analyzer" && "Bank Statement Analyzer V2 (/srv2/statement-upload)"}
                     {selectedService === "transunion" && "TransUnion CIBIL Score Hybrid (/srv5/transunion-Score-Hybrid)"}
@@ -2047,7 +2087,52 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "work_email" ? (
+                  {selectedService === "work_email_plus" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-emerald-400" /> Business / Work Email *
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="email"
+                            value={workEmailPlusInput}
+                            onChange={(e) => setWorkEmailPlusInput(e.target.value)}
+                            placeholder="e.g. name@company.com"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={workEmailPlusClientRef}
+                          onChange={(e) => setWorkEmailPlusClientRef(e.target.value)}
+                          placeholder="e.g. WKP_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-emerald-400">₹{getServicePrice("work_email_plus").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Validates email deliverability, syntax, corporate vs free domain, disposable/spam status, catch-all policy, role accounts, and MX records in real-time.
+                      </p>
+                    </>
+                  ) : selectedService === "work_email" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -3495,16 +3580,307 @@ function TestApiPage() {
                     {/* Success Verification / Dedicated Service Card */}
                     {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
                       <div className={`rounded-xl border p-5 space-y-4 ${
-                        selectedService === "work_email"
+                        selectedService === "work_email_plus"
+                          ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
+                          : selectedService === "work_email"
                           ? "border-violet-500/30 bg-gradient-to-b from-violet-500/5 to-transparent"
                           : selectedService === "mobile_upi" && !isSuccess
                           ? "border-amber-500/30 bg-gradient-to-b from-amber-500/5 to-transparent"
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* ✉️ WORK EMAIL VERIFIER DEDICATED VISUAL CARD               */}
+                        {/* ✉️ WORK EMAIL VERIFIER PLUS DEDICATED VISUAL CARD          */}
                         {/* ========================================================= */}
-                        {selectedService === "work_email" ? (
+                        {selectedService === "work_email_plus" ? (
+                          (() => {
+                            const anyRes: any = responseJson || {};
+                            const plusData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const rawResult: any = plusData?.result && typeof plusData.result === 'object' ? plusData.result : plusData;
+
+                            const emailStr = String(rawResult.email || plusData.email || workEmailPlusInput || "—");
+                            const resultStr = String(rawResult.result || (rawResult.is_valid ? "valid" : "invalid")).toUpperCase();
+                            const isValid = Boolean(rawResult.is_valid ?? (resultStr === "VALID"));
+                            const isSyntaxValid = Boolean(rawResult.is_syntax_valid ?? true);
+                            const reasonStr = String(rawResult.reason || anyRes.message || (isValid ? "Email address is valid and deliverable." : "Email verification failed."));
+
+                            const domain = rawResult.domain || plusData.domain || {};
+                            const domainName = String(domain.name || (emailStr.includes("@") ? emailStr.split("@")[1] : "—"));
+                            const isDisposable = Boolean(domain.is_disposable);
+                            const isFree = Boolean(domain.is_free);
+                            const isSpam = Boolean(domain.is_spam);
+                            const isCatchAll = Boolean(domain.is_catch_all);
+                            const isCorporate = Boolean(rawResult.is_corporate ?? (isValid && !isFree && !isDisposable));
+
+                            const account = rawResult.account || plusData.account || {};
+                            const isRole = Boolean(account.is_role);
+                            const isFullMailbox = Boolean(account.is_full_mailbox);
+
+                            const mxRecords: string[] = Array.isArray(rawResult.mx_records) ? rawResult.mx_records : (Array.isArray(plusData.mx_records) ? plusData.mx_records : []);
+                            const orderId = String(anyRes.order_id || plusData.order_id || responseJson?.data?.order_id || "—");
+                            const isCharged = Boolean(anyRes.charged ?? plusData.charged ?? true);
+                            const durationMs = plusData.duration_ms || responseTime || 0;
+                            const verifiedAt = plusData.verified_at || new Date().toISOString();
+
+                            const isStatusValid = resultStr === "VALID" || isValid;
+                            const isStatusRisky = resultStr === "RISKY";
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`rounded-xl p-2.5 ${
+                                      isStatusValid
+                                        ? "bg-emerald-500/20 text-emerald-400"
+                                        : isStatusRisky
+                                        ? "bg-amber-500/20 text-amber-400"
+                                        : "bg-rose-500/20 text-rose-400"
+                                    }`}>
+                                      <Mail className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-mono text-base font-bold text-foreground">
+                                          {emailStr}
+                                        </h3>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(emailStr, "Email Address")}
+                                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                          title="Copy email address"
+                                        >
+                                          {copiedField === "Email Address" ? (
+                                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                          ) : (
+                                            <Copy className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider border ${
+                                          isStatusValid
+                                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                            : isStatusRisky
+                                            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                            : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                        }`}>
+                                          ● {resultStr}
+                                        </span>
+                                        {isCorporate && (
+                                          <span className="rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                            Corporate Domain
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                                        <span>Domain: <strong className="text-foreground font-semibold font-mono">{domainName}</strong></span>
+                                        <span>·</span>
+                                        <span>Order ID: <code className="font-mono text-foreground">{orderId}</code></span>
+                                        <span>·</span>
+                                        <span className="font-mono">{durationMs}ms latency</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Gateway Status</span>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCharged ? "bg-emerald-400" : "bg-amber-400"}`} />
+                                      <span className="font-mono text-xs font-bold text-foreground">
+                                        {isCharged ? "Charged (200 OK)" : "Free / Cached"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Reason / Validation Message */}
+                                <div className={`rounded-xl border p-3.5 text-xs ${
+                                  isStatusValid
+                                    ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-300"
+                                    : isStatusRisky
+                                    ? "bg-amber-500/5 border-amber-500/20 text-amber-300"
+                                    : "bg-rose-500/5 border-rose-500/20 text-rose-300"
+                                }`}>
+                                  <div className="flex items-start gap-2">
+                                    {isStatusValid ? (
+                                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                                    ) : isStatusRisky ? (
+                                      <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-foreground">{reasonStr}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 8 Feature Verification Matrix Cards */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  {/* 1. Deliverability */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Deliverability</span>
+                                      <Send className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isValid ? "bg-emerald-400" : "bg-rose-400"}`} />
+                                      <span className={`font-semibold text-xs ${isValid ? "text-emerald-400" : "text-rose-400"}`}>
+                                        {isValid ? "Valid (Deliverable)" : "Invalid / Undeliverable"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 2. Syntax Check */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Syntax Format</span>
+                                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isSyntaxValid ? "bg-emerald-400" : "bg-rose-400"}`} />
+                                      <span className={`font-semibold text-xs ${isSyntaxValid ? "text-emerald-400" : "text-rose-400"}`}>
+                                        {isSyntaxValid ? "RFC Compliant Syntax" : "Invalid Syntax Format"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 3. Domain Type */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Domain Classification</span>
+                                      <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCorporate ? "bg-sky-400" : isFree ? "bg-amber-400" : "bg-rose-400"}`} />
+                                      <span className={`font-semibold text-xs ${isCorporate ? "text-sky-400" : isFree ? "text-amber-400" : "text-rose-400"}`}>
+                                        {isCorporate ? "Corporate / Business" : isFree ? "Free Public Webmail" : "Disposable"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 4. Disposable Check */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Disposable Email</span>
+                                      <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isDisposable ? "bg-rose-400" : "bg-emerald-400"}`} />
+                                      <span className={`font-semibold text-xs ${isDisposable ? "text-rose-400" : "text-emerald-400"}`}>
+                                        {isDisposable ? "Temporary / Burner Mail" : "Non-Disposable (Permanent)"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 5. Spam Domain */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Spam Reputation</span>
+                                      <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isSpam ? "bg-rose-400" : "bg-emerald-400"}`} />
+                                      <span className={`font-semibold text-xs ${isSpam ? "text-rose-400" : "text-emerald-400"}`}>
+                                        {isSpam ? "Flagged as Spam" : "Clean Domain (No Spam)"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 6. Catch-All Policy */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Catch-All Policy</span>
+                                      <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCatchAll ? "bg-amber-400" : "bg-emerald-400"}`} />
+                                      <span className={`font-semibold text-xs ${isCatchAll ? "text-amber-400" : "text-emerald-400"}`}>
+                                        {isCatchAll ? "Catch-All Enabled" : "Strict Policy (No Catch-All)"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 7. Role Account */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Account Role</span>
+                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isRole ? "bg-indigo-400" : "bg-blue-400"}`} />
+                                      <span className={`font-semibold text-xs ${isRole ? "text-indigo-400" : "text-blue-400"}`}>
+                                        {isRole ? "Role Account (e.g. support/admin)" : "Individual / Personal User"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 8. Mailbox Capacity */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Mailbox Capacity</span>
+                                      <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isFullMailbox ? "bg-rose-400" : "bg-emerald-400"}`} />
+                                      <span className={`font-semibold text-xs ${isFullMailbox ? "text-rose-400" : "text-emerald-400"}`}>
+                                        {isFullMailbox ? "Mailbox Full (Over Quota)" : "Mailbox Active (Accepting)"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* MX Records Section */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                      <Globe className="h-3.5 w-3.5 text-emerald-400" /> MX Records ({mxRecords.length})
+                                    </span>
+                                    <span className="text-[11px] font-mono text-muted-foreground">Domain: {domainName}</span>
+                                  </div>
+
+                                  {mxRecords.length > 0 ? (
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                      {mxRecords.map((mx, idx) => (
+                                        <div
+                                          key={idx}
+                                          className="flex items-center justify-between rounded-lg border border-border/80 bg-secondary/30 px-3 py-2 text-xs font-mono"
+                                        >
+                                          <span className="truncate text-foreground select-all">{mx}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopyField(mx, `MX Record ${idx + 1}`)}
+                                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0 ml-2"
+                                            title="Copy MX Record"
+                                          >
+                                            {copiedField === `MX Record ${idx + 1}` ? (
+                                              <Check className="h-3 w-3 text-emerald-400" />
+                                            ) : (
+                                              <Copy className="h-3 w-3" />
+                                            )}
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground italic">No MX records returned for this domain.</p>
+                                  )}
+                                </div>
+
+                                {/* Audit & Metadata Footer */}
+                                <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1 text-muted-foreground">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Verification Audit</span>
+                                    <span className="text-emerald-400 font-semibold text-[10px]">Verified at: {new Date(verifiedAt).toLocaleString("en-IN")}</span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3 text-[11px] pt-1">
+                                    <p className="truncate">Order ID: <span className="text-foreground">{orderId}</span></p>
+                                    <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
+                                    <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || workEmailPlusClientRef || "—"}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "work_email" ? (
                           (() => {
                             const anyRes: any = responseJson || {};
                             const emailData: any = (responseJson?.data || responseJson?.result || responseJson) || {};

@@ -56,7 +56,7 @@ export class StatementAnalyzerService {
     let isSuccess = false;
 
     // Helper to sanitize any upstream IDSPay URLs, domains, and provider references
-    const hostBase = apiClient?.hostBase || 'http://localhost:5002';
+    const hostBase = apiClient?.hostBase || ENV.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com';
     const sanitizeValue = (val) => {
       if (typeof val === 'string') {
         let out = val.replace(/https?:\/\/javabackend\.idspay\.in\/api\/v1\/prod/gi, hostBase);

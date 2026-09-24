@@ -39,6 +39,46 @@ export const WorkEmailController = {
     const httpCode = result.http_response_code || 200;
     return res.status(httpCode).json(result);
   }),
+
+  /**
+   * Verify Work Email Plus (WAY2API)
+   * Supported paths:
+   * - POST /api/v1/verify/work-email-plus
+   * - POST /verify/work-email-plus
+   * - POST /api/v1/verify/work-email/plus
+   * - POST /verify/work-email/plus
+   * - POST /api/v1/work-email-plus/verify
+   * - POST /api/v1/email-plus/verify
+   */
+  verifyWorkEmailPlus: asyncHandler(async (req, res) => {
+    const email =
+      req.body?.email ||
+      req.body?.work_email ||
+      req.body?.corporate_email ||
+      req.body?.corp_email ||
+      req.query?.email ||
+      req.query?.work_email ||
+      req.query?.corporate_email ||
+      req.body?.data?.email ||
+      '';
+
+    const client_ref_num =
+      req.body?.client_ref_num ||
+      req.query?.client_ref_num ||
+      null;
+
+    const endpoint = req.originalUrl?.split('?')[0] || req.path || '/api/v1/verify/work-email-plus';
+
+    const result = await WorkEmailVerificationService.verifyWorkEmailPlus({
+      email,
+      client_ref_num,
+      apiClient: req.apiClient,
+      endpoint,
+    });
+
+    const httpCode = result.http_response_code || 200;
+    return res.status(httpCode).json(result);
+  }),
 };
 
 export default WorkEmailController;

@@ -58,6 +58,15 @@ export const API_PRICING = {
   '/corp-email/verify': 2.00,
   '/api/v1/email/verify': 2.00,
   '/email/verify': 2.00,
+  '/api/v1/verify/work-email-plus': 2.00,
+  '/verify/work-email-plus': 2.00,
+  '/api/v1/work-email-plus/verify': 2.00,
+  '/work-email-plus/verify': 2.00,
+  '/api/v1/verify/work-email/plus': 2.00,
+  '/verify/work-email/plus': 2.00,
+  '/api/v1/email-verifier-plus': 2.00,
+  '/email-verifier-plus': 2.00,
+  'work_email_plus': 2.00,
   default: 2.00,
 };
 

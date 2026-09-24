@@ -33,4 +33,27 @@ supportedPaths.forEach((path) => {
   router.get(path, verifyApiClientCredentials, WorkEmailController.verifyWorkEmail);
 });
 
+/**
+ * Work Email Verifier Plus (WAY2API) Routes
+ */
+const plusPaths = [
+  '/verify/work-email-plus',
+  '/api/v1/verify/work-email-plus',
+  '/work-email-plus/verify',
+  '/api/v1/work-email-plus/verify',
+  '/verify/work-email/plus',
+  '/api/v1/verify/work-email/plus',
+  '/work-email/plus',
+  '/api/v1/work-email/plus',
+  '/email/verify/plus',
+  '/api/v1/email/verify/plus',
+  '/email-verifier-plus',
+  '/api/v1/email-verifier-plus',
+];
+
+plusPaths.forEach((path) => {
+  router.post(path, verifyApiClientCredentials, WorkEmailController.verifyWorkEmailPlus);
+  router.get(path, verifyApiClientCredentials, WorkEmailController.verifyWorkEmailPlus);
+});
+
 export default router;

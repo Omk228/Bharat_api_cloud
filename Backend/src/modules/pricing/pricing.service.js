@@ -125,7 +125,7 @@ const ENDPOINT_CATALOG_MAP = {
   'crif': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
   'crif_score': ['api_crif_credit_score_v4', '/crif/Credit-ScoreV4'],
 
-  // Work / Corporate Email Verifier
+  // Work / Corporate Email Verifier (Standard)
   '/api/v1/verify/work-email': ['api_work_email_verifier', '/verify/work-email', '/api/v1/verify/work-email'],
   '/verify/work-email': ['api_work_email_verifier', '/verify/work-email'],
   '/api/v1/work-email/verify': ['api_work_email_verifier', '/work-email/verify'],
@@ -139,6 +139,17 @@ const ENDPOINT_CATALOG_MAP = {
   'work_email': ['api_work_email_verifier', '/verify/work-email'],
   'corporate_email': ['api_work_email_verifier', '/verify/work-email'],
   'corp_email': ['api_work_email_verifier', '/verify/work-email'],
+
+  // Work Email Verifier Plus (WAY2API)
+  '/api/v1/verify/work-email-plus': ['api_work_email_plus', 'api_work_email_verifier', '/verify/work-email-plus', '/api/v1/verify/work-email-plus'],
+  '/verify/work-email-plus': ['api_work_email_plus', 'api_work_email_verifier', '/verify/work-email-plus'],
+  '/api/v1/work-email-plus/verify': ['api_work_email_plus', 'api_work_email_verifier', '/work-email-plus/verify'],
+  '/work-email-plus/verify': ['api_work_email_plus', 'api_work_email_verifier', '/work-email-plus/verify'],
+  '/api/v1/verify/work-email/plus': ['api_work_email_plus', 'api_work_email_verifier', '/verify/work-email/plus'],
+  '/verify/work-email/plus': ['api_work_email_plus', 'api_work_email_verifier', '/verify/work-email/plus'],
+  '/api/v1/email-verifier-plus': ['api_work_email_plus', 'api_work_email_verifier', '/email-verifier-plus'],
+  '/email-verifier-plus': ['api_work_email_plus', 'api_work_email_verifier', '/email-verifier-plus'],
+  'work_email_plus': ['api_work_email_plus', 'api_work_email_verifier', '/verify/work-email-plus'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -163,6 +174,7 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   statement_analyzer: 'api_bank_statement',
   crif: 'api_crif_credit_score_v4',
   work_email: 'api_work_email_verifier',
+  work_email_plus: 'api_work_email_plus',
 };
 
 export const GST_RATE = 0.18;

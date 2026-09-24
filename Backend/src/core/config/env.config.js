@@ -71,6 +71,16 @@ export const ENV = {
     CLIENT_ID: process.env.WORK_EMAIL_VERIFIER_CLIENT_ID || 'bharat_api_cloud',
     API_KEY: process.env.WORK_EMAIL_VERIFIER_API_KEY || 'bac_live_7f8e3a2b1c0d4e5f',
   },
+
+  WORK_EMAIL_PLUS: {
+    BASE_URL: process.env.WORK_EMAIL_PLUS_BASE_URL || process.env.WAY2API_EMAIL_BASE_URL || 'https://app.way2api.com/api/v1/email/validate',
+    API_KEY: process.env.WORK_EMAIL_PLUS_API_KEY || process.env.WAY2API_EMAIL_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
+  },
+
+  WAY2API: {
+    EMAIL_BASE_URL: process.env.WAY2API_EMAIL_BASE_URL || 'https://app.way2api.com/api/v1/email/validate',
+    API_KEY: process.env.WAY2API_EMAIL_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
+  },
 };
 
 export default ENV;

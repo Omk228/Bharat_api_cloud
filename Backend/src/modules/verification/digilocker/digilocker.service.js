@@ -53,7 +53,7 @@ export class DigilockerVerificationService {
     const effectiveMethod = isFetchDetails ? 'fetchDetails' : 'generateToken';
 
     // Helper to sanitize any upstream IDSPay URLs and references
-    const hostBase = apiClient?.hostBase || 'http://localhost:5002';
+    const hostBase = apiClient?.hostBase || ENV.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com';
     const sanitizeValue = (val) => {
       if (typeof val === 'string') {
         // Rewrite IDSPay DigiLocker start URL to Bharat API Gateway URL

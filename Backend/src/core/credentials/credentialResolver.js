@@ -126,7 +126,7 @@ class CredentialResolver {
   }
 
   /**
-   * Get upstream credentials for Work Email / Corporate Email Verifier
+   * Get upstream credentials for Work Email / Corporate Email Verifier (Standard)
    */
   async getWorkEmailCredentials() {
     await this.loadAllCredentials();
@@ -136,6 +136,19 @@ class CredentialResolver {
       baseUrl: cred?.baseUrl || ENV.WORK_EMAIL.BASE_URL,
       clientId: cred?.apiId || ENV.WORK_EMAIL.CLIENT_ID,
       apiKey: cred?.apiKey || ENV.WORK_EMAIL.API_KEY,
+    };
+  }
+
+  /**
+   * Get upstream credentials for Work Email Verifier Plus (WAY2API)
+   */
+  async getWorkEmailPlusCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('way2api_email_master') || this.cache.get('work_email_plus_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.WORK_EMAIL_PLUS.BASE_URL,
+      apiKey: cred?.apiKey || ENV.WORK_EMAIL_PLUS.API_KEY,
     };
   }
 
