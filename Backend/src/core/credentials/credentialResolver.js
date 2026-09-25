@@ -166,6 +166,19 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for Mobile Operator Check (WAY2API)
+   */
+  async getOperatorCheckCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('way2api_operator_master') || this.cache.get('operator_check_master') || this.cache.get('way2api_bank_master') || this.cache.get('way2api_email_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.OPERATOR_CHECK.BASE_URL,
+      apiKey: cred?.apiKey || ENV.OPERATOR_CHECK.API_KEY,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

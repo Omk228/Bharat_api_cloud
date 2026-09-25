@@ -44,6 +44,8 @@ import {
   Download,
   ShieldAlert,
   Inbox,
+  Radio,
+  FileCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -218,13 +220,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "bank_v2" || search["service"] === "bank-v2" || search["service"] === "bank-account-v2" || search["service"] === "bank_account_v2" || search["service"] === "bank-account-validation-v2"
+      search["service"] === "mobile_operator" || search["service"] === "mobile-operator" || search["service"] === "operator_check" || search["service"] === "operator-check" || search["service"] === "operator-circle" || search["service"] === "mobile-operator-check"
+        ? "mobile_operator"
+        : search["service"] === "bank_v2" || search["service"] === "bank-v2" || search["service"] === "bank-account-v2" || search["service"] === "bank_account_v2" || search["service"] === "bank-account-validation-v2"
         ? "bank_v2"
         : search["service"] === "work_email_plus" || search["service"] === "work-email-plus" || search["service"] === "work-email-verifier-plus" || search["service"] === "email_plus" || search["service"] === "email-plus"
         ? "work_email_plus"
@@ -283,8 +287,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus">(
-    searchParams.service === "bank_v2"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator">(
+    searchParams.service === "mobile_operator"
+      ? "mobile_operator"
+      : searchParams.service === "bank_v2"
       ? "bank_v2"
       : searchParams.service === "work_email_plus"
       ? "work_email_plus"
@@ -375,6 +381,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "mobile_operator" || serviceKey === "mobile-operator" || serviceKey === "operator_circle" || serviceKey === "operator-circle" || serviceKey === "mobile-operator-check") return 2.0;
     if (serviceKey === "bank_v2" || serviceKey === "bank-account-v2" || serviceKey === "bank_account_v2") return 2.0;
     if (serviceKey === "work_email_plus" || serviceKey === "work-email-verifier-plus" || serviceKey === "work-email-plus" || serviceKey === "email_plus") return 2.0;
     if (serviceKey === "work_email" || serviceKey === "work-email-verifier" || serviceKey === "work-email") return 2.0;
@@ -446,6 +453,10 @@ function TestApiPage() {
   const [crifFirstName, setCrifFirstName] = useState("Rahul");
   const [crifLastName, setCrifLastName] = useState("CHAUDHARI");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // Mobile Operator Check fields
+  const [operatorMobile, setOperatorMobile] = useState("9876543210");
+  const [operatorClientRef, setOperatorClientRef] = useState("");
 
   // Work / Corporate Email Verifier (Standard) fields
   const [workEmailInput, setWorkEmailInput] = useState("support@geetpay.in");
@@ -795,7 +806,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "bank_v2"
+    selectedService === "mobile_operator"
+      ? {
+          mobile_number: operatorMobile.trim().replace(/\D/g, "") || "9876543210",
+          ...(operatorClientRef.trim() ? { client_ref_num: operatorClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "bank_v2"
       ? {
           account_number: bankV2AccountNumber.trim() || "1234567890",
           ifsc_code: bankV2IfscCode.trim().toUpperCase() || "HDFC0001234",
@@ -1044,6 +1063,13 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "mobile_operator") {
+      const cleanMob = operatorMobile.trim().replace(/\D/g, "");
+      if (!cleanMob || cleanMob.length !== 10) {
+        toast.error("Please enter a valid 10-digit Indian mobile number (e.g. 9876543210)");
+        return;
+      }
+    }
     if (selectedService === "bank_v2") {
       if (!bankV2AccountNumber.trim()) {
         toast.error("Please enter a Bank Account Number.");
@@ -1183,7 +1209,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "bank_v2") {
+      if (selectedService === "mobile_operator") {
+        rawData = await apiClient.checkMobileOperator({
+          mobile_number: operatorMobile.trim().replace(/\D/g, ""),
+          client_ref_num: operatorClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "bank_v2") {
         rawData = await apiClient.verifyBankAccountV2({
           account_number: bankV2AccountNumber.trim(),
           ifsc_code: bankV2IfscCode.trim().toUpperCase(),
@@ -1654,7 +1688,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "bank_v2"
+    selectedService === "mobile_operator"
+      ? "/api/v1/verify/operator-circle"
+      : selectedService === "bank_v2"
       ? "/api/v1/bank/account-validation"
       : selectedService === "work_email_plus"
       ? "/api/v1/verify/work-email-plus"
@@ -1699,7 +1735,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "bank_v2"
+    selectedService === "mobile_operator"
+      ? "Mobile Operator Check"
+      : selectedService === "bank_v2"
       ? "Bank Account Validation V2"
       : selectedService === "work_email_plus"
       ? "Work Email Verifier Plus"
@@ -1770,7 +1808,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "bank_v2"
+                {selectedService === "mobile_operator"
+                  ? "Direct live Mobile Operator Check gateway: real-time telecom operator (Jio, Airtel, Vi, BSNL), telecom circle / state, and subscription type (Prepaid / Postpaid) verification powered by Bharat API Cloud."
+                  : selectedService === "bank_v2"
                   ? "Direct live Bank Account Validation V2 gateway: real-time account holder verification, bank institution, branch state, and penny-drop status powered by Bharat API Cloud."
                   : selectedService === "work_email_plus"
                   ? "Direct live Work Email Verifier Plus gateway: deep deliverability, syntax validation, corporate domain detection, spam/disposable classification, catch-all policy, role accounts, and full MX record inspection powered by Bharat API Cloud."
@@ -1811,7 +1851,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "bank_v2"
+                    selectedService === "mobile_operator"
+                      ? "mobile-operator-check"
+                      : selectedService === "bank_v2"
                       ? "bank-account-v2"
                       : selectedService === "work_email_plus"
                       ? "work-email-verifier-plus"
@@ -1871,6 +1913,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "mobile_operator" && <Smartphone className="h-4 w-4 text-sky-400" />}
                   {selectedService === "bank_v2" && <Landmark className="h-4 w-4 text-sky-400" />}
                   {selectedService === "work_email_plus" && <Mail className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "work_email" && <Mail className="h-4 w-4 text-violet-400" />}
@@ -1894,6 +1937,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "mobile_operator" && "Mobile Operator Check (/api/v1/verify/operator-circle)"}
                     {selectedService === "bank_v2" && "Bank Account Validation V2 (/api/v1/bank/account-validation)"}
                     {selectedService === "work_email_plus" && "Work Email Verifier Plus (/api/v1/verify/work-email-plus)"}
                     {selectedService === "work_email" && "Work Email Verifier (/api/v1/verify/work-email)"}
@@ -2135,7 +2179,54 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "bank_v2" ? (
+                  {selectedService === "mobile_operator" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Smartphone className="h-3.5 w-3.5 text-sky-400" /> Mobile Number *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-Digit Indian Mobile</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="tel"
+                            maxLength={10}
+                            value={operatorMobile}
+                            onChange={(e) => setOperatorMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                            placeholder="e.g. 9876543210"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-sky-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={operatorClientRef}
+                          onChange={(e) => setOperatorClientRef(e.target.value)}
+                          placeholder="e.g. OPR_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-sky-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-sky-500/10 border border-sky-500/20 p-2.5 text-xs text-sky-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-sky-400">₹{getServicePrice("mobile_operator").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time lookup for Indian mobile operator (Jio, Airtel, Vi, BSNL), telecom circle / state, and subscription type (Prepaid / Postpaid).
+                      </p>
+                    </>
+                  ) : selectedService === "bank_v2" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -3852,6 +3943,194 @@ function TestApiPage() {
                                     <p className="truncate">Order ID: <span className="text-foreground">{orderId}</span></p>
                                     <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
                                     <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || bankV2ClientRef || "—"}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "mobile_operator" ? (
+                          (() => {
+                            const anyRes: any = responseJson || {};
+                            const oprData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const rawResult: any = oprData?.result && typeof oprData.result === 'object' ? oprData.result : oprData;
+
+                            const mobStr = String(rawResult.mobile_number || oprData.mobile_number || operatorMobile || "—");
+                            const operatorStr = String(rawResult.operator || oprData.operator || "Unknown");
+                            const circleStr = String(rawResult.circle || oprData.circle || "Unknown");
+                            const typeStr = String(rawResult.type || oprData.type || "Prepaid");
+                            const orderId = String(anyRes.order_id || oprData.order_id || responseJson?.data?.order_id || "—");
+                            const isCharged = Boolean(anyRes.charged ?? oprData.charged ?? true);
+                            const durationMs = oprData.duration_ms || responseTime || 0;
+
+                            const isSuccess = anyRes.status === "SUCCESS" || anyRes.status === "success" || anyRes.success === true || (operatorStr !== "Unknown" && operatorStr !== "—");
+
+                            // Dynamic Operator Branding Color
+                            const opLower = operatorStr.toLowerCase();
+                            const opColorClass =
+                              opLower.includes("jio") || opLower.includes("reliance")
+                                ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                                : opLower.includes("airtel") || opLower.includes("bharti")
+                                ? "bg-red-500/15 text-red-400 border-red-500/30"
+                                : opLower.includes("vi") || opLower.includes("vodafone") || opLower.includes("idea")
+                                ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                : opLower.includes("bsnl") || opLower.includes("mtnl")
+                                ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30"
+                                : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+
+                            const opIconBg =
+                              opLower.includes("jio") || opLower.includes("reliance")
+                                ? "bg-blue-500/20 text-blue-400"
+                                : opLower.includes("airtel") || opLower.includes("bharti")
+                                ? "bg-red-500/20 text-red-400"
+                                : opLower.includes("vi") || opLower.includes("vodafone") || opLower.includes("idea")
+                                ? "bg-amber-500/20 text-amber-400"
+                                : opLower.includes("bsnl") || opLower.includes("mtnl")
+                                ? "bg-cyan-500/20 text-cyan-400"
+                                : "bg-emerald-500/20 text-emerald-400";
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`rounded-xl p-2.5 ${opIconBg}`}>
+                                      <Smartphone className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-mono text-base font-bold text-foreground">
+                                          +91 {mobStr}
+                                        </h3>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(mobStr, "Mobile Number")}
+                                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                          title="Copy mobile number"
+                                        >
+                                          {copiedField === "Mobile Number" ? (
+                                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                          ) : (
+                                            <Copy className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider border ${opColorClass}`}>
+                                          ● {operatorStr}
+                                        </span>
+                                        <span className="rounded-full bg-secondary/80 text-foreground border border-border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                          {circleStr}
+                                        </span>
+                                        <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                          {typeStr}
+                                        </span>
+                                      </div>
+                                      <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                                        <span>Operator: <strong className="text-foreground font-semibold">{operatorStr}</strong></span>
+                                        <span>·</span>
+                                        <span>Circle: <strong className="text-foreground font-semibold">{circleStr}</strong></span>
+                                        <span>·</span>
+                                        <span>Order ID: <code className="font-mono text-foreground">{orderId}</code></span>
+                                        <span>·</span>
+                                        <span className="font-mono">{durationMs}ms latency</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Gateway Status</span>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCharged ? "bg-emerald-400" : "bg-amber-400"}`} />
+                                      <span className="font-mono text-xs font-bold text-foreground">
+                                        {isCharged ? "Charged (200 OK)" : "Free / Cached"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Status Notification */}
+                                <div className="rounded-xl border p-3.5 text-xs bg-emerald-500/5 border-emerald-500/20 text-emerald-300">
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-foreground">
+                                        Mobile number <span className="font-mono font-bold text-primary">{mobStr}</span> successfully verified on <span className="font-semibold text-emerald-400">{operatorStr}</span> ({circleStr} Circle, {typeStr}).
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 4 Feature Verification Matrix Cards */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  {/* 1. Operator */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Telecom Operator</span>
+                                      <Radio className="h-3.5 w-3.5 text-sky-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />
+                                      <span className="font-semibold text-xs text-foreground truncate">
+                                        {operatorStr}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 2. Telecom Circle */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Telecom Circle / State</span>
+                                      <Compass className="h-3.5 w-3.5 text-indigo-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-400" />
+                                      <span className="font-semibold text-xs text-foreground truncate">
+                                        {circleStr}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 3. Subscription Type */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Plan / Type</span>
+                                      <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                                      <span className="font-semibold text-xs text-emerald-400">
+                                        {typeStr}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 4. Gateway Verification Status */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Gateway Status</span>
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                                      <span className="font-semibold text-xs text-emerald-400">
+                                        {isSuccess ? "Active / Verified" : "Lookup Completed"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Order & Transaction Details Card */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-border pb-2.5">
+                                    <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                                      <Layers className="h-3.5 w-3.5 text-primary" /> Gateway Transaction & Audit Trail
+                                    </span>
+                                    <span className="font-mono text-[11px] text-muted-foreground">
+                                      WAY2API Direct Provider
+                                    </span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3 text-[11px] pt-1">
+                                    <p className="truncate">Order ID: <span className="text-foreground font-mono">{orderId}</span></p>
+                                    <p className="truncate">Request ID: <span className="text-foreground font-mono">{responseJson?.request_id || "req_" + Date.now()}</span></p>
+                                    <p className="truncate">Client Ref: <span className="text-foreground font-mono">{responseJson?.client_ref_num || operatorClientRef || "—"}</span></p>
                                   </div>
                                 </div>
                               </div>

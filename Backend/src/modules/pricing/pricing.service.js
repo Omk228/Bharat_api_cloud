@@ -159,6 +159,19 @@ const ENDPOINT_CATALOG_MAP = {
   '/api/v1/verify/bank-v2': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
   '/verify/bank-v2': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
   'bank_v2': ['api_bank_v2', 'api_bank_validation', '/api/v1/bank/account-validation'],
+
+  // Mobile Operator Check (WAY2API)
+  '/api/v1/verify/operator-circle': ['api_mobile_operator_check', '/verify/operator-circle', '/api/v1/verify/operator-circle'],
+  '/verify/operator-circle': ['api_mobile_operator_check', '/verify/operator-circle'],
+  '/api/v1/verify/mobile-operator': ['api_mobile_operator_check', '/verify/mobile-operator'],
+  '/verify/mobile-operator': ['api_mobile_operator_check', '/verify/mobile-operator'],
+  '/api/v1/operator-circle/check': ['api_mobile_operator_check', '/operator-circle/check'],
+  '/operator-circle/check': ['api_mobile_operator_check', '/operator-circle/check'],
+  '/api/v1/mobile-operator/check': ['api_mobile_operator_check', '/mobile-operator/check'],
+  '/mobile-operator/check': ['api_mobile_operator_check', '/mobile-operator/check'],
+  'mobile_operator': ['api_mobile_operator_check', '/verify/operator-circle'],
+  'mobile_operator_check': ['api_mobile_operator_check', '/verify/operator-circle'],
+  'operator_circle': ['api_mobile_operator_check', '/verify/operator-circle'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -185,6 +198,9 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   crif: 'api_crif_credit_score_v4',
   work_email: 'api_work_email_verifier',
   work_email_plus: 'api_work_email_plus',
+  mobile_operator: 'api_mobile_operator_check',
+  mobile_operator_check: 'api_mobile_operator_check',
+  operator_circle: 'api_mobile_operator_check',
 };
 
 export const GST_RATE = 0.18;

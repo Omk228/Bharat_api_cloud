@@ -74,6 +74,17 @@ export const API_PRICING = {
   '/api/v1/verify/bank-v2': 2.00,
   '/verify/bank-v2': 2.00,
   'bank_v2': 2.00,
+  '/api/v1/verify/operator-circle': 2.00,
+  '/verify/operator-circle': 2.00,
+  '/api/v1/verify/mobile-operator': 2.00,
+  '/verify/mobile-operator': 2.00,
+  '/api/v1/operator-circle/check': 2.00,
+  '/operator-circle/check': 2.00,
+  '/api/v1/mobile-operator/check': 2.00,
+  '/mobile-operator/check': 2.00,
+  'mobile_operator': 2.00,
+  'mobile_operator_check': 2.00,
+  'operator_circle': 2.00,
   default: 2.00,
 };
 

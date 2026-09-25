@@ -20,6 +20,7 @@ import transunionRoutes from '../modules/verification/transunion/transunion.rout
 import crifRoutes from '../modules/verification/crif/crif.routes.js';
 import domainRoutes from '../modules/domain/domain.routes.js';
 import workEmailRoutes from '../modules/verification/work_email/workEmail.routes.js';
+import operatorRoutes from '../modules/verification/operator/operator.routes.js';
 
 const apiRouter = Router();
 
@@ -58,5 +59,6 @@ apiRouter.use('/', domainRoutes);
 apiRouter.use('/ifsc', ifscRoutes);
 apiRouter.use('/', ifscRoutes);
 apiRouter.use('/', workEmailRoutes);
+apiRouter.use('/', operatorRoutes);
 
 export default apiRouter;
