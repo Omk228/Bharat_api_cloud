@@ -37,7 +37,8 @@ export const TransunionController = {
       baseUrl,
     });
 
-    return res.status(200).json(result);
+    const httpCode = result.http_response_code || result.status?.code || 200;
+    return res.status(httpCode).json(result);
   }),
 
   /**

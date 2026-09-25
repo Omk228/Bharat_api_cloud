@@ -109,6 +109,7 @@ export class TransunionVerificationService {
 
     let upstreamResult = null;
     let isSuccess = false;
+    let upstreamErrorMsg = null;
 
     // 1. Forward request to upstream provider if master credentials are configured
     if (masterApiId && masterApiKey && masterTokenId) {
@@ -135,23 +136,53 @@ export class TransunionVerificationService {
         });
 
         console.log(`⏱️ [TRANSUNION UPSTREAM LATENCY]: ${upstreamRes.upstreamLatencyMs}ms`);
-        const data = await upstreamRes.json();
-        console.log(`📥 [TRANSUNION UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(data, null, 2));
+        const rawText = await upstreamRes.text();
+        let data = null;
+        try {
+          data = JSON.parse(rawText);
+          console.log(`📥 [TRANSUNION UPSTREAM RESPONSE] Status ${upstreamRes.status}:`, JSON.stringify(data, null, 2));
+        } catch (parseErr) {
+          console.error(`⚠️ [TRANSUNION UPSTREAM NON-JSON] Status ${upstreamRes.status}:`, rawText);
+        }
 
-        if (isUpstreamLowBalance(data)) {
+        if (data && isUpstreamLowBalance(data)) {
           console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during TransUnion verification.');
           return formatUpstreamLowBalanceResponse(requestId, clientRef);
         }
 
-        if (data && (data.status?.code === 200 || data.http_response_code === 200 || data.data?.status === 'success')) {
+        const isUpstreamOk = Boolean(
+          data && (
+            data.status?.code === 200 ||
+            data.status === 200 ||
+            data.status === true ||
+            data.status === 'success' ||
+            data.statusCode === 200 ||
+            data.http_response_code === 200 ||
+            data.result_code === 101 ||
+            data.result_code === 200 ||
+            data.success === true ||
+            data.data?.status === 'success' ||
+            data.data?.steps ||
+            data.data?.steps_summary ||
+            data.data?.web_token_url ||
+            data.data?.client_key ||
+            data.data?.credit_report_message ||
+            (Array.isArray(data.steps) && data.steps.length > 0)
+          )
+        );
+
+        if (isUpstreamOk) {
           upstreamResult = data;
           isSuccess = true;
+        } else if (data) {
+          upstreamErrorMsg = data.message || data.status?.message || data.status_message || null;
         }
       } catch (err) {
         console.error('⚠️ TransUnion upstream provider error:', err.message);
         if (isUpstreamLowBalance(err.message)) {
           return formatUpstreamLowBalanceResponse(requestId, clientRef);
         }
+        upstreamErrorMsg = err.message;
       }
     }
 
@@ -177,6 +208,11 @@ export class TransunionVerificationService {
       });
 
       finalResponse = {
+        http_response_code: 200,
+        result_code: 101,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        status_message: 'Verification success',
         status: {
           code: 200,
           type: 'success',
@@ -204,18 +240,19 @@ export class TransunionVerificationService {
       };
     } else {
       isSuccess = false;
+      const displayMsg = upstreamErrorMsg || 'Server Error. Please try again later.';
       finalResponse = {
         status: {
           code: 500,
           type: 'failed',
-          message: 'Server Error',
+          message: displayMsg,
         },
         http_response_code: 500,
         result_code: 102,
         request_id: requestId,
         client_ref_num: clientRef,
-        message: 'Server Error. Please try again later.',
-        status_message: 'Server Error',
+        message: displayMsg,
+        status_message: 'Refund processed',
         data: null,
       };
     }

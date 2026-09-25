@@ -60,8 +60,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('🚨 Uncaught Exception thrown:', error);
-  process.exit(1);
+  console.error('🚨 Uncaught Exception caught gracefully:', error);
 });
 
 export default server;
