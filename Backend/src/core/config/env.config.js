@@ -81,7 +81,8 @@ export const ENV = {
     EMAIL_BASE_URL: process.env.WAY2API_EMAIL_BASE_URL || 'https://app.way2api.com/api/v1/email/validate',
     BANK_BASE_URL: process.env.WAY2API_BANK_BASE_URL || process.env.BANK_VALIDATION_V2_BASE_URL || 'https://app.way2api.com/api/v1/bank/account_validation',
     OPERATOR_BASE_URL: process.env.WAY2API_OPERATOR_BASE_URL || process.env.OPERATOR_CHECK_BASE_URL || 'https://app.way2api.com/api/v1/operator-circle/check',
-    API_KEY: process.env.WAY2API_OPERATOR_API_KEY || process.env.WAY2API_BANK_API_KEY || process.env.BANK_VALIDATION_V2_API_KEY || process.env.WAY2API_EMAIL_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
+    DTH_BASE_URL: process.env.WAY2API_DTH_BASE_URL || process.env.DTH_CHECK_BASE_URL || 'https://app.way2api.com/api/v1/dth/operator-check',
+    API_KEY: process.env.WAY2API_DTH_API_KEY || process.env.WAY2API_OPERATOR_API_KEY || process.env.WAY2API_BANK_API_KEY || process.env.BANK_VALIDATION_V2_API_KEY || process.env.WAY2API_EMAIL_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
   },
 
   BANK_VALIDATION_V2: {
@@ -92,6 +93,11 @@ export const ENV = {
   OPERATOR_CHECK: {
     BASE_URL: process.env.OPERATOR_CHECK_BASE_URL || process.env.WAY2API_OPERATOR_BASE_URL || 'https://app.way2api.com/api/v1/operator-circle/check',
     API_KEY: process.env.OPERATOR_CHECK_API_KEY || process.env.WAY2API_OPERATOR_API_KEY || process.env.WAY2API_BANK_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
+  },
+
+  DTH_CHECK: {
+    BASE_URL: process.env.DTH_CHECK_BASE_URL || process.env.WAY2API_DTH_BASE_URL || 'https://app.way2api.com/api/v1/dth/operator-check',
+    API_KEY: process.env.DTH_CHECK_API_KEY || process.env.WAY2API_DTH_API_KEY || process.env.WAY2API_OPERATOR_API_KEY || process.env.WAY2API_BANK_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
   },
 };
 

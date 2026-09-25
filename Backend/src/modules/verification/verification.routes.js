@@ -9,6 +9,7 @@ import digilockerRoutes from './digilocker/digilocker.routes.js';
 import mobileToBankRoutes from './mobile_to_bank/mobileToBank.routes.js';
 import workEmailRoutes from './work_email/workEmail.routes.js';
 import operatorRoutes from './operator/operator.routes.js';
+import dthRoutes from './dth/dth.routes.js';
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use('/', digilockerRoutes);
 router.use('/', mobileToBankRoutes);
 router.use('/', workEmailRoutes);
 router.use('/', operatorRoutes);
+router.use('/', dthRoutes);
 
 export default router;

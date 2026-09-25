@@ -85,6 +85,17 @@ export const API_PRICING = {
   'mobile_operator': 2.00,
   'mobile_operator_check': 2.00,
   'operator_circle': 2.00,
+  '/api/v1/verify/dth-operator': 2.00,
+  '/verify/dth-operator': 2.00,
+  '/api/v1/verify/dth-operator-check': 2.00,
+  '/verify/dth-operator-check': 2.00,
+  '/api/v1/dth/operator-check': 2.00,
+  '/dth/operator-check': 2.00,
+  '/api/v1/verify/dth': 2.00,
+  '/verify/dth': 2.00,
+  'dth_operator': 2.00,
+  'dth_operator_check': 2.00,
+  'dth_check': 2.00,
   default: 2.00,
 };
 

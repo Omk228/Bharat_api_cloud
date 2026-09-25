@@ -172,6 +172,19 @@ const ENDPOINT_CATALOG_MAP = {
   'mobile_operator': ['api_mobile_operator_check', '/verify/operator-circle'],
   'mobile_operator_check': ['api_mobile_operator_check', '/verify/operator-circle'],
   'operator_circle': ['api_mobile_operator_check', '/verify/operator-circle'],
+
+  // DTH Operator Check (WAY2API)
+  '/api/v1/verify/dth-operator': ['api_dth_operator_check', '/verify/dth-operator', '/api/v1/verify/dth-operator'],
+  '/verify/dth-operator': ['api_dth_operator_check', '/verify/dth-operator'],
+  '/api/v1/verify/dth-operator-check': ['api_dth_operator_check', '/verify/dth-operator-check'],
+  '/verify/dth-operator-check': ['api_dth_operator_check', '/verify/dth-operator-check'],
+  '/api/v1/dth/operator-check': ['api_dth_operator_check', '/dth/operator-check'],
+  '/dth/operator-check': ['api_dth_operator_check', '/dth/operator-check'],
+  '/api/v1/verify/dth': ['api_dth_operator_check', '/verify/dth'],
+  '/verify/dth': ['api_dth_operator_check', '/verify/dth'],
+  'dth_operator': ['api_dth_operator_check', '/verify/dth-operator'],
+  'dth_operator_check': ['api_dth_operator_check', '/verify/dth-operator'],
+  'dth_check': ['api_dth_operator_check', '/verify/dth-operator'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -201,6 +214,9 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   mobile_operator: 'api_mobile_operator_check',
   mobile_operator_check: 'api_mobile_operator_check',
   operator_circle: 'api_mobile_operator_check',
+  dth_operator: 'api_dth_operator_check',
+  dth_operator_check: 'api_dth_operator_check',
+  dth_check: 'api_dth_operator_check',
 };
 
 export const GST_RATE = 0.18;

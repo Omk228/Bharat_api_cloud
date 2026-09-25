@@ -179,6 +179,19 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for DTH Operator Check (WAY2API)
+   */
+  async getDthCheckCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('way2api_dth_master') || this.cache.get('dth_check_master') || this.cache.get('way2api_operator_master') || this.cache.get('way2api_bank_master') || this.cache.get('way2api_email_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.DTH_CHECK.BASE_URL,
+      apiKey: cred?.apiKey || ENV.DTH_CHECK.API_KEY,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

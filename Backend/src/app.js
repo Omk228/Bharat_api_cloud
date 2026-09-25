@@ -27,6 +27,7 @@ import transunionRoutes from './modules/verification/transunion/transunion.route
 import crifRoutes from './modules/verification/crif/crif.routes.js';
 import workEmailRoutes from './modules/verification/work_email/workEmail.routes.js';
 import operatorRoutes from './modules/verification/operator/operator.routes.js';
+import dthRoutes from './modules/verification/dth/dth.routes.js';
 
 const app = express();
 
@@ -150,6 +151,8 @@ app.use('/', workEmailRoutes);
 app.use('/api/v1', workEmailRoutes);
 app.use('/', operatorRoutes);
 app.use('/api/v1', operatorRoutes);
+app.use('/', dthRoutes);
+app.use('/api/v1', dthRoutes);
 
 // Serve isolated test-tools statically
 app.use('/test-tools', express.static(path.resolve(process.cwd(), '../test-tools')));

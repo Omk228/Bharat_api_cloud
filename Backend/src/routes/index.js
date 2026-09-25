@@ -21,6 +21,7 @@ import crifRoutes from '../modules/verification/crif/crif.routes.js';
 import domainRoutes from '../modules/domain/domain.routes.js';
 import workEmailRoutes from '../modules/verification/work_email/workEmail.routes.js';
 import operatorRoutes from '../modules/verification/operator/operator.routes.js';
+import dthRoutes from '../modules/verification/dth/dth.routes.js';
 
 const apiRouter = Router();
 
@@ -60,5 +61,6 @@ apiRouter.use('/ifsc', ifscRoutes);
 apiRouter.use('/', ifscRoutes);
 apiRouter.use('/', workEmailRoutes);
 apiRouter.use('/', operatorRoutes);
+apiRouter.use('/', dthRoutes);
 
 export default apiRouter;

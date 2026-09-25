@@ -46,6 +46,7 @@ import {
   Inbox,
   Radio,
   FileCheck,
+  Tv,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -220,13 +221,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "mobile_operator" || search["service"] === "mobile-operator" || search["service"] === "operator_check" || search["service"] === "operator-check" || search["service"] === "operator-circle" || search["service"] === "mobile-operator-check"
+      search["service"] === "dth_operator" || search["service"] === "dth-operator" || search["service"] === "dth_check" || search["service"] === "dth-check" || search["service"] === "dth-operator-check" || search["service"] === "dth"
+        ? "dth_operator"
+        : search["service"] === "mobile_operator" || search["service"] === "mobile-operator" || search["service"] === "operator_check" || search["service"] === "operator-check" || search["service"] === "operator-circle" || search["service"] === "mobile-operator-check"
         ? "mobile_operator"
         : search["service"] === "bank_v2" || search["service"] === "bank-v2" || search["service"] === "bank-account-v2" || search["service"] === "bank_account_v2" || search["service"] === "bank-account-validation-v2"
         ? "bank_v2"
@@ -277,7 +280,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for Work Email Verifier Plus, Work Email Verifier, Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
+        content: "Live sandbox test console for DTH Operator Check, Mobile Operator Check, Work Email Verifier Plus, Work Email Verifier, Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
       },
     ],
   }),
@@ -287,8 +290,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator">(
-    searchParams.service === "mobile_operator"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator">(
+    searchParams.service === "dth_operator"
+      ? "dth_operator"
+      : searchParams.service === "mobile_operator"
       ? "mobile_operator"
       : searchParams.service === "bank_v2"
       ? "bank_v2"
@@ -381,6 +386,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "dth_operator" || serviceKey === "dth-operator" || serviceKey === "dth_check" || serviceKey === "dth-check" || serviceKey === "dth-operator-check" || serviceKey === "dth") return 2.0;
     if (serviceKey === "mobile_operator" || serviceKey === "mobile-operator" || serviceKey === "operator_circle" || serviceKey === "operator-circle" || serviceKey === "mobile-operator-check") return 2.0;
     if (serviceKey === "bank_v2" || serviceKey === "bank-account-v2" || serviceKey === "bank_account_v2") return 2.0;
     if (serviceKey === "work_email_plus" || serviceKey === "work-email-verifier-plus" || serviceKey === "work-email-plus" || serviceKey === "email_plus") return 2.0;
@@ -453,6 +459,10 @@ function TestApiPage() {
   const [crifFirstName, setCrifFirstName] = useState("Rahul");
   const [crifLastName, setCrifLastName] = useState("CHAUDHARI");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // DTH Operator Check fields
+  const [dthNumber, setDthNumber] = useState("");
+  const [dthClientRef, setDthClientRef] = useState("");
 
   // Mobile Operator Check fields
   const [operatorMobile, setOperatorMobile] = useState("");
@@ -806,7 +816,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "mobile_operator"
+    selectedService === "dth_operator"
+      ? {
+          dth_number: dthNumber.trim(),
+          ...(dthClientRef.trim() ? { client_ref_num: dthClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "mobile_operator"
       ? {
           mobile_number: operatorMobile.trim().replace(/\D/g, ""),
           ...(operatorClientRef.trim() ? { client_ref_num: operatorClientRef.trim() } : {}),
@@ -1063,6 +1081,13 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "dth_operator") {
+      const cleanDth = dthNumber.trim();
+      if (!cleanDth) {
+        toast.error("Please enter a DTH Subscriber ID / Number.");
+        return;
+      }
+    }
     if (selectedService === "mobile_operator") {
       const cleanMob = operatorMobile.trim().replace(/\D/g, "");
       if (!cleanMob || cleanMob.length !== 10) {
@@ -1209,7 +1234,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "mobile_operator") {
+      if (selectedService === "dth_operator") {
+        rawData = await apiClient.checkDthOperator({
+          dth_number: dthNumber.trim(),
+          client_ref_num: dthClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "mobile_operator") {
         rawData = await apiClient.checkMobileOperator({
           mobile_number: operatorMobile.trim().replace(/\D/g, ""),
           client_ref_num: operatorClientRef.trim() || undefined,
@@ -1688,7 +1721,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "mobile_operator"
+    selectedService === "dth_operator"
+      ? "/api/v1/verify/dth-operator"
+      : selectedService === "mobile_operator"
       ? "/api/v1/verify/operator-circle"
       : selectedService === "bank_v2"
       ? "/api/v1/bank/account-validation"
@@ -1735,7 +1770,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "mobile_operator"
+    selectedService === "dth_operator"
+      ? "DTH operator check"
+      : selectedService === "mobile_operator"
       ? "Mobile Operator Check"
       : selectedService === "bank_v2"
       ? "Bank Account Validation V2"
@@ -1808,7 +1845,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "mobile_operator"
+                {selectedService === "dth_operator"
+                  ? "Direct live DTH Operator Check gateway: real-time Direct-to-Home subscriber ID and operator identification (Tata Play, Sun Direct, Dish TV, Airtel Digital TV, D2H) powered by Bharat API Cloud."
+                  : selectedService === "mobile_operator"
                   ? "Direct live Mobile Operator Check gateway: real-time telecom operator (Jio, Airtel, Vi, BSNL), telecom circle / state, and subscription type (Prepaid / Postpaid) verification powered by Bharat API Cloud."
                   : selectedService === "bank_v2"
                   ? "Direct live Bank Account Validation V2 gateway: real-time account holder verification, bank institution, branch state, and penny-drop status powered by Bharat API Cloud."
@@ -1851,7 +1890,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "mobile_operator"
+                    selectedService === "dth_operator"
+                      ? "dth-operator-check"
+                      : selectedService === "mobile_operator"
                       ? "mobile-operator-check"
                       : selectedService === "bank_v2"
                       ? "bank-account-v2"
@@ -1913,6 +1954,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "dth_operator" && <Tv className="h-4 w-4 text-amber-400" />}
                   {selectedService === "mobile_operator" && <Smartphone className="h-4 w-4 text-sky-400" />}
                   {selectedService === "bank_v2" && <Landmark className="h-4 w-4 text-sky-400" />}
                   {selectedService === "work_email_plus" && <Mail className="h-4 w-4 text-emerald-400" />}
@@ -1937,6 +1979,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "dth_operator" && "DTH operator check (/api/v1/verify/dth-operator)"}
                     {selectedService === "mobile_operator" && "Mobile Operator Check (/api/v1/verify/operator-circle)"}
                     {selectedService === "bank_v2" && "Bank Account Validation V2 (/api/v1/bank/account-validation)"}
                     {selectedService === "work_email_plus" && "Work Email Verifier Plus (/api/v1/verify/work-email-plus)"}
@@ -2179,7 +2222,53 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "mobile_operator" ? (
+                  {selectedService === "dth_operator" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Tv className="h-3.5 w-3.5 text-amber-400" /> DTH Number / Subscriber ID *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">Smart Card / Account No.</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={dthNumber}
+                            onChange={(e) => setDthNumber(e.target.value.trim())}
+                            placeholder=""
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={dthClientRef}
+                          onChange={(e) => setDthClientRef(e.target.value)}
+                          placeholder=""
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-amber-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-amber-400">₹{getServicePrice("dth_operator").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time instant verification of Indian Direct-to-Home (DTH) subscriber ID to identify operator (Tata Play, Sun Direct, Dish TV, Airtel Digital TV, D2H).
+                      </p>
+                    </>
+                  ) : selectedService === "mobile_operator" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -3906,6 +3995,190 @@ function TestApiPage() {
                                     <p className="truncate">Order ID: <span className="text-foreground">{orderId}</span></p>
                                     <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
                                     <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || bankV2ClientRef || "—"}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "dth_operator" ? (
+                          (() => {
+                            const anyRes: any = responseJson || {};
+                            const dthData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const rawResult: any = dthData?.result && typeof dthData.result === 'object' ? dthData.result : dthData;
+
+                            const dthStr = String(rawResult.dth_number || dthData.dth_number || dthNumber || "—");
+                            const operatorCode = String(rawResult.operator || dthData.operator || "Unknown");
+                            const operatorName = String(rawResult.operator_name || (rawResult.operator ? rawResult.operator.replace(/_/g, ' ').toUpperCase() : dthData.operator_name || "Unknown"));
+                            const orderId = String(anyRes.order_id || dthData.order_id || responseJson?.data?.order_id || "—");
+                            const isCharged = Boolean(anyRes.charged ?? dthData.charged ?? true);
+                            const durationMs = dthData.duration_ms || responseTime || 0;
+
+                            const isSuccess = anyRes.status === "SUCCESS" || anyRes.status === "success" || anyRes.success === true || (operatorCode !== "Unknown" && operatorCode !== "—");
+
+                            // Dynamic Operator Branding Color
+                            const opLower = (operatorName + " " + operatorCode).toLowerCase();
+                            const opColorClass =
+                              opLower.includes("sun") || opLower.includes("direct")
+                                ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                : opLower.includes("tata") || opLower.includes("sky") || opLower.includes("play")
+                                ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30"
+                                : opLower.includes("airtel") || opLower.includes("bharti")
+                                ? "bg-red-500/15 text-red-400 border-red-500/30"
+                                : opLower.includes("dish")
+                                ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
+                                : opLower.includes("d2h") || opLower.includes("videocon")
+                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                : "bg-indigo-500/15 text-indigo-400 border-indigo-500/30";
+
+                            const opIconBg =
+                              opLower.includes("sun") || opLower.includes("direct")
+                                ? "bg-amber-500/20 text-amber-400"
+                                : opLower.includes("tata") || opLower.includes("sky") || opLower.includes("play")
+                                ? "bg-cyan-500/20 text-cyan-400"
+                                : opLower.includes("airtel") || opLower.includes("bharti")
+                                ? "bg-red-500/20 text-red-400"
+                                : opLower.includes("dish")
+                                ? "bg-orange-500/20 text-orange-400"
+                                : opLower.includes("d2h") || opLower.includes("videocon")
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : "bg-indigo-500/20 text-indigo-400";
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`rounded-xl p-2.5 ${opIconBg}`}>
+                                      <Tv className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-mono text-base font-bold text-foreground">
+                                          {dthStr}
+                                        </h3>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(dthStr, "DTH Number")}
+                                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                          title="Copy DTH Number"
+                                        >
+                                          {copiedField === "DTH Number" ? (
+                                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                          ) : (
+                                            <Copy className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider border ${opColorClass}`}>
+                                          ● {operatorName}
+                                        </span>
+                                        <span className="rounded-full bg-secondary/80 text-foreground border border-border px-2.5 py-0.5 text-[10px] font-mono font-bold tracking-wider">
+                                          {operatorCode}
+                                        </span>
+                                      </div>
+                                      <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                                        <span>Operator: <strong className="text-foreground font-semibold">{operatorName}</strong></span>
+                                        <span>·</span>
+                                        <span>Code: <code className="font-mono text-foreground font-semibold">{operatorCode}</code></span>
+                                        <span>·</span>
+                                        <span>Order ID: <code className="font-mono text-foreground">{orderId}</code></span>
+                                        <span>·</span>
+                                        <span className="font-mono">{durationMs}ms latency</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Gateway Status</span>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCharged ? "bg-emerald-400" : "bg-amber-400"}`} />
+                                      <span className="font-mono text-xs font-bold text-foreground">
+                                        {isCharged ? "Charged (200 OK)" : "Free / Cached"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Status Notification */}
+                                <div className="rounded-xl border p-3.5 text-xs bg-emerald-500/5 border-emerald-500/20 text-emerald-300">
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-foreground">
+                                        DTH number <span className="font-mono font-bold text-primary">{dthStr}</span> successfully verified on <span className="font-semibold text-emerald-400">{operatorName}</span> ({operatorCode}).
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 4 Feature Verification Matrix Cards */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  {/* 1. DTH Operator Name */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">DTH Operator</span>
+                                      <Tv className="h-3.5 w-3.5 text-amber-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                                      <span className="font-semibold text-xs text-foreground truncate">
+                                        {operatorName}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 2. Operator ID / Code */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Operator Code</span>
+                                      <Radio className="h-3.5 w-3.5 text-indigo-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-400" />
+                                      <span className="font-mono font-semibold text-xs text-foreground truncate">
+                                        {operatorCode}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 3. DTH Number */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Subscriber ID</span>
+                                      <FileCheck className="h-3.5 w-3.5 text-emerald-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                                      <span className="font-mono font-semibold text-xs text-foreground truncate">
+                                        {dthStr}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* 4. Order ID */}
+                                  <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Order ID</span>
+                                      <ShieldCheck className="h-3.5 w-3.5 text-sky-400" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />
+                                      <span className="font-mono font-semibold text-xs text-foreground truncate">
+                                        {orderId}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Audit & Metadata Footer */}
+                                <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1 text-muted-foreground">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Gateway Audit Details</span>
+                                    <span className="text-amber-400 font-semibold text-[10px]">Verified via WAY2API Dynamic Upstream</span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3 text-[11px] pt-1">
+                                    <p className="truncate">Order ID: <span className="text-foreground">{orderId}</span></p>
+                                    <p className="truncate">Request ID: <span className="text-foreground">{anyRes.request_id || "req_" + Date.now()}</span></p>
+                                    <p className="truncate">Client Ref: <span className="text-foreground">{anyRes.client_ref_num || dthClientRef || "—"}</span></p>
                                   </div>
                                 </div>
                               </div>
