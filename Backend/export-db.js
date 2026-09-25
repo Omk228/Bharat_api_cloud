@@ -1,15 +1,9 @@
-import mysql from 'mysql2/promise';
+import { dbPool } from './src/core/config/db.config.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
 async function generateDump() {
-  const conn = await mysql.createConnection({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: 'Om@222006',
-    database: 'bharat_api'
-  });
+  const conn = dbPool;
 
   let sql = '-- ========================================================\n';
   sql += '-- Bharat API Cloud Complete MySQL Database Dump (phpMyAdmin / Hostinger Compatible)\n';
