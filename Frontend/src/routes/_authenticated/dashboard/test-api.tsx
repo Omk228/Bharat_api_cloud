@@ -561,7 +561,7 @@ function TestApiPage() {
   const [tuPdfError, setTuPdfError] = useState<string | null>(null);
   const [tuExtracted, setTuExtracted] = useState<any>(null);
 
-  // Generate TransUnion PDF automatically when responseJson arrives for transunion
+  // Extract TransUnion dynamic report data immediately when response arrives without freezing UI
   useEffect(() => {
     const isTransunionSuccess =
       responseJson &&
@@ -579,32 +579,22 @@ function TestApiPage() {
         Boolean((responseJson as any)?.web_token_url));
 
     if (selectedService === "transunion" && isTransunionSuccess) {
-      let active = true;
-      setTuPdfLoading(true);
-      setTuPdfError(null);
-      generateTransUnionPdfFromApiResponse(responseJson, {
-        fullName: `${tuForename} ${tuSurname}`.trim(),
-        panNumber: tuPan.trim().toUpperCase(),
-        mobileNumber: tuPhone.trim(),
-        dob: tuDob.trim() || null,
-        gender: tuGender || "Male",
-      })
-        .then((res) => {
-          if (!active) return;
-          setTuPdfBlobUrl(res.blobUrl);
-          setTuExtracted(res.extracted);
-          setTuPdfLoading(false);
-        })
-        .catch((err) => {
-          if (!active) return;
-          console.error("TransUnion PDF Generation Error:", err);
-          setTuPdfError(err?.message || "Failed to generate PDF report");
-          setTuPdfLoading(false);
-        });
+      try {
+        const extracted = extractTransUnionFromApiResponse(responseJson);
+        setTuExtracted(extracted);
+      } catch (e) {
+        console.error("TransUnion data extraction error:", e);
+      }
 
-      return () => {
-        active = false;
-      };
+      const rawTuData: any = responseJson?.data || responseJson?.result || responseJson || {};
+      const backendPdfUrl = rawTuData?.web_token_url || rawTuData?.report_url || (responseJson as any)?.web_token_url || (responseJson as any)?.report_url;
+      if (backendPdfUrl && typeof backendPdfUrl === "string") {
+        setTuPdfBlobUrl(backendPdfUrl);
+      } else {
+        setTuPdfBlobUrl(null);
+      }
+      setTuPdfLoading(false);
+      setTuPdfError(null);
     } else {
       setTuPdfBlobUrl(null);
       setTuExtracted(null);
@@ -619,7 +609,7 @@ function TestApiPage() {
   const [crifPdfLoading, setCrifPdfLoading] = useState<boolean>(false);
   const [crifPdfError, setCrifPdfError] = useState<string | null>(null);
 
-  // Generate CRIF PDF automatically when responseJson arrives for crif
+  // Extract CRIF report data when responseJson arrives
   useEffect(() => {
     const isCrifSuccess =
       responseJson &&
@@ -636,29 +626,15 @@ function TestApiPage() {
         Boolean((responseJson as any)?.credit_report));
 
     if (selectedService === "crif" && isCrifSuccess) {
-      let active = true;
-      setCrifPdfLoading(true);
+      const rawCrifData: any = responseJson?.data || responseJson?.result || responseJson || {};
+      const backendPdfUrl = rawCrifData?.report_url || rawCrifData?.web_token_url || (responseJson as any)?.report_url || (responseJson as any)?.web_token_url;
+      if (backendPdfUrl && typeof backendPdfUrl === "string") {
+        setCrifPdfBlobUrl(backendPdfUrl);
+      } else {
+        setCrifPdfBlobUrl(null);
+      }
+      setCrifPdfLoading(false);
       setCrifPdfError(null);
-      generateCrifPdfFromApiResponse(responseJson, {
-        first_name: crifFirstName.trim(),
-        last_name: crifLastName.trim(),
-        mobile_no: crifMobile.trim(),
-      })
-        .then((res) => {
-          if (!active) return;
-          setCrifPdfBlobUrl(res.blobUrl);
-          setCrifPdfLoading(false);
-        })
-        .catch((err) => {
-          if (!active) return;
-          console.error("CRIF PDF Generation Error:", err);
-          setCrifPdfError(err?.message || "Failed to generate CRIF PDF report");
-          setCrifPdfLoading(false);
-        });
-
-      return () => {
-        active = false;
-      };
     } else {
       setCrifPdfBlobUrl(null);
       setCrifPdfLoading(false);
@@ -669,8 +645,10 @@ function TestApiPage() {
 
   const handleOpenTuPdf = async () => {
     try {
-      if (tuPdfBlobUrl) {
-        window.open(tuPdfBlobUrl, "_blank");
+      const rawTuData: any = responseJson?.data || responseJson?.result || responseJson || {};
+      const backendPdfUrl = tuPdfBlobUrl || rawTuData?.web_token_url || rawTuData?.report_url || (responseJson as any)?.web_token_url || (responseJson as any)?.report_url;
+      if (backendPdfUrl && typeof backendPdfUrl === "string") {
+        window.open(backendPdfUrl, "_blank");
         return;
       }
       if (!responseJson || responseJson.http_response_code === 500 || responseJson.status?.type === 'failed' || !responseJson.data) {
@@ -698,28 +676,30 @@ function TestApiPage() {
 
   const handleDownloadTuPdf = async () => {
     try {
-      let targetUrl = tuPdfBlobUrl;
-      if (!targetUrl) {
-        if (!responseJson || responseJson.http_response_code === 500 || responseJson.status?.type === 'failed' || !responseJson.data) {
-          toast.error("No TransUnion report available to download.");
-          return;
-        }
-        toast.info("Generating TransUnion CIBIL PDF report...");
-        setTuPdfLoading(true);
-        const res = await generateTransUnionPdfFromApiResponse(responseJson, {
-          fullName: `${tuForename.trim()} ${tuSurname.trim()}`.trim() || "PRASHANT KUMAR",
-          panNumber: tuPan.trim() || "ABCDE1234F",
-          mobileNumber: tuPhone.trim() || "8976543210",
-          dob: tuDob.trim() || undefined,
-          gender: tuGender || "Male",
-        });
-        targetUrl = res.blobUrl;
-        setTuPdfBlobUrl(res.blobUrl);
-        setTuExtracted(res.extracted);
-        setTuPdfLoading(false);
+      const rawTuData: any = responseJson?.data || responseJson?.result || responseJson || {};
+      const backendPdfUrl = tuPdfBlobUrl || rawTuData?.web_token_url || rawTuData?.report_url || (responseJson as any)?.web_token_url || (responseJson as any)?.report_url;
+      if (backendPdfUrl && typeof backendPdfUrl === "string") {
+        window.open(backendPdfUrl, "_blank");
+        return;
       }
+      if (!responseJson || responseJson.http_response_code === 500 || responseJson.status?.type === 'failed' || !responseJson.data) {
+        toast.error("No TransUnion report available to download.");
+        return;
+      }
+      toast.info("Generating TransUnion CIBIL PDF report...");
+      setTuPdfLoading(true);
+      const res = await generateTransUnionPdfFromApiResponse(responseJson, {
+        fullName: `${tuForename.trim()} ${tuSurname.trim()}`.trim() || "PRASHANT KUMAR",
+        panNumber: tuPan.trim() || "ABCDE1234F",
+        mobileNumber: tuPhone.trim() || "8976543210",
+        dob: tuDob.trim() || undefined,
+        gender: tuGender || "Male",
+      });
+      setTuPdfBlobUrl(res.blobUrl);
+      setTuExtracted(res.extracted);
+      setTuPdfLoading(false);
       const a = document.createElement("a");
-      a.href = targetUrl;
+      a.href = res.blobUrl;
       a.download = `TransUnion_CIBIL_Report_${tuPan.trim() || "Customer"}.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -9177,9 +9157,24 @@ function TestApiPage() {
                               ? `Mobile: ${mobileUpiNumber}`
                               : selectedService === "domain_age"
                               ? `Domain: ${domainName}`
-                              : `Mobile: ${mobileNumber} · Name: ${firstName} ${lastName}`}
+                              : selectedService === "transunion"
+                              ? `PAN: ${tuPan || "N/A"} · Name: ${[tuForename, tuSurname].filter(Boolean).join(" ") || "N/A"} · Phone: ${tuPhone || "N/A"}`
+                              : selectedService === "crif"
+                              ? `Name: ${crifName || "N/A"} · Phone: ${crifPhone || "N/A"} · PAN: ${crifPan || "N/A"}`
+                              : `Mobile: ${mobileNumber || "N/A"} · Name: ${[firstName, lastName].filter(Boolean).join(" ") || "N/A"}`}
                           </p>
-                          <p>Status: {String(resData.account_status || resData.pan_status || resData.aadhaar_status || responseJson.message || "Invalid / Not Found")}</p>
+                          <p>
+                            Status:{" "}
+                            {typeof resData.account_status === "string"
+                              ? resData.account_status
+                              : typeof resData.pan_status === "string"
+                              ? resData.pan_status
+                              : typeof resData.aadhaar_status === "string"
+                              ? resData.aadhaar_status
+                              : typeof responseJson.message === "string"
+                              ? responseJson.message
+                              : "Verification Failed / Invalid Input"}
+                          </p>
                         </div>
                       </div>
                     )}

@@ -122,17 +122,6 @@ export async function generateTransUnionReportPdf(data) {
   const textGrey = rgb(85 / 255, 85 / 255, 85 / 255);       // #555555 (Footers & secondary)
   const cibilNavy = rgb(0.0, 56 / 255, 101 / 255);          // #003865 (CIBIL Dark Navy)
 
-  // Authentic TransUnion CIBIL PNG Logo (157x55) embedded directly from Base64
-  const TRANSUNION_LOGO_BASE64 = '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';
-
-  let embeddedLogo = null;
-  try {
-    const rawPngBytes = Buffer.from(TRANSUNION_LOGO_BASE64, 'base64');
-    embeddedLogo = await pdfDoc.embedPng(rawPngBytes);
-  } catch (err) {
-    console.warn('[PDF Generator] Could not embed PNG logo:', err);
-  }
-
   let currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   let y = PAGE_HEIGHT;
 
@@ -178,43 +167,34 @@ export async function generateTransUnionReportPdf(data) {
   // =========================================================================
   // PAGE 1: HEADER & LOGO (Exact y=789 to 762)
   // =========================================================================
-  if (embeddedLogo) {
-    currentPage.drawImage(embeddedLogo, {
-      x: LEFT_X,
-      y: 789,
-      width: 105.6,
-      height: 37,
-    });
-  } else {
-    // Pixel-accurate vector representation matching original TransUnion CIBIL logo
-    currentPage.drawCircle({
-      x: LEFT_X + 9,
-      y: 808,
-      size: 7.5,
-      color: cibilCyan,
-    });
-    currentPage.drawText('tu', {
-      x: LEFT_X + 5.5,
-      y: 805.2,
-      size: 8,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-    currentPage.drawText('TransUnion.', {
-      x: LEFT_X + 20,
-      y: 803,
-      size: 13.5,
-      font: fontBold,
-      color: cibilCyan,
-    });
-    currentPage.drawText('CIBIL', {
-      x: LEFT_X + 104,
-      y: 803,
-      size: 13.5,
-      font: fontBold,
-      color: cibilNavy,
-    });
-  }
+  // Pixel-accurate vector representation matching original TransUnion CIBIL logo
+  currentPage.drawCircle({
+    x: LEFT_X + 9,
+    y: 808,
+    size: 7.5,
+    color: cibilCyan,
+  });
+  currentPage.drawText('tu', {
+    x: LEFT_X + 5.5,
+    y: 805.2,
+    size: 8,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+  currentPage.drawText('TransUnion.', {
+    x: LEFT_X + 20,
+    y: 803,
+    size: 13.5,
+    font: fontBold,
+    color: cibilCyan,
+  });
+  currentPage.drawText('CIBIL', {
+    x: LEFT_X + 104,
+    y: 803,
+    size: 13.5,
+    font: fontBold,
+    color: cibilNavy,
+  });
 
   // Top Yellow Banner: CUSTOMER CIR
   currentPage.drawRectangle({

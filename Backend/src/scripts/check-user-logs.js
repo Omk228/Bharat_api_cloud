@@ -1,34 +1,40 @@
 import { dbPool } from '../core/config/db.config.js';
-import { PricingService } from '../modules/pricing/pricing.service.js';
 
-async function main() {
-  const [user] = await dbPool.query('SELECT id, email, wallet_balance FROM users WHERE email = ?', ['loan@geetpay.in']);
-  console.log('User:', user[0]);
-  const userId = user[0].id;
+async function run() {
+  try {
+    const [users] = await dbPool.query('SELECT * FROM users');
+    console.log('=== USERS ===');
+    console.table(users);
 
-  const pTU = await PricingService.getEffectivePrice('/srv5/transunion-Score-Hybrid', userId);
-  const pCrif = await PricingService.getEffectivePrice('/crif/Credit-ScoreV4', userId);
-  const pStmt = await PricingService.getEffectivePrice('/srv2/statement-analyzer', userId);
-  console.log('Effective Pricing for user (including GST):', { pTU, pCrif, pStmt });
+    const [tables] = await dbPool.query('SHOW TABLES');
+    const tableNames = tables.map(t => Object.values(t)[0]);
+    console.log('=== ALL TABLES ===', tableNames);
 
-  const [pricingRows] = await dbPool.query('SELECT * FROM user_api_pricing WHERE user_id = ?', [userId]);
-  console.log('User custom pricing rows:', pricingRows);
+    const [creds] = await dbPool.query('SELECT * FROM api_credentials WHERE user_id = 3');
+    console.log('=== USER 3 CREDENTIALS ===');
+    console.table(creds);
 
-  const [catalog] = await dbPool.query('SELECT * FROM catalog WHERE id IN (?, ?, ?)', ['api_transunion_cibil_v5', 'api_crif_credit_score_v4', 'api_bank_statement']);
-  console.log('Catalog rows:', catalog);
+    const [hitLogsCols] = await dbPool.query('DESCRIBE api_hit_logs');
+    console.log('=== api_hit_logs columns ===');
+    console.table(hitLogsCols.map(c => ({ Field: c.Field, Type: c.Type })));
 
-  const [recentLogs] = await dbPool.query("SELECT id, endpoint, cost, status_code, result_code, created_at, DATE_FORMAT(CONVERT_TZ(created_at, '+00:00', '+05:30'), '%Y-%m-%d %h:%i:%s %p') as ist FROM api_hit_logs WHERE user_id = ? ORDER BY id DESC LIMIT 15", [userId]);
-  console.log('Recent api_hit_logs for user:');
-  console.table(recentLogs);
+    const [recentHitLogs] = await dbPool.query('SELECT * FROM api_hit_logs ORDER BY created_at DESC LIMIT 10');
+    console.log('=== RECENT api_hit_logs ===');
+    console.table(recentHitLogs);
 
-  const [recentTx] = await dbPool.query('SELECT * FROM wallet_transactions WHERE user_id = ? ORDER BY id DESC LIMIT 10', [userId]);
-  console.log('Recent wallet_transactions for user:');
-  console.table(recentTx);
+    const [txCols] = await dbPool.query('DESCRIBE wallet_transactions');
+    console.log('=== wallet_transactions columns ===');
+    console.table(txCols.map(c => ({ Field: c.Field, Type: c.Type })));
 
-  const [allCreds] = await dbPool.query('SELECT * FROM api_credentials WHERE user_id = ?', [userId]);
-  console.log('Credentials:', allCreds);
+    const [recentTxs] = await dbPool.query('SELECT * FROM wallet_transactions ORDER BY created_at DESC LIMIT 10');
+    console.log('=== RECENT wallet_transactions ===');
+    console.table(recentTxs);
 
-  await dbPool.end();
+    process.exit(0);
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
 }
 
-main().catch(console.error);
+run();
