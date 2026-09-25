@@ -307,22 +307,19 @@ export async function generateTransUnionReportPdf(data) {
   currentPage.drawText('ISSUE DATE', { x: 357.0, y: 526.1, size: 7, font: fontBold, color: cibilCyan });
   currentPage.drawText('EXPIRATION DATE', { x: 447.0, y: 526.1, size: 7, font: fontBold, color: cibilCyan });
 
-  const identifications = data.identifications && data.identifications.length > 0
+  const identifications = (data.identifications && data.identifications.length > 0)
     ? data.identifications
-    : [
-        { type: 'SocialId', number: '1548682832', issueDate: '-', expirationDate: '-' },
-        { type: 'TaxId', number: cleanText(data.applicant?.pan) || 'AXCPR4370H', issueDate: '-', expirationDate: '-' },
-        { type: 'CkycId', number: '10083765203299', issueDate: '-', expirationDate: '-' }
-      ];
+    : (data.applicant?.pan ? [{ type: 'TaxId', number: cleanText(data.applicant.pan), issueDate: '-', expirationDate: '-' }] : []);
 
   const idRowYs = [504.3, 487.81, 471.32];
-  identifications.slice(0, 3).forEach((idItem, idx) => {
+  const idRenderList = identifications.length > 0 ? identifications.slice(0, 3) : [{ type: '-', number: '-', issueDate: '-', expirationDate: '-' }];
+  idRenderList.forEach((idItem, idx) => {
     const rowY = idRowYs[idx] || (504.3 - idx * 16.49);
     currentPage.drawRectangle({ x: LEFT_X, y: rowY, width: 156.34, height: 16.49, color: boxGrey });
-    currentPage.drawText(cleanText(idItem.type), { x: 21, y: rowY + 6.1, size: 7, font: fontRegular, color: textBlack });
+    currentPage.drawText(cleanText(idItem.type) || '-', { x: 21, y: rowY + 6.1, size: 7, font: fontRegular, color: textBlack });
 
     currentPage.drawRectangle({ x: 174.34, y: rowY, width: 180.45, height: 16.49, color: boxGrey });
-    currentPage.drawText(cleanText(idItem.number), { x: 177.3, y: rowY + 6.1, size: 7, font: fontRegular, color: textBlack });
+    currentPage.drawText(cleanText(idItem.number) || '-', { x: 177.3, y: rowY + 6.1, size: 7, font: fontRegular, color: textBlack });
 
     currentPage.drawRectangle({ x: 354.79, y: rowY, width: 89.99, height: 16.49, color: boxGrey });
     currentPage.drawText(cleanText(idItem.issueDate) || '-', { x: 357.8, y: rowY + 6.1, size: 7, font: fontRegular, color: textBlack });
@@ -342,23 +339,19 @@ export async function generateTransUnionReportPdf(data) {
   currentPage.drawText('TELEPHONE NUMBER', { x: 179.3, y: 443.8, size: 7, font: fontBold, color: cibilCyan });
   currentPage.drawText('TELEPHONE EXTENSION', { x: 367.8, y: 443.8, size: 7, font: fontBold, color: cibilCyan });
 
-  const telephones = data.telephones && data.telephones.length > 0
+  const telephones = (data.telephones && data.telephones.length > 0)
     ? data.telephones
-    : [
-        { type: '01', number: cleanText(data.applicant?.mobile) || '917814445169', extension: '-' },
-        { type: '01', number: '917814445169', extension: '-' },
-        { type: '01', number: '9372031154', extension: '-' },
-        { type: '00', number: '06122550092', extension: '-' }
-      ];
+    : (data.applicant?.mobile ? [{ type: '01', number: cleanText(data.applicant.mobile), extension: '-' }] : []);
 
   const telRowYs = [422.05, 405.56, 389.07, 372.58];
-  telephones.slice(0, 4).forEach((tel, idx) => {
+  const telRenderList = telephones.length > 0 ? telephones.slice(0, 4) : [{ type: '-', number: '-', extension: '-' }];
+  telRenderList.forEach((tel, idx) => {
     const rowY = telRowYs[idx] || (422.05 - idx * 16.49);
     currentPage.drawRectangle({ x: LEFT_X, y: rowY, width: 159.11, height: 16.49, color: boxGrey });
-    currentPage.drawText(cleanText(tel.type) || '01', { x: 21, y: rowY + 6.15, size: 7, font: fontRegular, color: textBlack });
+    currentPage.drawText(cleanText(tel.type) || '-', { x: 21, y: rowY + 6.15, size: 7, font: fontRegular, color: textBlack });
 
     currentPage.drawRectangle({ x: 177.11, y: rowY, width: 188.45, height: 16.49, color: boxGrey });
-    currentPage.drawText(cleanText(tel.number), { x: 180.1, y: rowY + 6.15, size: 7, font: fontRegular, color: textBlack });
+    currentPage.drawText(cleanText(tel.number) || '-', { x: 180.1, y: rowY + 6.15, size: 7, font: fontRegular, color: textBlack });
 
     currentPage.drawRectangle({ x: 365.57, y: rowY, width: 211.43, height: 16.49, color: boxGrey });
     currentPage.drawText(cleanText(tel.extension) || '-', { x: 368.6, y: rowY + 6.15, size: 7, font: fontRegular, color: textBlack });
@@ -372,15 +365,13 @@ export async function generateTransUnionReportPdf(data) {
   drawCyanHeader('EMAIL CONTACT(S):', 360.1);
   currentPage.drawText('EMAIL ADDRESS', { x: 20.0, y: 345.1, size: 7.2, font: fontBold, color: cibilCyan });
 
-  const emails = data.emails && data.emails.length > 0
-    ? data.emails
-    : ['OFFICIAL.RAHULRITURAJ@GMAIL.COM', 'CENTRALLYYOURS@GMAIL.COM'];
-
+  const emails = data.emails || [];
   const emailRowYs = [322.82, 305.73];
-  emails.slice(0, 2).forEach((email, idx) => {
+  const emailRenderList = emails.length > 0 ? emails.slice(0, 2) : ['-'];
+  emailRenderList.forEach((email, idx) => {
     const rowY = emailRowYs[idx] || (322.82 - idx * 17.09);
     currentPage.drawRectangle({ x: LEFT_X, y: rowY, width: CONTENT_WIDTH, height: 17.09, color: boxGrey });
-    currentPage.drawText(cleanText(email).toUpperCase(), { x: 21, y: rowY + 6.3, size: 7.4, font: fontRegular, color: textBlack });
+    currentPage.drawText(cleanText(email).toUpperCase() || '-', { x: 21, y: rowY + 6.3, size: 7.4, font: fontRegular, color: textBlack });
   });
 
   drawDividerLine(305.03);
@@ -390,25 +381,21 @@ export async function generateTransUnionReportPdf(data) {
   // =========================================================================
   drawCyanHeader('ADDRESS(ES):', 293.2);
 
-  const addresses = data.addresses && data.addresses.length > 0
-    ? data.addresses
-    : [
-        { address: 'RESIDENTIAL FLOOR NO-59D UNITED BOLLYWOOD . ., 03, 140603', category: '02', residenceCode: '', dateReported: '15-06-2025' },
-        { address: 'RAJIV NAGAR PATNA B/13 ROAD NO- 18 B/13 ROAD NO- 18, 10, 800024', category: '01', residenceCode: '', dateReported: '11-10-2024' },
-        { address: 'FLAT NOA 901 SKYLINE PARK VIP ROAD ZIRAKPUR MOHALI PATIALASOUTH CITY, 03, 140603', category: '02', residenceCode: '', dateReported: '11-10-2024' },
-        { address: 'H NO 307 2ND FLOOR ORCHID ISLAND SECTOR 51 NEAR ARTIMIS HOSPITAL GURGAON, 04, 160002', category: '01', residenceCode: '', dateReported: '30-11-2023' }
-      ];
-
+  const addresses = data.addresses || [];
   const addrRowYs = [257.16, 226.48, 195.8, 165.12];
-  addresses.slice(0, 4).forEach((addr, idx) => {
+  const addrRenderList = addresses.length > 0
+    ? addresses.slice(0, 4)
+    : [{ address: '-', category: '-', residenceCode: '-', dateReported: repDate }];
+
+  addrRenderList.forEach((addr, idx) => {
     const rowY = addrRowYs[idx] || (257.16 - idx * 30.68);
     currentPage.drawRectangle({ x: LEFT_X, y: rowY, width: CONTENT_WIDTH, height: 30.68, color: boxGrey });
 
     // Line 1: Address (Black Bold label, Black Regular value)
-    drawLabelValue(currentPage, 'ADDRESS :', cleanText(addr.address).toUpperCase().slice(0, 85), 21.5, rowY + 19.84, 7, fontBold, fontRegular, textBlack, textBlack, 62.0);
+    drawLabelValue(currentPage, 'ADDRESS :', cleanText(addr.address).toUpperCase().slice(0, 85) || '-', 21.5, rowY + 19.84, 7, fontBold, fontRegular, textBlack, textBlack, 62.0);
 
     // Line 2: Category & Dates (Black Bold labels, Black Regular values)
-    drawLabelValue(currentPage, 'CATEGORY:', cleanText(addr.category || '02'), 23.0, rowY + 8.0, 6.8, fontBold, fontBold, textBlack, textBlack, 67.0);
+    drawLabelValue(currentPage, 'CATEGORY:', cleanText(addr.category || '-'), 23.0, rowY + 8.0, 6.8, fontBold, fontBold, textBlack, textBlack, 67.0);
     drawLabelValue(currentPage, 'RESIDENCE CODE:', cleanText(addr.residenceCode || ''), 154.2, rowY + 8.0, 6.8, fontBold, fontBold, textBlack, textBlack, 228.0);
     drawLabelValue(currentPage, 'DATE REPORTED:', formatDate(addr.dateReported) || repDate, 324.1, rowY + 8.0, 6.8, fontBold, fontBold, textBlack, textBlack, 390.0);
   });
@@ -427,20 +414,20 @@ export async function generateTransUnionReportPdf(data) {
   currentPage.drawText('NET / GROSS INCOME INDICATOR', { x: 279.7, y: 137.7, size: 7, font: fontBold, color: cibilCyan });
   currentPage.drawText('MONTHLY / ANNUAL INCOME INDICATOR', { x: 415.4, y: 137.7, size: 7, font: fontBold, color: cibilCyan });
 
-  const empList = data.employment && data.employment.length > 0
+  const empList = (data.employment && data.employment.length > 0)
     ? data.employment
-    : [{ accountType: '13', dateReported: '09-08-2026', occupationCode: '03', income: '', netGrossIndicator: '', monthlyAnnualIndicator: '' }];
+    : [{ accountType: '-', dateReported: repDate, occupationCode: '-', income: '', netGrossIndicator: '', monthlyAnnualIndicator: '' }];
 
   const empRow = empList[0];
   const empY = 115.86;
   currentPage.drawRectangle({ x: LEFT_X, y: empY, width: 67.28, height: 16.49, color: boxGrey });
-  currentPage.drawText(cleanText(empRow.accountType) || '13', { x: 21, y: 122.0, size: 7, font: fontRegular, color: textBlack });
+  currentPage.drawText(cleanText(empRow.accountType) || '-', { x: 21, y: 122.0, size: 7, font: fontRegular, color: textBlack });
 
   currentPage.drawRectangle({ x: 85.28, y: empY, width: 72.55, height: 16.49, color: boxGrey });
   currentPage.drawText(formatDate(empRow.dateReported) || repDate, { x: 88.3, y: 122.0, size: 7, font: fontRegular, color: textBlack });
 
   currentPage.drawRectangle({ x: 157.83, y: empY, width: 83.07, height: 16.49, color: boxGrey });
-  currentPage.drawText(cleanText(empRow.occupationCode) || '03', { x: 160.8, y: 122.0, size: 7, font: fontRegular, color: textBlack });
+  currentPage.drawText(cleanText(empRow.occupationCode) || '-', { x: 160.8, y: 122.0, size: 7, font: fontRegular, color: textBlack });
 
   currentPage.drawRectangle({ x: 240.9, y: empY, width: 36.57, height: 16.49, color: boxGrey });
   currentPage.drawRectangle({ x: 277.47, y: empY, width: 135.74, height: 16.49, color: boxGrey });
@@ -1133,15 +1120,8 @@ export async function generateCibilPdfReport(reportData = {}) {
     score: extracted.cibilScore,
     scoreName: extracted.scoreName || 'CIBILTransUnionScore3',
     scoringFactors: extracted.scoringFactors || [],
-    identifications: extracted.identifications && extracted.identifications.length > 0
-      ? extracted.identifications
-      : [
-          { type: 'TaxId', number: panNumber, issueDate: '-', expirationDate: '-' },
-          { type: 'SocialId', number: '1548682832', issueDate: '-', expirationDate: '-' }
-        ],
-    telephones: extracted.telephones && extracted.telephones.length > 0
-      ? extracted.telephones
-      : [{ type: '01', number: mobileNumber, extension: '-' }],
+    identifications: extracted.identifications || [],
+    telephones: extracted.telephones || [],
     emails: extracted.emails || [],
     addresses: extracted.addresses || [],
     employment: extracted.employment || [],
