@@ -455,11 +455,11 @@ function TestApiPage() {
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
 
   // Mobile Operator Check fields
-  const [operatorMobile, setOperatorMobile] = useState("9876543210");
+  const [operatorMobile, setOperatorMobile] = useState("");
   const [operatorClientRef, setOperatorClientRef] = useState("");
 
   // Work / Corporate Email Verifier (Standard) fields
-  const [workEmailInput, setWorkEmailInput] = useState("support@geetpay.in");
+  const [workEmailInput, setWorkEmailInput] = useState("");
   const [workEmailClientRef, setWorkEmailClientRef] = useState("");
 
   // Bank Account Validation V2 fields
@@ -808,7 +808,7 @@ function TestApiPage() {
   const requestPayload: Record<string, unknown> =
     selectedService === "mobile_operator"
       ? {
-          mobile_number: operatorMobile.trim().replace(/\D/g, "") || "9876543210",
+          mobile_number: operatorMobile.trim().replace(/\D/g, ""),
           ...(operatorClientRef.trim() ? { client_ref_num: operatorClientRef.trim() } : {}),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
@@ -833,7 +833,7 @@ function TestApiPage() {
         }
       : selectedService === "work_email"
       ? {
-          email: workEmailInput.trim().toLowerCase() || "support@geetpay.in",
+          email: workEmailInput.trim().toLowerCase(),
           ...(workEmailClientRef.trim() ? { client_ref_num: workEmailClientRef.trim() } : {}),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
@@ -2194,7 +2194,7 @@ function TestApiPage() {
                             maxLength={10}
                             value={operatorMobile}
                             onChange={(e) => setOperatorMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                            placeholder="e.g. 9876543210"
+                            placeholder=""
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-sky-400"
                           />
                         </div>
@@ -2209,7 +2209,7 @@ function TestApiPage() {
                         <input
                           value={operatorClientRef}
                           onChange={(e) => setOperatorClientRef(e.target.value)}
-                          placeholder="e.g. OPR_REF_001"
+                          placeholder=""
                           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-sky-400"
                         />
                       </div>
@@ -2297,7 +2297,7 @@ function TestApiPage() {
                             type="email"
                             value={workEmailPlusInput}
                             onChange={(e) => setWorkEmailPlusInput(e.target.value)}
-                            placeholder="e.g. name@company.com"
+                            placeholder=""
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-emerald-400"
                           />
                         </div>
@@ -2312,7 +2312,7 @@ function TestApiPage() {
                         <input
                           value={workEmailPlusClientRef}
                           onChange={(e) => setWorkEmailPlusClientRef(e.target.value)}
-                          placeholder="e.g. WKP_REF_001"
+                          placeholder=""
                           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
                         />
                       </div>
@@ -2343,46 +2343,9 @@ function TestApiPage() {
                             type="email"
                             value={workEmailInput}
                             onChange={(e) => setWorkEmailInput(e.target.value)}
-                            placeholder="e.g. support@geetpay.in or name@company.com"
+                            placeholder=""
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-violet-400"
                           />
-                        </div>
-                      </div>
-
-                      {/* Quick Sample Presets */}
-                      <div>
-                        <span className="block text-[11px] text-muted-foreground mb-1.5 font-medium">
-                          Quick Test Samples:
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setWorkEmailInput("support@geetpay.in")}
-                            className="rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-mono font-medium text-violet-300 hover:bg-violet-500/20 transition-colors"
-                          >
-                            support@geetpay.in (Corporate)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setWorkEmailInput("contact@tatamotors.com")}
-                            className="rounded-md border border-border bg-secondary/50 px-2 py-1 text-[10px] font-mono font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                          >
-                            contact@tatamotors.com
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setWorkEmailInput("alex@gmail.com")}
-                            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-mono font-medium text-amber-300 hover:bg-amber-500/20 transition-colors"
-                          >
-                            alex@gmail.com (Free Public)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setWorkEmailInput("fake-test-user@invalid-domain-xyz-404.com")}
-                            className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[10px] font-mono font-medium text-rose-300 hover:bg-rose-500/20 transition-colors"
-                          >
-                            invalid-domain-xyz-404.com
-                          </button>
                         </div>
                       </div>
 
@@ -2395,7 +2358,7 @@ function TestApiPage() {
                         <input
                           value={workEmailClientRef}
                           onChange={(e) => setWorkEmailClientRef(e.target.value)}
-                          placeholder="e.g. CLI_EMAIL_001"
+                          placeholder=""
                           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-violet-400"
                         />
                       </div>
