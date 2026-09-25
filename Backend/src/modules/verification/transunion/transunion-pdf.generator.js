@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont, PDFImage } from 'pdf-lib';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const CIBIL_ACCOUNT_TYPE_MAP = {
   "00": "Other",
@@ -121,6 +122,19 @@ export async function generateTransUnionReportPdf(data) {
   const textBlack = rgb(0.0, 0.0, 0.0);                     // #000000 (Data values & lines)
   const textGrey = rgb(85 / 255, 85 / 255, 85 / 255);       // #555555 (Footers & secondary)
   const cibilNavy = rgb(0.0, 56 / 255, 101 / 255);          // #003865 (CIBIL Dark Navy)
+  // Authentic TransUnion CIBIL PNG Logo (301x67) extracted directly from reference CIR
+  let embeddedLogo = null;
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const logoFilePath = path.join(__dirname, 'cibil-logo-ref.png');
+    if (fs.existsSync(logoFilePath)) {
+      const rawPngBytes = fs.readFileSync(logoFilePath);
+      embeddedLogo = await pdfDoc.embedPng(rawPngBytes);
+    }
+  } catch (err) {
+    console.warn('[PDF Generator] Could not embed PNG logo file:', err);
+  }
 
   let currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   let y = PAGE_HEIGHT;
@@ -167,34 +181,14 @@ export async function generateTransUnionReportPdf(data) {
   // =========================================================================
   // PAGE 1: HEADER & LOGO (Exact y=789 to 762)
   // =========================================================================
-  // Pixel-accurate vector representation matching original TransUnion CIBIL logo
-  currentPage.drawCircle({
-    x: LEFT_X + 9,
-    y: 808,
-    size: 7.5,
-    color: cibilCyan,
-  });
-  currentPage.drawText('tu', {
-    x: LEFT_X + 5.5,
-    y: 805.2,
-    size: 8,
-    font: fontBold,
-    color: rgb(1, 1, 1),
-  });
-  currentPage.drawText('TransUnion.', {
-    x: LEFT_X + 20,
-    y: 803,
-    size: 13.5,
-    font: fontBold,
-    color: cibilCyan,
-  });
-  currentPage.drawText('CIBIL', {
-    x: LEFT_X + 104,
-    y: 803,
-    size: 13.5,
-    font: fontBold,
-    color: cibilNavy,
-  });
+  if (embeddedLogo) {
+    currentPage.drawImage(embeddedLogo, {
+      x: LEFT_X,
+      y: 789.0,
+      width: 131.55,
+      height: 35.0,
+    });
+  }
 
   // Top Yellow Banner: CUSTOMER CIR
   currentPage.drawRectangle({
