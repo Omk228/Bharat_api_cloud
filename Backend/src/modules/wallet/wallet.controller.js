@@ -30,9 +30,9 @@ export const walletController = {
    * Get API Hit Logs
    */
   getHitLogs: asyncHandler(async (req, res) => {
-    const { limit = 10000, offset = 0, statusCode, search, startDate, endDate, date, service, endpoint } = req.query;
+    const { limit = 'all', offset = 0, statusCode, search, startDate, endDate, date, service, endpoint } = req.query;
     const logs = await walletService.getHitLogs(req.user.id, {
-      limit: limit === 'all' ? 'all' : parseInt(limit, 10) || 10000,
+      limit: limit === 'all' || limit === undefined || limit === null || limit === '0' || limit === 0 ? 'all' : parseInt(limit, 10),
       offset: parseInt(offset, 10) || 0,
       statusCode: statusCode ? (statusCode === 'all' ? null : parseInt(statusCode, 10)) : null,
       search,

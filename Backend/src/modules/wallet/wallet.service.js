@@ -258,10 +258,13 @@ export const walletService = {
 
     query += ' ORDER BY l.created_at DESC';
 
-    const parsedLimit = limit === 'all' ? 100000 : Math.min(parseInt(limit, 10) || 10000, 100000);
-    const parsedOffset = parseInt(offset, 10) || 0;
-    query += ' LIMIT ? OFFSET ?';
-    params.push(parsedLimit, parsedOffset);
+    if (limit && limit !== 'all' && limit !== '0' && limit !== 0 && limit !== -1) {
+      const parsedLimit = parseInt(limit, 10);
+      if (parsedLimit > 0) {
+        query += ' LIMIT ? OFFSET ?';
+        params.push(parsedLimit, parseInt(offset, 10) || 0);
+      }
+    }
 
     const [rows] = await dbPool.query(query, params);
 

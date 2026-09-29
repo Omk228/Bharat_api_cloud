@@ -185,6 +185,17 @@ const ENDPOINT_CATALOG_MAP = {
   'dth_operator': ['api_dth_operator_check', '/verify/dth-operator'],
   'dth_operator_check': ['api_dth_operator_check', '/verify/dth-operator'],
   'dth_check': ['api_dth_operator_check', '/verify/dth-operator'],
+
+  // DTH Operator Advance (WAY2API)
+  '/api/v1/verify/dth-advance': ['api_dth_operator_advance', '/verify/dth-advance', '/api/v1/verify/dth-advance'],
+  '/verify/dth-advance': ['api_dth_operator_advance', '/verify/dth-advance'],
+  '/api/v1/verify/dth-operator-advance': ['api_dth_operator_advance', '/verify/dth-operator-advance'],
+  '/verify/dth-operator-advance': ['api_dth_operator_advance', '/verify/dth-operator-advance'],
+  '/api/v1/dth/info': ['api_dth_operator_advance', '/dth/info'],
+  '/dth/info': ['api_dth_operator_advance', '/dth/info'],
+  'dth_advance': ['api_dth_operator_advance', '/verify/dth-advance'],
+  'dth_operator_advance': ['api_dth_operator_advance', '/verify/dth-advance'],
+  'dth_info': ['api_dth_operator_advance', '/verify/dth-advance'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -217,6 +228,9 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   dth_operator: 'api_dth_operator_check',
   dth_operator_check: 'api_dth_operator_check',
   dth_check: 'api_dth_operator_check',
+  dth_advance: 'api_dth_operator_advance',
+  dth_operator_advance: 'api_dth_operator_advance',
+  dth_info: 'api_dth_operator_advance',
 };
 
 export const GST_RATE = 0.18;

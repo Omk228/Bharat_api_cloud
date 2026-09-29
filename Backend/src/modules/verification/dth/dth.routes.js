@@ -7,7 +7,7 @@ const router = Router();
 /**
  * DTH Operator Check Routes
  */
-const supportedPaths = [
+const supportedCheckPaths = [
   '/verify/dth-operator',
   '/api/v1/verify/dth-operator',
   '/verify/dth-operator-check',
@@ -18,9 +18,26 @@ const supportedPaths = [
   '/api/v1/verify/dth',
 ];
 
-supportedPaths.forEach((path) => {
+supportedCheckPaths.forEach((path) => {
   router.post(path, verifyApiClientCredentials, DthOperatorController.checkDthOperator);
   router.get(path, verifyApiClientCredentials, DthOperatorController.checkDthOperator);
+});
+
+/**
+ * DTH Operator Advance Routes (Customer Info, Plan, Balance, Address)
+ */
+const supportedAdvancePaths = [
+  '/verify/dth-advance',
+  '/api/v1/verify/dth-advance',
+  '/verify/dth-operator-advance',
+  '/api/v1/verify/dth-operator-advance',
+  '/dth/info',
+  '/api/v1/dth/info',
+];
+
+supportedAdvancePaths.forEach((path) => {
+  router.post(path, verifyApiClientCredentials, DthOperatorController.checkDthAdvance);
+  router.get(path, verifyApiClientCredentials, DthOperatorController.checkDthAdvance);
 });
 
 export default router;

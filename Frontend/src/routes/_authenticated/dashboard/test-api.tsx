@@ -47,6 +47,8 @@ import {
   Radio,
   FileCheck,
   Tv,
+  Wallet,
+  Hash,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -54,7 +56,7 @@ import { toast } from "sonner";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiClient, getHostBase } from "@/lib/api-client";
 import { getStoredUserEmail } from "@/lib/demo-store";
-import { generateTransUnionPdfFromApiResponse } from "@/lib/transunionPdfGenerator";
+import { generateTransUnionPdfFromApiResponse, extractTransUnionFromApiResponse } from "@/lib/transunionPdfGenerator";
 import { generateCrifPdfFromApiResponse, normalizeCrifReportData } from "@/lib/crifPdfGenerator";
 
 export function isUpstreamLowBalanceError(dataOrError: unknown): boolean {
@@ -221,13 +223,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "dth_operator" || search["service"] === "dth-operator" || search["service"] === "dth_check" || search["service"] === "dth-check" || search["service"] === "dth-operator-check" || search["service"] === "dth"
+      search["service"] === "dth_advance" || search["service"] === "dth-advance" || search["service"] === "dth_operator_advance" || search["service"] === "dth-operator-advance" || search["service"] === "dth_info" || search["service"] === "dth-info"
+        ? "dth_advance"
+        : search["service"] === "dth_operator" || search["service"] === "dth-operator" || search["service"] === "dth_check" || search["service"] === "dth-check" || search["service"] === "dth-operator-check" || search["service"] === "dth"
         ? "dth_operator"
         : search["service"] === "mobile_operator" || search["service"] === "mobile-operator" || search["service"] === "operator_check" || search["service"] === "operator-check" || search["service"] === "operator-circle" || search["service"] === "mobile-operator-check"
         ? "mobile_operator"
@@ -280,7 +284,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
       { title: "Test API Console — Interactive Gateway — Bharat API Cloud" },
       {
         name: "description",
-        content: "Live sandbox test console for DTH Operator Check, Mobile Operator Check, Work Email Verifier Plus, Work Email Verifier, Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
+        content: "Live sandbox test console for DTH Operator Advance, DTH Operator Check, Mobile Operator Check, Work Email Verifier Plus, Work Email Verifier, Bank Statement Analyzer V2, CRIF High Mark Credit Score V4, TransUnion CIBIL Score, PAN, Pan Details Plus, Aadhaar, DigiLocker Digital KYC, Bank Verification, Bank Account Validation, Mobile to Bank Advance, Mobile to UAN, UAN to Employment History, Mobile to Prefill, Mobile To Name Finder, Requester IP Lookup, Reverse Geocoding, Domain Age, Mobile to UPI, and IFSC Lookup APIs.",
       },
     ],
   }),
@@ -290,8 +294,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator">(
-    searchParams.service === "dth_operator"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance">(
+    searchParams.service === "dth_advance"
+      ? "dth_advance"
+      : searchParams.service === "dth_operator"
       ? "dth_operator"
       : searchParams.service === "mobile_operator"
       ? "mobile_operator"
@@ -386,6 +392,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "dth_advance" || serviceKey === "dth-advance" || serviceKey === "dth_operator_advance" || serviceKey === "dth-operator-advance" || serviceKey === "dth_info") return 2.5;
     if (serviceKey === "dth_operator" || serviceKey === "dth-operator" || serviceKey === "dth_check" || serviceKey === "dth-check" || serviceKey === "dth-operator-check" || serviceKey === "dth") return 2.0;
     if (serviceKey === "mobile_operator" || serviceKey === "mobile-operator" || serviceKey === "operator_circle" || serviceKey === "operator-circle" || serviceKey === "mobile-operator-check") return 2.0;
     if (serviceKey === "bank_v2" || serviceKey === "bank-account-v2" || serviceKey === "bank_account_v2") return 2.0;
@@ -447,18 +454,23 @@ function TestApiPage() {
   };
 
   // TransUnion CIBIL fields
-  const [tuForename, setTuForename] = useState("Prashant");
-  const [tuSurname, setTuSurname] = useState("Kumar");
-  const [tuPhone, setTuPhone] = useState("8976543210");
+  const [tuForename, setTuForename] = useState("");
+  const [tuSurname, setTuSurname] = useState("");
+  const [tuPhone, setTuPhone] = useState("");
   const [tuGender, setTuGender] = useState("Male");
   const [tuPan, setTuPan] = useState("");
   const [tuDob, setTuDob] = useState("");
 
   // CRIF High Mark fields
-  const [crifMobile, setCrifMobile] = useState("9876543210");
-  const [crifFirstName, setCrifFirstName] = useState("Rahul");
-  const [crifLastName, setCrifLastName] = useState("CHAUDHARI");
+  const [crifMobile, setCrifMobile] = useState("");
+  const [crifFirstName, setCrifFirstName] = useState("");
+  const [crifLastName, setCrifLastName] = useState("");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // DTH Operator Advance fields
+  const [dthAdvanceNumber, setDthAdvanceNumber] = useState("");
+  const [dthAdvanceOperator, setDthAdvanceOperator] = useState("");
+  const [dthAdvanceClientRef, setDthAdvanceClientRef] = useState("");
 
   // DTH Operator Check fields
   const [dthNumber, setDthNumber] = useState("");
@@ -537,7 +549,7 @@ function TestApiPage() {
   const [mobileToBankConsent, setMobileToBankConsent] = useState("Y");
 
   // IFSC Lookup fields
-  const [ifscCodeInput, setIfscCodeInput] = useState("KKBK0004587");
+  const [ifscCodeInput, setIfscCodeInput] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [copiedRes, setCopiedRes] = useState(false);
@@ -796,7 +808,16 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "dth_operator"
+    selectedService === "dth_advance"
+      ? {
+          dth_number: dthAdvanceNumber.trim(),
+          operator: dthAdvanceOperator.trim(),
+          ...(dthAdvanceClientRef.trim() ? { client_ref_num: dthAdvanceClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "dth_operator"
       ? {
           dth_number: dthNumber.trim(),
           ...(dthClientRef.trim() ? { client_ref_num: dthClientRef.trim() } : {}),
@@ -894,11 +915,11 @@ function TestApiPage() {
           }
       : selectedService === "transunion"
       ? {
-          forename: tuForename.trim() || "Prashant",
-          surname: tuSurname.trim() || "Kumar",
-          phone_number: tuPhone.trim().replace(/\D/g, "") || "8976543210",
+          forename: tuForename.trim() || "<Forename>",
+          surname: tuSurname.trim() || "<Surname>",
+          phone_number: tuPhone.trim().replace(/\D/g, "") || "<10-digit Phone>",
           gender: tuGender || "Male",
-          pan_id: tuPan.trim().toUpperCase() || "ABCDE1234F",
+          pan_id: tuPan.trim().toUpperCase() || "<PAN Number>",
           ...(tuDob.trim() ? { date_of_birth: tuDob.trim() } : {}),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
@@ -909,14 +930,14 @@ function TestApiPage() {
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
-          mobile_no: crifMobile.trim().replace(/\D/g, "") || "9876543210",
+          mobile_no: crifMobile.trim().replace(/\D/g, "") || "<10-digit Mobile>",
           name_lookup: crifNameLookup,
-          first_name: crifFirstName.trim() || "Rahul",
-          last_name: crifLastName.trim() || "CHAUDHARI",
+          first_name: crifFirstName.trim() || "<First Name>",
+          last_name: crifLastName.trim() || "<Last Name>",
         }
       : selectedService === "ifsc"
       ? {
-          ifsc: ifscCodeInput.trim().toUpperCase() || "KKBK0004587",
+          ifsc: ifscCodeInput.trim().toUpperCase() || "<IFSC Code>",
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -1061,6 +1082,17 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "dth_advance") {
+      const cleanDth = dthAdvanceNumber.trim();
+      if (!cleanDth) {
+        toast.error("Please enter a DTH Subscriber ID / Account Number.");
+        return;
+      }
+      if (!dthAdvanceOperator.trim()) {
+        toast.error("Please enter a DTH Operator (e.g. dish_tv, tata_sky, airtel).");
+        return;
+      }
+    }
     if (selectedService === "dth_operator") {
       const cleanDth = dthNumber.trim();
       if (!cleanDth) {
@@ -1090,7 +1122,7 @@ function TestApiPage() {
       return;
     }
     if (selectedService === "work_email" && !workEmailInput.trim()) {
-      toast.error("Please enter a corporate email address (e.g. support@geetpay.in)");
+      toast.error("Please enter a corporate email address (e.g. support@acmecorp.com)");
       return;
     }
     if (selectedService === "statement_analyzer") {
@@ -1126,8 +1158,8 @@ function TestApiPage() {
         toast.error("Please enter Forename and Surname.");
         return;
       }
-      if (!tuPhone.trim()) {
-        toast.error("Please enter a 10-digit Phone Number.");
+      if (!tuPhone.trim() || tuPhone.trim().replace(/\D/g, "").length !== 10) {
+        toast.error("Please enter a valid 10-digit Phone Number.");
         return;
       }
       if (!tuPan.trim()) {
@@ -1169,7 +1201,7 @@ function TestApiPage() {
       return;
     }
     if (selectedService === "domain_age" && !domainName.trim()) {
-      toast.error("Please enter a valid domain name (e.g. geetpay.in or google.com)");
+      toast.error("Please enter a valid domain name (e.g. bharatapicloud.io or google.com)");
       return;
     }
     if (selectedService === "pan_plus" && !panPlusNumber.trim()) {
@@ -1204,6 +1236,10 @@ function TestApiPage() {
       toast.error("Please enter a 10-digit mobile number");
       return;
     }
+    if (selectedService === "ifsc" && !ifscCodeInput.trim()) {
+      toast.error("Please enter a Bank IFSC Code");
+      return;
+    }
     if (selectedService === "prefill" && (!mobileNumber.trim() || !firstName.trim())) {
       toast.error("Please enter Mobile Number and First Name");
       return;
@@ -1214,7 +1250,16 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "dth_operator") {
+      if (selectedService === "dth_advance") {
+        rawData = await apiClient.checkDthAdvance({
+          dth_number: dthAdvanceNumber.trim(),
+          operator: dthAdvanceOperator.trim(),
+          client_ref_num: dthAdvanceClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "dth_operator") {
         rawData = await apiClient.checkDthOperator({
           dth_number: dthNumber.trim(),
           client_ref_num: dthClientRef.trim() || undefined,
@@ -1328,11 +1373,11 @@ function TestApiPage() {
         }
       } else if (selectedService === "transunion") {
         rawData = await apiClient.verifyTransunion({
-          forename: tuForename.trim() || "Prashant",
-          surname: tuSurname.trim() || "Kumar",
-          phone_number: tuPhone.trim().replace(/\D/g, "") || "8976543210",
+          forename: tuForename.trim(),
+          surname: tuSurname.trim(),
+          phone_number: tuPhone.trim().replace(/\D/g, ""),
           gender: tuGender || "Male",
-          pan_id: tuPan.trim().toUpperCase() || "ABCDE1234F",
+          pan_id: tuPan.trim().toUpperCase(),
           date_of_birth: tuDob.trim() || undefined,
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
@@ -1350,7 +1395,7 @@ function TestApiPage() {
         });
       } else if (selectedService === "ifsc") {
         rawData = await apiClient.verifyIfsc({
-          ifsc: ifscCodeInput.trim().toUpperCase() || "KKBK0004587",
+          ifsc: ifscCodeInput.trim().toUpperCase(),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -1701,7 +1746,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "dth_operator"
+    selectedService === "dth_advance"
+      ? "/api/v1/verify/dth-advance"
+      : selectedService === "dth_operator"
       ? "/api/v1/verify/dth-operator"
       : selectedService === "mobile_operator"
       ? "/api/v1/verify/operator-circle"
@@ -1750,7 +1797,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "dth_operator"
+    selectedService === "dth_advance"
+      ? "DTH operator advance"
+      : selectedService === "dth_operator"
       ? "DTH operator check"
       : selectedService === "mobile_operator"
       ? "Mobile Operator Check"
@@ -1825,7 +1874,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "dth_operator"
+                {selectedService === "dth_advance"
+                  ? "Direct live DTH Operator Advance gateway: comprehensive subscriber intelligence including customer name, registered mobile, account balance, monthly plan, recharge timelines, and installation address powered by Bharat API Cloud."
+                  : selectedService === "dth_operator"
                   ? "Direct live DTH Operator Check gateway: real-time Direct-to-Home subscriber ID and operator identification (Tata Play, Sun Direct, Dish TV, Airtel Digital TV, D2H) powered by Bharat API Cloud."
                   : selectedService === "mobile_operator"
                   ? "Direct live Mobile Operator Check gateway: real-time telecom operator (Jio, Airtel, Vi, BSNL), telecom circle / state, and subscription type (Prepaid / Postpaid) verification powered by Bharat API Cloud."
@@ -1870,7 +1921,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "dth_operator"
+                    selectedService === "dth_advance"
+                      ? "dth-operator-advance"
+                      : selectedService === "dth_operator"
                       ? "dth-operator-check"
                       : selectedService === "mobile_operator"
                       ? "mobile-operator-check"
@@ -1934,6 +1987,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "dth_advance" && <Tv className="h-4 w-4 text-amber-400" />}
                   {selectedService === "dth_operator" && <Tv className="h-4 w-4 text-amber-400" />}
                   {selectedService === "mobile_operator" && <Smartphone className="h-4 w-4 text-sky-400" />}
                   {selectedService === "bank_v2" && <Landmark className="h-4 w-4 text-sky-400" />}
@@ -1959,6 +2013,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "dth_advance" && "DTH operator advance (/api/v1/verify/dth-advance)"}
                     {selectedService === "dth_operator" && "DTH operator check (/api/v1/verify/dth-operator)"}
                     {selectedService === "mobile_operator" && "Mobile Operator Check (/api/v1/verify/operator-circle)"}
                     {selectedService === "bank_v2" && "Bank Account Validation V2 (/api/v1/bank/account-validation)"}
@@ -2202,7 +2257,73 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "dth_operator" ? (
+                  {selectedService === "dth_advance" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Tv className="h-3.5 w-3.5 text-amber-400" /> DTH Number / Subscriber ID *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">Smart Card / Account No.</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={dthAdvanceNumber}
+                            onChange={(e) => setDthAdvanceNumber(e.target.value.trim())}
+                            placeholder="01234567890"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Tv className="h-3.5 w-3.5 text-amber-400" /> DTH Operator *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">e.g. airtel_dth, dish_tv, tata_sky, sun_direct, videocon_d2h</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={dthAdvanceOperator}
+                          onChange={(e) => setDthAdvanceOperator(e.target.value.trim())}
+                          placeholder="dish_tv"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-amber-400"
+                        />
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={dthAdvanceClientRef}
+                          onChange={(e) => setDthAdvanceClientRef(e.target.value)}
+                          placeholder="e.g. DTH_ADV_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-amber-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-amber-400">₹{getServicePrice("dth_advance").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time DTH Operator Advance intelligence: subscriber verification, customer name, registered mobile, account balance, active plan, recharge due dates, and installation address.
+                      </p>
+                    </>
+                  ) : selectedService === "dth_operator" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -2307,7 +2428,7 @@ function TestApiPage() {
                           type="text"
                           value={bankV2AccountNumber}
                           onChange={(e) => setBankV2AccountNumber(e.target.value)}
-                          placeholder="e.g. 1234567890"
+                          placeholder="Enter Bank Account Number"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none focus:border-sky-400"
                         />
                       </div>
@@ -2322,7 +2443,7 @@ function TestApiPage() {
                           type="text"
                           value={bankV2IfscCode}
                           onChange={(e) => setBankV2IfscCode(e.target.value.toUpperCase())}
-                          placeholder="e.g. HDFC0001234"
+                          placeholder="Enter Bank IFSC Code"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide uppercase outline-none focus:border-sky-400"
                         />
                       </div>
@@ -2336,7 +2457,7 @@ function TestApiPage() {
                         <input
                           value={bankV2ClientRef}
                           onChange={(e) => setBankV2ClientRef(e.target.value)}
-                          placeholder="e.g. BNK_REF_001"
+                          placeholder="Enter Client Reference (Optional)"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-sky-400"
                         />
                       </div>
@@ -2809,7 +2930,7 @@ function TestApiPage() {
                           <input
                             value={tuForename}
                             onChange={(e) => setTuForename(e.target.value)}
-                            placeholder="Prashant"
+                            placeholder="Enter Forename"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-amber-400"
                           />
                         </div>
@@ -2818,7 +2939,7 @@ function TestApiPage() {
                           <input
                             value={tuSurname}
                             onChange={(e) => setTuSurname(e.target.value)}
-                            placeholder="Kumar"
+                            placeholder="Enter Surname"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-amber-400"
                           />
                         </div>
@@ -2831,7 +2952,7 @@ function TestApiPage() {
                             value={tuPhone}
                             maxLength={10}
                             onChange={(e) => setTuPhone(e.target.value.replace(/\D/g, ""))}
-                            placeholder="8976543210"
+                            placeholder="Enter 10-digit Phone Number"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-amber-400"
                           />
                         </div>
@@ -2856,7 +2977,7 @@ function TestApiPage() {
                             value={tuPan}
                             maxLength={10}
                             onChange={(e) => setTuPan(e.target.value.toUpperCase().trim())}
-                            placeholder="ABCDE1234F"
+                            placeholder="Enter 10-digit PAN Number"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono uppercase outline-none focus:border-amber-400"
                           />
                         </div>
@@ -2891,7 +3012,7 @@ function TestApiPage() {
                             value={crifMobile}
                             maxLength={10}
                             onChange={(e) => setCrifMobile(e.target.value.replace(/\D/g, ""))}
-                            placeholder="e.g. 9876543210"
+                            placeholder="Enter 10-digit Mobile Number"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-rose-400"
                           />
                         </div>
@@ -2917,7 +3038,7 @@ function TestApiPage() {
                           <input
                             value={crifFirstName}
                             onChange={(e) => setCrifFirstName(e.target.value)}
-                            placeholder="e.g. Rahul"
+                            placeholder="Enter First Name"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-rose-400"
                           />
                         </div>
@@ -2926,7 +3047,7 @@ function TestApiPage() {
                           <input
                             value={crifLastName}
                             onChange={(e) => setCrifLastName(e.target.value)}
-                            placeholder="e.g. CHAUDHARI"
+                            placeholder="Enter Last Name"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium uppercase outline-none focus:border-rose-400"
                           />
                         </div>
@@ -2956,7 +3077,7 @@ function TestApiPage() {
                             value={ifscCodeInput}
                             maxLength={11}
                             onChange={(e) => setIfscCodeInput(e.target.value.toUpperCase().trim())}
-                            placeholder="e.g. KKBK0004587"
+                            placeholder="Enter Bank IFSC Code"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-blue-400 uppercase"
                           />
                           {ifscCodeInput.length > 0 && (
@@ -3056,7 +3177,7 @@ function TestApiPage() {
                             <input
                               value={digilockerClientId}
                               onChange={(e) => setDigilockerClientId(e.target.value.trim())}
-                              placeholder="e.g. digilocker_prpGVnusagiugoUNmePG"
+                              placeholder="Enter Client ID from Step 1"
                               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
                             />
                           </div>
@@ -3086,7 +3207,7 @@ function TestApiPage() {
                           value={panPlusNumber}
                           maxLength={10}
                           onChange={(e) => setPanPlusNumber(e.target.value.toUpperCase())}
-                          placeholder="Enter 10-digit PAN (e.g. ABCDE1234F)"
+                          placeholder="Enter 10-digit PAN Number"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-sky-400"
                         />
                       </div>
@@ -3114,7 +3235,7 @@ function TestApiPage() {
                           value={pan}
                           maxLength={10}
                           onChange={(e) => setPan(e.target.value.toUpperCase())}
-                          placeholder="Enter PAN (e.g. EHMPG2091E)"
+                          placeholder="Enter 10-digit PAN Number"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-primary"
                         />
                       </div>
@@ -3124,7 +3245,7 @@ function TestApiPage() {
                         <input
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="Enter full name (e.g. Shubham Gupta)"
+                          placeholder="Enter full name for verification"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
                         />
                       </label>
@@ -3174,7 +3295,7 @@ function TestApiPage() {
                           value={aadhaar}
                           maxLength={14}
                           onChange={(e) => setAadhaar(e.target.value)}
-                          placeholder="Enter Aadhaar (e.g. 975589822424)"
+                          placeholder="Enter 12-digit Aadhaar number"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary"
                         />
                       </div>
@@ -3208,7 +3329,7 @@ function TestApiPage() {
                         <input
                           value={creditorAccountId}
                           onChange={(e) => setCreditorAccountId(e.target.value.trim())}
-                          placeholder="Enter Account Number (e.g. 50100234567890)"
+                          placeholder="Enter Bank Account Number"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary"
                         />
                       </div>
@@ -3216,13 +3337,13 @@ function TestApiPage() {
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                           <span className="font-medium text-foreground">Bank IFSC Code *</span>
-                          <span className="text-[11px] text-muted-foreground">11 Characters (e.g. HDFC0000001)</span>
+                          <span className="text-[11px] text-muted-foreground">11 Characters</span>
                         </div>
                         <input
                           value={ifscCode}
                           maxLength={11}
                           onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
-                          placeholder="Enter IFSC Code (e.g. HDFC0000001)"
+                          placeholder="Enter Bank IFSC Code"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider uppercase outline-none focus:border-primary"
                         />
                       </div>
@@ -3241,13 +3362,13 @@ function TestApiPage() {
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                           <span className="font-medium text-foreground">Mobile *</span>
-                          <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 9876543210)</span>
+                          <span className="text-[11px] text-muted-foreground">10 Digits</span>
                         </div>
                         <input
                           value={mobileNameNumber}
                           maxLength={10}
                           onChange={(e) => setMobileNameNumber(e.target.value.replace(/\D/g, ""))}
-                          placeholder="Enter mobile"
+                          placeholder="Enter 10-digit mobile number"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-primary"
                         />
                       </div>
@@ -3271,14 +3392,14 @@ function TestApiPage() {
                         <div>
                           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                             <span className="font-medium text-foreground">Mobile Number *</span>
-                            <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 8987198823)</span>
+                            <span className="text-[11px] text-muted-foreground">10 Digits</span>
                           </div>
                           <input
                             type="tel"
                             maxLength={10}
                             value={mobileToBankNumber}
                             onChange={(e) => setMobileToBankNumber(e.target.value.replace(/\D/g, ""))}
-                            placeholder="Enter 10-digit mobile number (e.g. 8987198823)"
+                            placeholder="Enter 10-digit mobile number"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-blue-400"
                           />
                         </div>
@@ -3318,14 +3439,14 @@ function TestApiPage() {
                         <div>
                           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                             <span className="font-medium text-foreground">Mobile Number *</span>
-                            <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 8527475512)</span>
+                            <span className="text-[11px] text-muted-foreground">10 Digits</span>
                           </div>
                           <input
                             type="tel"
                             maxLength={10}
                             value={mobileUpiNumber}
                             onChange={(e) => setMobileUpiNumber(e.target.value.replace(/\D/g, ""))}
-                            placeholder="Enter 10-digit mobile number (e.g. 8527475512)"
+                            placeholder="Enter 10-digit mobile number"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400"
                           />
                         </div>
@@ -3355,7 +3476,7 @@ function TestApiPage() {
                           <input
                             value={domainName}
                             onChange={(e) => setDomainName(e.target.value.trim().toLowerCase())}
-                            placeholder="Enter domain (e.g. geetpay.in or google.com)"
+                            placeholder="Enter domain (e.g. bharatapicloud.io or google.com)"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-indigo-400"
                           />
                         </div>
@@ -3401,7 +3522,7 @@ function TestApiPage() {
                           <input
                             value={latitude}
                             onChange={(e) => setLatitude(e.target.value.trim())}
-                            placeholder="e.g. 28.6139"
+                            placeholder="Enter Latitude"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-teal-400"
                           />
                         </div>
@@ -3414,7 +3535,7 @@ function TestApiPage() {
                           <input
                             value={longitude}
                             onChange={(e) => setLongitude(e.target.value.trim())}
-                            placeholder="e.g. 77.2090"
+                            placeholder="Enter Longitude"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-teal-400"
                           />
                         </div>
@@ -3432,7 +3553,7 @@ function TestApiPage() {
                           <input
                             value={bankValidateAccountNumber}
                             onChange={(e) => setBankValidateAccountNumber(e.target.value.trim())}
-                            placeholder="e.g. 38237401582"
+                            placeholder="Enter Bank Account Number"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400"
                           />
                         </div>
@@ -3440,12 +3561,12 @@ function TestApiPage() {
                         <div>
                           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                             <span className="font-medium text-foreground">Bank IFSC Code *</span>
-                            <span className="text-[11px] text-muted-foreground">11 Characters (e.g. SBIN0002296)</span>
+                            <span className="text-[11px] text-muted-foreground">11 Characters</span>
                           </div>
                           <input
                             value={bankValidateIfscCode}
                             onChange={(e) => setBankValidateIfscCode(e.target.value.toUpperCase().trim())}
-                            placeholder="e.g. SBIN0002296"
+                            placeholder="Enter Bank IFSC Code"
                             maxLength={11}
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-emerald-400 uppercase"
                           />
@@ -3466,13 +3587,13 @@ function TestApiPage() {
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                           <span className="font-medium text-foreground">Registered Mobile Number *</span>
-                          <span className="text-[11px] text-muted-foreground">10 Digits (e.g. 8130823774)</span>
+                          <span className="text-[11px] text-muted-foreground">10 Digits</span>
                         </div>
                         <input
                           value={uanMobile}
                           maxLength={10}
                           onChange={(e) => setUanMobile(e.target.value.replace(/\D/g, ""))}
-                          placeholder="e.g. 8130823774"
+                          placeholder="Enter 10-digit mobile number"
                           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-indigo-400"
                         />
                       </div>
@@ -3491,14 +3612,14 @@ function TestApiPage() {
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                           <span className="font-medium text-foreground">EPFO Universal Account Number (UAN) *</span>
-                          <span className="text-[11px] text-muted-foreground">12 Digits (e.g. 101150421578)</span>
+                          <span className="text-[11px] text-muted-foreground">12 Digits</span>
                         </div>
                         <div className="relative">
                           <input
                             value={directUanNumber}
                             maxLength={12}
                             onChange={(e) => setDirectUanNumber(e.target.value.replace(/\D/g, ""))}
-                            placeholder="e.g. 101150421578"
+                            placeholder="Enter 12-digit UAN number"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm font-bold tracking-wider outline-none focus:border-purple-400"
                           />
                           {directUanNumber.length > 0 && (
@@ -3540,7 +3661,7 @@ function TestApiPage() {
                           <input
                             value={firstName}
                             onChange={(e) => setFirstName(e.target.value)}
-                            placeholder="e.g. Som"
+                            placeholder="Enter First Name"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
                           />
                         </label>
@@ -3550,7 +3671,7 @@ function TestApiPage() {
                           <input
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
-                            placeholder="e.g. Kumar"
+                            placeholder="Enter Last Name"
                             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary"
                           />
                         </label>
@@ -3798,7 +3919,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "work_email" ? "a corporate email address (e.g. support@geetpay.in)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. geetpay.in or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -3975,6 +4096,270 @@ function TestApiPage() {
                                     <p className="truncate">Order ID: <span className="text-foreground">{orderId}</span></p>
                                     <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
                                     <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || bankV2ClientRef || "—"}</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "dth_advance" ? (
+                          (() => {
+                            const anyRes: any = responseJson || {};
+                            const dthData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const rawResult: any = dthData?.result && typeof dthData.result === 'object' ? dthData.result : dthData;
+
+                            const dthStr = String(rawResult.dth_number || dthData.dth_number || dthAdvanceNumber || "—");
+                            const operatorCode = String(rawResult.operator || dthData.operator || dthAdvanceOperator || "Unknown");
+                            const customerId = String(rawResult.customer_id || "—");
+                            const customerName = String(rawResult.name || "—");
+                            const regMobile = String(rawResult.registered_mobile || "—");
+                            const balanceVal = String(rawResult.balance !== undefined && rawResult.balance !== null && rawResult.balance !== "" ? rawResult.balance : "—");
+                            const monthlyAmt = String(rawResult.monthly_amount || "—");
+                            const statusVal = String(rawResult.status || "—");
+                            const planVal = String(rawResult.plan || "—");
+                            const nextRecharge = String(rawResult.next_recharge_date || "—");
+                            const lastRecharge = String(rawResult.last_recharge_date || "—");
+                            const lastRechargeAmt = String(rawResult.last_recharge_amount || "—");
+                            const switchOffDate = String(rawResult.switch_off_date || "—");
+                            const addressStr = String(rawResult.address || "—");
+                            const cityStr = String(rawResult.city || "—");
+                            const districtStr = String(rawResult.district || "—");
+                            const stateStr = String(rawResult.state || "—");
+                            const pinStr = String(rawResult.pin_code || "—");
+
+                            const orderId = String(anyRes.order_id || dthData.order_id || responseJson?.data?.order_id || "—");
+                            const isCharged = Boolean(anyRes.charged ?? dthData.charged ?? true);
+                            const durationMs = dthData.duration_ms || responseTime || 0;
+
+                            const operatorName =
+                              operatorCode.toLowerCase() === "dish_tv" || operatorCode.toLowerCase().includes("dish")
+                                ? "Dish TV"
+                                : operatorCode.toLowerCase() === "tata_sky" || operatorCode.toLowerCase().includes("tata")
+                                ? "Tata Play"
+                                : operatorCode.toLowerCase() === "airtel"
+                                ? "Airtel Digital TV"
+                                : operatorCode.toLowerCase() === "sun_direct" || operatorCode.toLowerCase().includes("sun")
+                                ? "Sun Direct"
+                                : operatorCode.toLowerCase() === "videocon" || operatorCode.toLowerCase().includes("d2h")
+                                ? "Videocon d2h"
+                                : operatorCode.replace(/_/g, ' ').toUpperCase();
+
+                            const isSuccess = anyRes.status === "SUCCESS" || anyRes.status === "success" || anyRes.success === true || (customerName !== "—" && customerName.length > 0);
+
+                            // Dynamic Operator Branding Color
+                            const opLower = (operatorName + " " + operatorCode).toLowerCase();
+                            const opColorClass =
+                              opLower.includes("sun") || opLower.includes("direct")
+                                ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                : opLower.includes("tata") || opLower.includes("sky") || opLower.includes("play")
+                                ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30"
+                                : opLower.includes("airtel") || opLower.includes("bharti")
+                                ? "bg-red-500/15 text-red-400 border-red-500/30"
+                                : opLower.includes("dish")
+                                ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
+                                : opLower.includes("d2h") || opLower.includes("videocon")
+                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                : "bg-indigo-500/15 text-indigo-400 border-indigo-500/30";
+
+                            const opIconBg =
+                              opLower.includes("sun") || opLower.includes("direct")
+                                ? "bg-amber-500/20 text-amber-400"
+                                : opLower.includes("tata") || opLower.includes("sky") || opLower.includes("play")
+                                ? "bg-cyan-500/20 text-cyan-400"
+                                : opLower.includes("airtel") || opLower.includes("bharti")
+                                ? "bg-red-500/20 text-red-400"
+                                : opLower.includes("dish")
+                                ? "bg-orange-500/20 text-orange-400"
+                                : opLower.includes("d2h") || opLower.includes("videocon")
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : "bg-indigo-500/20 text-indigo-400";
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`rounded-xl p-2.5 ${opIconBg}`}>
+                                      <Tv className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-mono text-base font-bold text-foreground">
+                                          {dthStr}
+                                        </h3>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(dthStr, "DTH Number")}
+                                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
+                                          title="Copy DTH Number"
+                                        >
+                                          {copiedField === "DTH Number" ? (
+                                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                          ) : (
+                                            <Copy className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider border ${opColorClass}`}>
+                                          ● {operatorName}
+                                        </span>
+                                        {statusVal !== "—" && (
+                                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusVal === "1" || statusVal.toLowerCase() === "active" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"}`}>
+                                            Status: {statusVal === "1" ? "Active" : statusVal}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                                        <span>Customer: <strong className="text-foreground font-semibold">{customerName}</strong></span>
+                                        <span>·</span>
+                                        <span>Mobile: <strong className="text-foreground font-mono">{regMobile}</strong></span>
+                                        <span>·</span>
+                                        <span>Order ID: <code className="font-mono text-foreground">{orderId}</code></span>
+                                        <span>·</span>
+                                        <span className="font-mono">{durationMs}ms latency</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Gateway Status</span>
+                                    <div className="flex items-center gap-1.5 pt-0.5">
+                                      <span className={`inline-block h-2 w-2 rounded-full ${isCharged ? "bg-emerald-400" : "bg-amber-400"}`} />
+                                      <span className="font-mono text-xs font-bold text-foreground">
+                                        {isCharged ? "Charged (200 OK)" : "Free / Cached"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Primary Customer & Account Intelligence Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  {/* Customer Name */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Customer Name</span>
+                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground truncate">{customerName}</p>
+                                    <span className="text-[10px] text-muted-foreground">Subscriber identity</span>
+                                  </div>
+
+                                  {/* Current Balance */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Account Balance</span>
+                                      <Wallet className="h-3.5 w-3.5 text-emerald-400" />
+                                    </div>
+                                    <p className="font-mono text-base font-bold text-emerald-400">
+                                      {balanceVal !== "—" ? `₹${balanceVal}` : "—"}
+                                    </p>
+                                    <span className="text-[10px] text-muted-foreground">Current wallet balance</span>
+                                  </div>
+
+                                  {/* Registered Mobile */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Registered Mobile</span>
+                                      <Smartphone className="h-3.5 w-3.5 text-sky-400" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground">{regMobile}</p>
+                                    <span className="text-[10px] text-muted-foreground">Linked phone number</span>
+                                  </div>
+
+                                  {/* Customer ID */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Customer ID</span>
+                                      <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground">{customerId}</p>
+                                    <span className="text-[10px] text-muted-foreground">Unique subscriber ID</span>
+                                  </div>
+                                </div>
+
+                                {/* Plan & Recharge Schedule Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  {/* Active Plan */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Current Plan</span>
+                                      <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" />
+                                    </div>
+                                    <p className="font-mono text-xs font-semibold text-foreground truncate">{planVal !== "—" && planVal !== "" ? planVal : "Standard / Base Plan"}</p>
+                                    <span className="text-[10px] text-muted-foreground">Subscription tier</span>
+                                  </div>
+
+                                  {/* Monthly Amount */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Monthly Amount</span>
+                                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-bold text-foreground">
+                                      {monthlyAmt !== "—" && monthlyAmt !== "" ? `₹${monthlyAmt}` : "N/A"}
+                                    </p>
+                                    <span className="text-[10px] text-muted-foreground">Monthly recharge cost</span>
+                                  </div>
+
+                                  {/* Next Recharge Date */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Next Recharge Due</span>
+                                      <Calendar className="h-3.5 w-3.5 text-amber-400" />
+                                    </div>
+                                    <p className="font-mono text-xs font-bold text-amber-400 truncate">{nextRecharge}</p>
+                                    <span className="text-[10px] text-muted-foreground">Due recharge deadline</span>
+                                  </div>
+
+                                  {/* Switch Off Date */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Switch Off Date</span>
+                                      <Calendar className="h-3.5 w-3.5 text-rose-400" />
+                                    </div>
+                                    <p className="font-mono text-xs font-bold text-rose-400 truncate">{switchOffDate}</p>
+                                    <span className="text-[10px] text-muted-foreground">Service disconnection date</span>
+                                  </div>
+                                </div>
+
+                                {/* Last Recharge & Location Details */}
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                  {/* Last Recharge Info */}
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Last Recharge</span>
+                                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </div>
+                                    <p className="font-mono text-sm font-semibold text-foreground">
+                                      {lastRechargeAmt !== "—" && lastRechargeAmt !== "N/A" ? `₹${lastRechargeAmt}` : "N/A"}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground truncate">Date: {lastRecharge}</p>
+                                  </div>
+
+                                  {/* Address Card */}
+                                  <div className="sm:col-span-2 rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium">Billing & Installation Address</span>
+                                      <MapPin className="h-3.5 w-3.5 text-emerald-400" />
+                                    </div>
+                                    <p className="text-xs font-medium text-foreground">{addressStr}</p>
+                                    <div className="flex items-center gap-2 pt-0.5 text-[11px] text-muted-foreground font-mono flex-wrap">
+                                      {cityStr !== "—" && <span>City: <strong className="text-foreground">{cityStr}</strong></span>}
+                                      {districtStr !== "—" && districtStr !== "" && <span>· District: <strong className="text-foreground">{districtStr}</strong></span>}
+                                      {stateStr !== "—" && <span>· State: <strong className="text-foreground">{stateStr}</strong></span>}
+                                      {pinStr !== "—" && <span>· PIN: <strong className="text-foreground">{pinStr}</strong></span>}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Audit & Metadata Footer */}
+                                <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1 text-muted-foreground">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Verification Audit</span>
+                                    <span className="text-amber-400 font-semibold text-[10px]">Verified at: {new Date().toLocaleString("en-IN")}</span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3 text-[11px] pt-1">
+                                    <p className="truncate">Order ID: <span className="text-foreground">{orderId}</span></p>
+                                    <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
+                                    <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || dthAdvanceClientRef || "—"}</span></p>
                                   </div>
                                 </div>
                               </div>
@@ -9157,10 +9542,14 @@ function TestApiPage() {
                               ? `Mobile: ${mobileUpiNumber}`
                               : selectedService === "domain_age"
                               ? `Domain: ${domainName}`
+                              : selectedService === "dth_advance"
+                              ? `DTH Number: ${dthAdvanceNumber || "N/A"} · Operator: ${dthAdvanceOperator || "N/A"}`
+                              : selectedService === "dth_operator"
+                              ? `DTH Number: ${dthNumber || "N/A"}`
                               : selectedService === "transunion"
                               ? `PAN: ${tuPan || "N/A"} · Name: ${[tuForename, tuSurname].filter(Boolean).join(" ") || "N/A"} · Phone: ${tuPhone || "N/A"}`
                               : selectedService === "crif"
-                              ? `Name: ${crifName || "N/A"} · Phone: ${crifPhone || "N/A"} · PAN: ${crifPan || "N/A"}`
+                              ? `Name: ${[crifFirstName, crifLastName].filter(Boolean).join(" ") || "N/A"} · Mobile: ${crifMobile || "N/A"}`
                               : `Mobile: ${mobileNumber || "N/A"} · Name: ${[firstName, lastName].filter(Boolean).join(" ") || "N/A"}`}
                           </p>
                           <p>

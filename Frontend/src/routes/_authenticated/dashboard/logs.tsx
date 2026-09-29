@@ -150,7 +150,7 @@ function LogsContent({ data }: { data: DashboardData }) {
   const [datePreset, setDatePreset] = useState<"all" | "today" | "yesterday" | "7days" | "month" | "custom">("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const [pageSize, setPageSize] = useState<number>(100);
+  const [pageSize, setPageSize] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   const rawLogs = data.apiHitLogs || [];
@@ -754,7 +754,7 @@ function LogsContent({ data }: { data: DashboardData }) {
               }}
               className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs font-medium outline-none focus:border-primary text-foreground cursor-pointer"
             >
-              <option value={25}>Show 25 / page</option>
+              <option value={20}>Show 20 / page</option>
               <option value={50}>Show 50 / page</option>
               <option value={100}>Show 100 / page</option>
               <option value={250}>Show 250 / page</option>

@@ -192,6 +192,19 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for DTH Operator Advance (WAY2API)
+   */
+  async getDthAdvanceCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('way2api_dth_advance_master') || this.cache.get('way2api_dth_master') || this.cache.get('dth_advance_master') || this.cache.get('way2api_operator_master') || this.cache.get('way2api_bank_master') || this.cache.get('way2api_email_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.DTH_ADVANCE.BASE_URL,
+      apiKey: cred?.apiKey || ENV.DTH_ADVANCE.API_KEY,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

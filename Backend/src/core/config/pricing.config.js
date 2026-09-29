@@ -96,6 +96,15 @@ export const API_PRICING = {
   'dth_operator': 2.00,
   'dth_operator_check': 2.00,
   'dth_check': 2.00,
+  '/api/v1/verify/dth-advance': 2.50,
+  '/verify/dth-advance': 2.50,
+  '/api/v1/verify/dth-operator-advance': 2.50,
+  '/verify/dth-operator-advance': 2.50,
+  '/api/v1/dth/info': 2.50,
+  '/dth/info': 2.50,
+  'dth_advance': 2.50,
+  'dth_operator_advance': 2.50,
+  'dth_info': 2.50,
   default: 2.00,
 };
 

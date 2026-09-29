@@ -361,7 +361,7 @@ export async function getDashboard(): Promise<DashboardData> {
         apiClient.getProfile(),
         apiClient.getWalletBalance(),
         apiClient.getWalletTransactions({ limit: 500 }),
-        apiClient.getApiHitLogs({ limit: 10000 }),
+        apiClient.getApiHitLogs({ limit: "all" }),
         apiClient.getCredentials(),
       ]);
 

@@ -1,4 +1,5 @@
 import { DthOperatorCheckService } from './dth.service.js';
+import { DthOperatorAdvanceService } from './dth-advance.service.js';
 import { asyncHandler } from '../../../core/utils/asyncHandler.js';
 
 export const DthOperatorController = {
@@ -37,6 +38,61 @@ export const DthOperatorController = {
 
     const result = await DthOperatorCheckService.checkDthOperator({
       dth_number,
+      client_ref_num,
+      apiClient: req.apiClient,
+      endpoint,
+    });
+
+    const httpCode = result.http_response_code || 200;
+    return res.status(httpCode).json(result);
+  }),
+
+  /**
+   * Check DTH Operator Advance (Info, Plan, Balance, Customer Name & Address)
+   * Supported paths:
+   * - POST /api/v1/verify/dth-advance
+   * - POST /verify/dth-advance
+   * - POST /api/v1/verify/dth-operator-advance
+   * - POST /verify/dth-operator-advance
+   * - POST /api/v1/dth/info
+   * - POST /dth/info
+   */
+  checkDthAdvance: asyncHandler(async (req, res) => {
+    const dth_number =
+      req.body?.dth_number ||
+      req.body?.dthNumber ||
+      req.body?.dth ||
+      req.body?.subscriber_id ||
+      req.body?.subscriberId ||
+      req.body?.smart_card_number ||
+      req.query?.dth_number ||
+      req.query?.dthNumber ||
+      req.query?.dth ||
+      req.query?.subscriber_id ||
+      req.body?.data?.dth_number ||
+      '';
+
+    const operator =
+      req.body?.operator ||
+      req.body?.operator_name ||
+      req.body?.operatorCode ||
+      req.body?.dth_operator ||
+      req.query?.operator ||
+      req.query?.dth_operator ||
+      req.body?.data?.operator ||
+      '';
+
+    const client_ref_num =
+      req.body?.client_ref_num ||
+      req.query?.client_ref_num ||
+      req.body?.clientRefNum ||
+      null;
+
+    const endpoint = req.originalUrl?.split('?')[0] || req.path || '/api/v1/verify/dth-advance';
+
+    const result = await DthOperatorAdvanceService.checkDthAdvance({
+      dth_number,
+      operator,
       client_ref_num,
       apiClient: req.apiClient,
       endpoint,
