@@ -358,6 +358,15 @@ function ApisPage() {
                   </span>
 
                   <div className="flex items-center gap-2">
+                    {(ep.id === "experian-credit-report-srv2" || ep.id === "api_experian_credit_report") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "experian" }}
+                        className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {(ep.id === "work-email-verifier" || ep.id === "api_work_email_verifier") && (
                       <Link
                         to="/dashboard/test-api"

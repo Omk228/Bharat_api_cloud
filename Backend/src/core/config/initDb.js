@@ -125,12 +125,33 @@ export const initDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
+    const createBankStatementAnalysisTableQuery = `
+      CREATE TABLE IF NOT EXISTS bank_statement_analysis (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NULL,
+        lead_id VARCHAR(100) DEFAULT NULL,
+        source VARCHAR(50) DEFAULT 'UPLOAD',
+        file_name VARCHAR(255) DEFAULT NULL,
+        file_hash VARCHAR(64) DEFAULT NULL,
+        request_id VARCHAR(64) DEFAULT NULL,
+        txn_id VARCHAR(64) DEFAULT NULL,
+        status VARCHAR(50) DEFAULT 'PENDING',
+        analysis_data LONGTEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP NULL,
+        INDEX idx_bsa_req (request_id),
+        INDEX idx_bsa_hash (file_hash),
+        INDEX idx_bsa_user (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+
     await dbPool.query(createUsersTableQuery);
     await dbPool.query(createApiCredentialsTableQuery);
     await dbPool.query(createApiHitLogsTableQuery);
     await dbPool.query(createIpWhitelistTableQuery);
     await dbPool.query(createWalletTransactionsTableQuery);
     await dbPool.query(createPaymentHistoryTableQuery);
+    await dbPool.query(createBankStatementAnalysisTableQuery);
 
     // Safely verify columns on existing wallet_transactions table
     try {

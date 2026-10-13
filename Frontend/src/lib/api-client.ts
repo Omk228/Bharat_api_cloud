@@ -1050,7 +1050,8 @@ export const apiClient = {
     acceptance_policy?: string | undefined;
     token?: string | undefined;
     request_id?: string | undefined;
-    file?: string | undefined;
+    file?: File | Blob | undefined;
+    password?: string | undefined;
     txn_id?: string | undefined;
     report_type?: string | undefined;
     report_subtype?: string | undefined;
@@ -1064,20 +1065,53 @@ export const apiClient = {
     const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
     const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
 
-    const res = await fetch(`${host}/srv2/statement-upload`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Id': effectiveApiId,
-        'X-Api-Key': effectiveApiKey,
-        'X-Token-Id': effectiveTokenId,
-      },
-      body: JSON.stringify({
-        ...data,
+    const headers: Record<string, string> = {
+      'X-Api-Id': effectiveApiId,
+      'X-Api-Key': effectiveApiKey,
+      'X-Token-Id': effectiveTokenId,
+    };
+
+    let body: any;
+
+    if (data.file) {
+      // Step 2 or 1-Shot with binary PDF file -> multipart/form-data
+      const formData = new FormData();
+      formData.append('file', data.file);
+      formData.append('api_id', effectiveApiId);
+      formData.append('api_key', effectiveApiKey);
+      formData.append('token_id', effectiveTokenId);
+      if (data.method) formData.append('method', data.method);
+      if (data.acceptance_policy) formData.append('acceptance_policy', data.acceptance_policy);
+      if (data.token) formData.append('token', data.token);
+      if (data.request_id) formData.append('request_id', data.request_id);
+      if (data.password) formData.append('password', data.password);
+      if (data.report_type) formData.append('report_type', data.report_type);
+      if (data.report_subtype) formData.append('report_subtype', data.report_subtype);
+      if (data.client_ref_num) formData.append('client_ref_num', data.client_ref_num);
+      body = formData;
+    } else {
+      // Pure JSON request for Steps 1, 3, 4, 5, 6
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify({
         api_id: effectiveApiId,
         api_key: effectiveApiKey,
         token_id: effectiveTokenId,
-      }),
+        method: data.method,
+        acceptance_policy: data.acceptance_policy,
+        token: data.token,
+        request_id: data.request_id,
+        password: data.password,
+        txn_id: data.txn_id,
+        report_type: data.report_type,
+        report_subtype: data.report_subtype,
+        client_ref_num: data.client_ref_num,
+      });
+    }
+
+    const res = await fetch(`${host}/srv2/statement-upload`, {
+      method: 'POST',
+      headers,
+      body,
     });
     return res.json();
   },
@@ -1100,6 +1134,37 @@ export const apiClient = {
     const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
 
     const res = await fetch(`${host}/srv5/transunion-Score-Hybrid`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
+  async verifyExperianCreditReport(data: {
+    mobile_no: string;
+    pan: string;
+    first_name: string;
+    last_name: string;
+    dob: string;
+    client_ref_num?: string | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${host}/srv2/credit-report/experian`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

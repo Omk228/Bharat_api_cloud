@@ -111,6 +111,8 @@ const ENDPOINT_CATALOG_MAP = {
   'cibil': ['api_transunion_cibil_v5', '/srv5/transunion-Score-Hybrid'],
 
   // Statement Analyzer
+  '/api/v1/statement-analyzer': ['api_bank_statement', '/bank/statement/analyse'],
+  '/api/v1/srv2/statement-upload': ['api_bank_statement', '/bank/statement/analyse'],
   '/statement-analyzer': ['api_bank_statement', '/bank/statement/analyse'],
   '/srv2/statement-analyzer': ['api_bank_statement', '/bank/statement/analyse'],
   '/statement-upload': ['api_bank_statement', '/bank/statement/analyse'],

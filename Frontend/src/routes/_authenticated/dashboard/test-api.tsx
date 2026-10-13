@@ -245,6 +245,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "statement_analyzer"
         : search["service"] === "transunion" || search["service"] === "transunion-score-hybrid" || search["service"] === "cibil" || search["service"] === "transunion_score"
         ? "transunion"
+        : search["service"] === "experian" || search["service"] === "experian-credit-report-srv2" || search["service"] === "experian_credit_report" || search["service"] === "experian-credit-report"
+        ? "experian"
         : search["service"] === "crif" || search["service"] === "crif-score" || search["service"] === "crif_score" || search["service"] === "crif-credit-score-v4" || search["service"] === "credit-score"
         ? "crif"
         : search["service"] === "ifsc" || search["service"] === "ifsc-lookup" || search["service"] === "bank_ifsc" || search["service"] === "bank-ifsc"
@@ -294,7 +296,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance">(
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance">(
     searchParams.service === "dth_advance"
       ? "dth_advance"
       : searchParams.service === "dth_operator"
@@ -311,6 +313,8 @@ function TestApiPage() {
       ? "statement_analyzer"
       : searchParams.service === "transunion"
       ? "transunion"
+      : searchParams.service === "experian"
+      ? "experian"
       : searchParams.service === "crif"
       ? "crif"
       : searchParams.service === "ifsc"
@@ -400,6 +404,7 @@ function TestApiPage() {
     if (serviceKey === "work_email" || serviceKey === "work-email-verifier" || serviceKey === "work-email") return 2.0;
     if (serviceKey === "statement_analyzer" || serviceKey === "statement-upload" || serviceKey === "statement-analyzer") return 25.0;
     if (serviceKey === "transunion" || serviceKey === "transunion-score-hybrid") return 75.0;
+    if (serviceKey === "experian" || serviceKey === "experian-credit-report-srv2" || serviceKey === "experian_credit_report" || serviceKey === "/srv2/credit-report/experian") return 25.0;
     if (serviceKey === "crif" || serviceKey === "crif-credit-score-v4" || serviceKey === "crif_score") return 25.0;
     if (serviceKey === "ifsc") return 1.0;
     if (serviceKey === "name_finder" || serviceKey === "uan" || serviceKey === "uan_direct") return 5.0;
@@ -413,20 +418,13 @@ function TestApiPage() {
     pricingData?.revoked?.includes(selectedService)
   );
 
-  // Bank Statement Analyzer fields
-  const [statementMode, setStatementMode] = useState<"one_shot" | "step_by_step">("one_shot");
-  const [statementStep, setStatementStep] = useState<"INITIATE_UPLOAD" | "UPLOAD_FILE" | "COMPLETE_UPLOAD" | "CHECK_STATUS" | "RETRIEVE_STATEMENT">("INITIATE_UPLOAD");
+  // Bank Statement Analyzer fields (Single-Hit 1-Shot Automated Engine)
   const [statementAcceptancePolicy, setStatementAcceptancePolicy] = useState("atLeastOneTransactionInRange");
-  const [statementToken, setStatementToken] = useState("");
-  const [statementRequestId, setStatementRequestId] = useState("");
-  const [statementTxnId, setStatementTxnId] = useState("");
-  const [statementFileBase64, setStatementFileBase64] = useState("");
+  const [statementFile, setStatementFile] = useState<File | null>(null);
   const [statementFileName, setStatementFileName] = useState("");
   const [statementFileSize, setStatementFileSize] = useState("");
   const [statementPassword, setStatementPassword] = useState("");
   const [showStatementPassword, setShowStatementPassword] = useState(false);
-  const [statementReportType, setStatementReportType] = useState("json");
-  const [statementReportSubtype, setStatementReportSubtype] = useState("type3");
 
   const handlePdfUpload = (file: File) => {
     if (!file) return;
@@ -440,17 +438,38 @@ function TestApiPage() {
     }
     setStatementFileName(file.name);
     setStatementFileSize((file.size / 1024).toFixed(1) + " KB");
+    setStatementFile(file);
+    toast.success(`Loaded "${file.name}" (${(file.size / 1024).toFixed(1)} KB)`);
+  };
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (result) {
-        const b64 = result.includes(";base64,") ? result.split(";base64,")[1] : result;
-        setStatementFileBase64(b64 || "");
-        toast.success(`Loaded "${file.name}" (${(file.size / 1024).toFixed(1)} KB)`);
-      }
-    };
-    reader.readAsDataURL(file);
+  const handleUseSamplePdf = () => {
+    const sampleBytes = new Uint8Array([
+      0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xd0, 0xd4, 0xc5, 0xd8, 0x0a, 0x31,
+      0x20, 0x30, 0x20, 0x6f, 0x62, 0x6a, 0x0a, 0x3c, 0x3c, 0x2f, 0x54, 0x79, 0x70, 0x65, 0x2f, 0x43,
+      0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2f, 0x50, 0x61, 0x67, 0x65, 0x73, 0x20, 0x32, 0x20, 0x30,
+      0x20, 0x52, 0x3e, 0x3e, 0x0a, 0x65, 0x6e, 0x64, 0x6f, 0x62, 0x6a, 0x0a, 0x32, 0x20, 0x30, 0x20,
+      0x6f, 0x62, 0x6a, 0x0a, 0x3c, 0x3c, 0x2f, 0x54, 0x79, 0x70, 0x65, 0x2f, 0x50, 0x61, 0x67, 0x65,
+      0x73, 0x2f, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x20, 0x31, 0x2f, 0x4b, 0x69, 0x64, 0x73, 0x5b, 0x33,
+      0x20, 0x30, 0x20, 0x52, 0x5d, 0x3e, 0x3e, 0x0a, 0x65, 0x6e, 0x64, 0x6f, 0x62, 0x6a, 0x0a, 0x33,
+      0x20, 0x30, 0x20, 0x6f, 0x62, 0x6a, 0x0a, 0x3c, 0x3c, 0x2f, 0x54, 0x79, 0x70, 0x65, 0x2f, 0x50,
+      0x61, 0x67, 0x65, 0x2f, 0x50, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x20, 0x32, 0x20, 0x30, 0x20, 0x52,
+      0x2f, 0x4d, 0x65, 0x64, 0x69, 0x61, 0x42, 0x6f, 0x78, 0x5b, 0x30, 0x20, 0x30, 0x20, 0x36, 0x31,
+      0x32, 0x20, 0x37, 0x39, 0x32, 0x5d, 0x3e, 0x3e, 0x0a, 0x65, 0x6e, 0x64, 0x6f, 0x62, 0x6a, 0x0a,
+      0x78, 0x72, 0x65, 0x66, 0x0a, 0x30, 0x20, 0x34, 0x0a, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
+      0x30, 0x30, 0x30, 0x20, 0x36, 0x35, 0x35, 0x33, 0x35, 0x20, 0x66, 0x0d, 0x0a, 0x30, 0x30, 0x30,
+      0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x35, 0x20, 0x30, 0x30, 0x30, 0x30, 0x30, 0x20, 0x6e, 0x0d,
+      0x0a, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x36, 0x38, 0x20, 0x30, 0x30, 0x30, 0x30,
+      0x30, 0x20, 0x6e, 0x0d, 0x0a, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x32, 0x35, 0x20,
+      0x30, 0x30, 0x30, 0x30, 0x30, 0x20, 0x6e, 0x0d, 0x0a, 0x74, 0x72, 0x61, 0x69, 0x6c, 0x65, 0x72,
+      0x0a, 0x3c, 0x3c, 0x2f, 0x53, 0x69, 0x7a, 0x65, 0x20, 0x34, 0x2f, 0x52, 0x6f, 0x6f, 0x74, 0x20,
+      0x31, 0x20, 0x30, 0x20, 0x52, 0x3e, 0x3e, 0x0a, 0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72, 0x65,
+      0x66, 0x0a, 0x31, 0x39, 0x32, 0x0a, 0x25, 0x25, 0x45, 0x4f, 0x46
+    ]);
+    const file = new File([sampleBytes], "sample_bank_statement.pdf", { type: "application/pdf" });
+    setStatementFileName(file.name);
+    setStatementFileSize((file.size / 1024).toFixed(1) + " KB");
+    setStatementFile(file);
+    toast.success("Loaded sample bank statement PDF");
   };
 
   // TransUnion CIBIL fields
@@ -460,6 +479,13 @@ function TestApiPage() {
   const [tuGender, setTuGender] = useState("Male");
   const [tuPan, setTuPan] = useState("");
   const [tuDob, setTuDob] = useState("");
+
+  // Experian Credit Report (Srv2) fields
+  const [experianMobile, setExperianMobile] = useState("");
+  const [experianPan, setExperianPan] = useState("");
+  const [experianFirstName, setExperianFirstName] = useState("");
+  const [experianLastName, setExperianLastName] = useState("");
+  const [experianDob, setExperianDob] = useState("");
 
   // CRIF High Mark fields
   const [crifMobile, setCrifMobile] = useState("");
@@ -859,60 +885,14 @@ function TestApiPage() {
           token_id: effectiveTokenId,
         }
       : selectedService === "statement_analyzer"
-      ? statementMode === "one_shot"
-        ? {
-            file: statementFileBase64 ? `[Base64 Encoded PDF — ${statementFileName || "bank_statement.pdf"} (${statementFileSize || "0 KB"})]` : "<Select a PDF bank statement file>",
-            ...(statementPassword.trim() ? { password: "••••••••" } : {}),
-            acceptance_policy: statementAcceptancePolicy,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          }
-        : statementStep === "INITIATE_UPLOAD"
-        ? {
-            method: "INITIATE_UPLOAD",
-            acceptance_policy: statementAcceptancePolicy,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          }
-        : statementStep === "UPLOAD_FILE"
-        ? {
-            method: "INITIATE_UPLOAD",
-            token: statementToken.trim() || "<Session Token from Step 1>",
-            request_id: statementRequestId.trim() || "<Request ID from Step 1>",
-            file: statementFileBase64 ? `[Base64 Encoded PDF — ${statementFileName || "statement.pdf"} (${statementFileSize || "0 KB"})]` : "<Select PDF file>",
-            ...(statementPassword.trim() ? { password: "••••••••" } : {}),
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          }
-        : statementStep === "COMPLETE_UPLOAD"
-        ? {
-            method: "COMPLETE_UPLOAD",
-            token: statementToken.trim() || "<Session Token>",
-            request_id: statementRequestId.trim() || "<Request ID>",
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          }
-        : statementStep === "CHECK_STATUS"
-        ? {
-            method: "CHECK_STATUS",
-            request_id: statementRequestId.trim() || "<Request ID>",
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          }
-        : {
-            method: "RETRIEVE_STATEMENT",
-            txn_id: statementTxnId.trim() || statementRequestId.trim() || "<Txn ID or Request ID>",
-            report_type: statementReportType,
-            report_subtype: statementReportSubtype,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          }
+      ? {
+          file: statementFile ? `[Binary PDF — ${statementFileName || "bank_statement.pdf"} (${statementFileSize || "0 KB"})]` : "<Select a PDF bank statement file>",
+          ...(statementPassword.trim() ? { password: "••••••••" } : {}),
+          acceptance_policy: statementAcceptancePolicy,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
       : selectedService === "transunion"
       ? {
           forename: tuForename.trim() || "<Forename>",
@@ -924,6 +904,17 @@ function TestApiPage() {
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
+        }
+      : selectedService === "experian"
+      ? {
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+          mobile_no: experianMobile.trim().replace(/\D/g, "") || "<10-digit Mobile>",
+          pan: experianPan.trim().toUpperCase() || "<10-char PAN>",
+          first_name: experianFirstName.trim() || "<First Name>",
+          last_name: experianLastName.trim() || "<Last Name>",
+          dob: experianDob.trim() || "2000-02-20",
         }
       : selectedService === "crif"
       ? {
@@ -1126,31 +1117,9 @@ function TestApiPage() {
       return;
     }
     if (selectedService === "statement_analyzer") {
-      if (statementMode === "one_shot" && !statementFileBase64) {
+      if (!statementFile) {
         toast.error("Please choose or drag-and-drop a PDF bank statement file.");
         return;
-      }
-      if (statementMode === "step_by_step") {
-        if (statementStep === "UPLOAD_FILE" && !statementToken.trim()) {
-          toast.error("Please enter or generate a Session Token (from Step 1).");
-          return;
-        }
-        if (statementStep === "UPLOAD_FILE" && !statementFileBase64) {
-          toast.error("Please choose a PDF bank statement file for Step 2 upload.");
-          return;
-        }
-        if (statementStep === "COMPLETE_UPLOAD" && !statementRequestId.trim()) {
-          toast.error("Please enter a Request ID (from Step 1).");
-          return;
-        }
-        if (statementStep === "CHECK_STATUS" && !statementRequestId.trim()) {
-          toast.error("Please enter a Request ID to check status.");
-          return;
-        }
-        if (statementStep === "RETRIEVE_STATEMENT" && !statementTxnId.trim() && !statementRequestId.trim()) {
-          toast.error("Please enter a Txn ID or Request ID to retrieve statement.");
-          return;
-        }
       }
     }
     if (selectedService === "transunion") {
@@ -1164,6 +1133,29 @@ function TestApiPage() {
       }
       if (!tuPan.trim()) {
         toast.error("Please enter a valid PAN Number.");
+        return;
+      }
+    }
+    if (selectedService === "experian") {
+      const cleanMob = experianMobile.trim().replace(/\D/g, "");
+      if (!cleanMob || cleanMob.length !== 10) {
+        toast.error("Please enter a valid 10-digit Mobile Number.");
+        return;
+      }
+      if (!experianPan.trim() || experianPan.trim().length !== 10) {
+        toast.error("Please enter a valid 10-character PAN Number.");
+        return;
+      }
+      if (!experianFirstName.trim()) {
+        toast.error("Please enter First Name.");
+        return;
+      }
+      if (!experianLastName.trim()) {
+        toast.error("Please enter Last Name.");
+        return;
+      }
+      if (!experianDob.trim()) {
+        toast.error("Please enter Date of Birth (YYYY-MM-DD).");
         return;
       }
     }
@@ -1301,76 +1293,14 @@ function TestApiPage() {
           token_id: effectiveTokenId,
         });
       } else if (selectedService === "statement_analyzer") {
-        if (statementMode === "one_shot") {
-          rawData = await apiClient.verifyStatementAnalyzer({
-            file: statementFileBase64,
-            acceptance_policy: statementAcceptancePolicy,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          });
-        } else if (statementStep === "INITIATE_UPLOAD") {
-          rawData = await apiClient.verifyStatementAnalyzer({
-            method: "INITIATE_UPLOAD",
-            acceptance_policy: statementAcceptancePolicy,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          });
-        } else if (statementStep === "UPLOAD_FILE") {
-          rawData = await apiClient.verifyStatementAnalyzer({
-            method: "INITIATE_UPLOAD",
-            token: statementToken.trim(),
-            request_id: statementRequestId.trim() || undefined,
-            file: statementFileBase64,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          });
-        } else if (statementStep === "COMPLETE_UPLOAD") {
-          rawData = await apiClient.verifyStatementAnalyzer({
-            method: "COMPLETE_UPLOAD",
-            token: statementToken.trim() || undefined,
-            request_id: statementRequestId.trim() || undefined,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          });
-        } else if (statementStep === "CHECK_STATUS") {
-          rawData = await apiClient.verifyStatementAnalyzer({
-            method: "CHECK_STATUS",
-            request_id: statementRequestId.trim(),
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          });
-        } else {
-          rawData = await apiClient.verifyStatementAnalyzer({
-            method: "RETRIEVE_STATEMENT",
-            txn_id: statementTxnId.trim() || statementRequestId.trim(),
-            report_type: statementReportType,
-            report_subtype: statementReportSubtype,
-            api_id: effectiveApiId,
-            api_key: effectiveApiKey,
-            token_id: effectiveTokenId,
-          });
-        }
-
-        // Auto populate tokens from response into state
-        const anyRes: any = rawData || {};
-        const innerData: any = anyRes.data || anyRes.result || anyRes;
-        if (innerData?.token || anyRes.token) {
-          const tok = String(innerData?.token || anyRes.token);
-          setStatementToken(tok);
-        }
-        if (innerData?.request_id || anyRes.request_id) {
-          const reqId = String(innerData?.request_id || anyRes.request_id);
-          setStatementRequestId(reqId);
-        }
-        if (innerData?.txn_id || anyRes.txn_id) {
-          const txId = String(innerData?.txn_id || anyRes.txn_id);
-          setStatementTxnId(txId);
-        }
+        rawData = await apiClient.verifyStatementAnalyzer({
+          file: statementFile || undefined,
+          acceptance_policy: statementAcceptancePolicy,
+          password: statementPassword.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
       } else if (selectedService === "transunion") {
         rawData = await apiClient.verifyTransunion({
           forename: tuForename.trim(),
@@ -1379,6 +1309,17 @@ function TestApiPage() {
           gender: tuGender || "Male",
           pan_id: tuPan.trim().toUpperCase(),
           date_of_birth: tuDob.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "experian") {
+        rawData = await apiClient.verifyExperianCreditReport({
+          mobile_no: experianMobile.trim().replace(/\D/g, ""),
+          pan: experianPan.trim().toUpperCase(),
+          first_name: experianFirstName.trim(),
+          last_name: experianLastName.trim(),
+          dob: experianDob.trim(),
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -1759,9 +1700,11 @@ function TestApiPage() {
       : selectedService === "work_email"
       ? "/api/v1/verify/work-email"
       : selectedService === "statement_analyzer"
-      ? "/srv2/statement-upload"
+      ? "/api/v1/statement-analyzer"
       : selectedService === "transunion"
       ? "/srv5/transunion-Score-Hybrid"
+      : selectedService === "experian"
+      ? "/srv2/credit-report/experian"
       : selectedService === "crif"
       ? "/crif/Credit-ScoreV4"
       : selectedService === "ifsc"
@@ -1995,6 +1938,7 @@ function TestApiPage() {
                   {selectedService === "work_email" && <Mail className="h-4 w-4 text-violet-400" />}
                   {selectedService === "statement_analyzer" && <FileSpreadsheet className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "transunion" && <ShieldCheck className="h-4 w-4 text-amber-400" />}
+                  {selectedService === "experian" && <ShieldCheck className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "crif" && <ShieldCheck className="h-4 w-4 text-rose-400" />}
                   {selectedService === "ifsc" && <Landmark className="h-4 w-4 text-blue-400" />}
                   {selectedService === "mobile_to_bank" && <Building2 className="h-4 w-4 text-blue-400" />}
@@ -2019,8 +1963,9 @@ function TestApiPage() {
                     {selectedService === "bank_v2" && "Bank Account Validation V2 (/api/v1/bank/account-validation)"}
                     {selectedService === "work_email_plus" && "Work Email Verifier Plus (/api/v1/verify/work-email-plus)"}
                     {selectedService === "work_email" && "Work Email Verifier (/api/v1/verify/work-email)"}
-                    {selectedService === "statement_analyzer" && "Bank Statement Analyzer V2 (/srv2/statement-upload)"}
+                    {selectedService === "statement_analyzer" && "Statement Analyzer PDF (Srv2) (/api/v1/statement-analyzer)"}
                     {selectedService === "transunion" && "TransUnion CIBIL Score Hybrid (/srv5/transunion-Score-Hybrid)"}
+                    {selectedService === "experian" && "Experian Credit Report (Srv2) (/srv2/credit-report/experian)"}
                     {selectedService === "crif" && "Crif High Mark Credit Report V4 (/crif/Credit-ScoreV4)"}
                     {selectedService === "ifsc" && "IFSC lookup (/bank/ifsc/{ifsc})"}
                     {selectedService === "mobile_to_bank" && "Mobile To Bank Advance (/srv3/mobile-to-bank/advance)"}
@@ -2567,354 +2512,111 @@ function TestApiPage() {
                     </>
                   ) : selectedService === "statement_analyzer" ? (
                     <>
-                      {/* Mode Selector */}
-                      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-1">
-                        <button
-                          type="button"
-                          onClick={() => setStatementMode("one_shot")}
-                          className={`rounded-md py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                            statementMode === "one_shot"
-                              ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-xs"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <Sparkles className="h-3.5 w-3.5" /> ⚡ 1-Click Auto Analysis
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setStatementMode("step_by_step")}
-                          className={`rounded-md py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                            statementMode === "step_by_step"
-                              ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-xs"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <Layers className="h-3.5 w-3.5" /> 🛠️ Multi-Step Workflow
-                        </button>
-                      </div>
+                      {/* 1-Click PDF Dropzone */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                          <span className="font-medium text-foreground flex items-center gap-1">
+                            <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-400" /> Bank Statement PDF *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">PDF Max 25MB · Single-Shot Analysis</span>
+                        </div>
 
-                      {statementMode === "one_shot" ? (
-                        <>
-                          {/* 1-Click PDF Dropzone */}
-                          <div>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                              <span className="font-medium text-foreground flex items-center gap-1">
-                                <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-400" /> Bank Statement PDF *
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">PDF Max 25MB</span>
-                            </div>
-
-                            {!statementFileBase64 ? (
-                              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 p-5 text-center cursor-pointer transition-all group">
-                                <input
-                                  type="file"
-                                  accept="application/pdf,.pdf"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handlePdfUpload(file);
-                                  }}
-                                  className="hidden"
-                                />
-                                <div className="rounded-full bg-indigo-500/20 p-2.5 text-indigo-400 group-hover:scale-110 transition-transform">
-                                  <UploadCloud className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <p className="text-xs font-semibold text-foreground">Click to upload or drag & drop</p>
-                                  <p className="text-[11px] text-muted-foreground">Bank Statement PDF (e.g. HDFC, SBI, ICICI, Axis)</p>
-                                </div>
-                              </label>
-                            ) : (
-                              <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3.5 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <div className="rounded-lg bg-indigo-500/20 p-2 text-indigo-400 shrink-0">
-                                    <FileCheck className="h-5 w-5" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-bold text-foreground truncate">{statementFileName || "bank_statement.pdf"}</p>
-                                    <p className="text-[11px] text-emerald-400 font-medium font-mono">{statementFileSize} · ✓ Base64 Ready</p>
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setStatementFileBase64("");
-                                    setStatementFileName("");
-                                    setStatementFileSize("");
-                                  }}
-                                  className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Optional PDF Password */}
-                          <div>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                              <span className="font-medium text-foreground flex items-center gap-1">
-                                <Lock className="h-3 w-3 text-muted-foreground" /> PDF Password (Optional)
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">If statement is encrypted</span>
-                            </div>
-                            <div className="relative">
+                        {!statementFile ? (
+                          <div className="space-y-2">
+                            <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 p-5 text-center cursor-pointer transition-all group">
                               <input
-                                type={showStatementPassword ? "text" : "password"}
-                                value={statementPassword}
-                                onChange={(e) => setStatementPassword(e.target.value)}
-                                placeholder="e.g. PAN or DOB (e.g. AAAA1234 or 01011990)"
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400 pr-9"
+                                type="file"
+                                accept="application/pdf,.pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handlePdfUpload(file);
+                                }}
+                                className="hidden"
                               />
+                              <div className="rounded-full bg-indigo-500/20 p-2.5 text-indigo-400 group-hover:scale-110 transition-transform">
+                                <UploadCloud className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-foreground">Click to upload or drag & drop</p>
+                                <p className="text-[11px] text-muted-foreground">Bank Statement PDF (e.g. HDFC, SBI, ICICI, Axis, Kotak, PNB)</p>
+                              </div>
+                            </label>
+                            <div className="flex justify-end">
                               <button
                                 type="button"
-                                onClick={() => setShowStatementPassword(!showStatementPassword)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                onClick={handleUseSamplePdf}
+                                className="text-[11px] text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1 font-medium"
                               >
-                                {showStatementPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                📄 Attach Sample Statement PDF
                               </button>
                             </div>
                           </div>
-
-                          {/* Acceptance Policy */}
-                          <div>
-                            <span className="block text-xs text-muted-foreground mb-1 font-medium">Acceptance Policy</span>
-                            <select
-                              value={statementAcceptancePolicy}
-                              onChange={(e) => setStatementAcceptancePolicy(e.target.value)}
-                              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-indigo-400"
-                            >
-                              <option value="atLeastOneTransactionInRange">At least one transaction in range (Recommended)</option>
-                              <option value="allTransactionsInRange">All transactions in range</option>
-                            </select>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Multi-Step Workflow Step Tabs */}
-                          <div className="space-y-3">
-                            <div>
-                              <span className="block text-xs text-muted-foreground mb-1 font-medium">Select Workflow Step</span>
-                              <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-border bg-background p-1 text-[11px]">
-                                <button
-                                  type="button"
-                                  onClick={() => setStatementStep("INITIATE_UPLOAD")}
-                                  className={`rounded py-1.5 font-semibold transition-all ${
-                                    statementStep === "INITIATE_UPLOAD"
-                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
-                                      : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  1. Initiate
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setStatementStep("UPLOAD_FILE")}
-                                  className={`rounded py-1.5 font-semibold transition-all ${
-                                    statementStep === "UPLOAD_FILE"
-                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
-                                      : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  2. Upload
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setStatementStep("COMPLETE_UPLOAD")}
-                                  className={`rounded py-1.5 font-semibold transition-all ${
-                                    statementStep === "COMPLETE_UPLOAD"
-                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
-                                      : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  3. Complete
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setStatementStep("CHECK_STATUS")}
-                                  className={`rounded py-1.5 font-semibold transition-all ${
-                                    statementStep === "CHECK_STATUS"
-                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
-                                      : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  4. Status
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setStatementStep("RETRIEVE_STATEMENT")}
-                                  className={`rounded py-1.5 font-semibold transition-all col-span-2 ${
-                                    statementStep === "RETRIEVE_STATEMENT"
-                                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30"
-                                      : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  5. Retrieve Report
-                                </button>
+                        ) : (
+                          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3.5 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="rounded-lg bg-indigo-500/20 p-2 text-indigo-400 shrink-0">
+                                <FileCheck className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-foreground truncate">{statementFileName || "bank_statement.pdf"}</p>
+                                <p className="text-[11px] text-emerald-400 font-medium font-mono">{statementFileSize} · ✓ Ready for Analysis</p>
                               </div>
                             </div>
-
-                            {/* Step 1 Fields */}
-                            {statementStep === "INITIATE_UPLOAD" && (
-                              <div>
-                                <span className="block text-xs text-muted-foreground mb-1 font-medium">Acceptance Policy</span>
-                                <select
-                                  value={statementAcceptancePolicy}
-                                  onChange={(e) => setStatementAcceptancePolicy(e.target.value)}
-                                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-indigo-400"
-                                >
-                                  <option value="atLeastOneTransactionInRange">At least one transaction in range</option>
-                                  <option value="allTransactionsInRange">All transactions in range</option>
-                                </select>
-                                <p className="mt-1 text-[11px] text-muted-foreground">
-                                  Generates a session upload token and request ID for file upload.
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Step 2 Fields */}
-                            {statementStep === "UPLOAD_FILE" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                    <span className="font-medium text-foreground">Session Token *</span>
-                                    {statementToken && <span className="text-[10px] text-emerald-400">✓ Auto-filled</span>}
-                                  </div>
-                                  <input
-                                    value={statementToken}
-                                    onChange={(e) => setStatementToken(e.target.value.trim())}
-                                    placeholder="tok_stmt_..."
-                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                  />
-                                </div>
-
-                                <div>
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                    <span className="font-medium text-foreground">Request ID</span>
-                                    {statementRequestId && <span className="text-[10px] text-emerald-400">✓ Auto-filled</span>}
-                                  </div>
-                                  <input
-                                    value={statementRequestId}
-                                    onChange={(e) => setStatementRequestId(e.target.value.trim())}
-                                    placeholder="req_stmt_..."
-                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                  />
-                                </div>
-
-                                <div>
-                                  <span className="block text-xs text-muted-foreground mb-1 font-medium">Select PDF File *</span>
-                                  {!statementFileBase64 ? (
-                                    <label className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 p-3 text-center cursor-pointer transition-all">
-                                      <input
-                                        type="file"
-                                        accept="application/pdf,.pdf"
-                                        onChange={(e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) handlePdfUpload(file);
-                                        }}
-                                        className="hidden"
-                                      />
-                                      <UploadCloud className="h-4 w-4 text-indigo-400" />
-                                      <span className="text-xs font-medium text-foreground">Pick Bank Statement PDF</span>
-                                    </label>
-                                  ) : (
-                                    <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-2.5 flex items-center justify-between text-xs">
-                                      <span className="font-mono text-indigo-300 truncate">{statementFileName} ({statementFileSize})</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setStatementFileBase64("");
-                                          setStatementFileName("");
-                                        }}
-                                        className="text-red-400 hover:underline shrink-0 text-[11px]"
-                                      >
-                                        Remove
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Step 3 Fields */}
-                            {statementStep === "COMPLETE_UPLOAD" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <span className="block text-xs text-muted-foreground mb-1 font-medium">Request ID *</span>
-                                  <input
-                                    value={statementRequestId}
-                                    onChange={(e) => setStatementRequestId(e.target.value.trim())}
-                                    placeholder="req_stmt_..."
-                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                  />
-                                </div>
-                                <div>
-                                  <span className="block text-xs text-muted-foreground mb-1 font-medium">Session Token (Optional)</span>
-                                  <input
-                                    value={statementToken}
-                                    onChange={(e) => setStatementToken(e.target.value.trim())}
-                                    placeholder="tok_stmt_..."
-                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Step 4 Fields */}
-                            {statementStep === "CHECK_STATUS" && (
-                              <div>
-                                <span className="block text-xs text-muted-foreground mb-1 font-medium">Request ID to Poll *</span>
-                                <input
-                                  value={statementRequestId}
-                                  onChange={(e) => setStatementRequestId(e.target.value.trim())}
-                                  placeholder="req_stmt_..."
-                                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                />
-                              </div>
-                            )}
-
-                            {/* Step 5 Fields */}
-                            {statementStep === "RETRIEVE_STATEMENT" && (
-                              <div className="space-y-3">
-                                <div>
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                    <span className="font-medium text-foreground">Txn ID / Request ID *</span>
-                                    {statementTxnId && <span className="text-[10px] text-emerald-400">✓ Auto-filled</span>}
-                                  </div>
-                                  <input
-                                    value={statementTxnId || statementRequestId}
-                                    onChange={(e) => setStatementTxnId(e.target.value.trim())}
-                                    placeholder="txn_stmt_... or request_id"
-                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <span className="block text-xs text-muted-foreground mb-1 font-medium">Report Type</span>
-                                    <input
-                                      value={statementReportType}
-                                      onChange={(e) => setStatementReportType(e.target.value)}
-                                      placeholder="json"
-                                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                    />
-                                  </div>
-                                  <div>
-                                    <span className="block text-xs text-muted-foreground mb-1 font-medium">Report Subtype</span>
-                                    <input
-                                      value={statementReportSubtype}
-                                      onChange={(e) => setStatementReportSubtype(e.target.value)}
-                                      placeholder="type3"
-                                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStatementFile(null);
+                                setStatementFileName("");
+                                setStatementFileSize("");
+                              }}
+                              className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors"
+                            >
+                              Remove
+                            </button>
                           </div>
-                        </>
-                      )}
+                        )}
+                      </div>
 
-                      {/* Pricing Banner */}
+                      {/* Optional PDF Password */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1">
+                            <Lock className="h-3 w-3 text-muted-foreground" /> PDF Password (Optional)
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">If statement is password protected</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showStatementPassword ? "text" : "password"}
+                            value={statementPassword}
+                            onChange={(e) => setStatementPassword(e.target.value)}
+                            placeholder="e.g. PAN or DOB (e.g. AAAA1234 or 01011990)"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-400 pr-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowStatementPassword(!showStatementPassword)}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showStatementPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Acceptance Policy */}
+                      <div>
+                        <span className="block text-xs text-muted-foreground mb-1 font-medium">Acceptance Policy</span>
+                        <select
+                          value={statementAcceptancePolicy}
+                          onChange={(e) => setStatementAcceptancePolicy(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-indigo-400"
+                        >
+                          <option value="atLeastOneTransactionInRange">At least one transaction in range (Recommended)</option>
+                          <option value="allTransactionsInRange">All transactions in range</option>
+                        </select>
+                      </div>
+
+                      {/* Pricing & Single-Hit Info Banner */}
                       <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-2.5 text-xs text-indigo-300 flex items-center justify-between">
                         <span className="flex items-center gap-1.5 font-medium">
                           💰 Wallet Debit:
@@ -2999,6 +2701,83 @@ function TestApiPage() {
                         </span>
                         <span className="font-bold text-amber-400">₹{getServicePrice("transunion").toFixed(2)} / Request</span>
                       </div>
+                    </>
+                  ) : selectedService === "experian" ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Mobile No *</span>
+                            <span className="text-[11px] text-muted-foreground">10 Digits</span>
+                          </div>
+                          <input
+                            value={experianMobile}
+                            maxLength={10}
+                            onChange={(e) => setExperianMobile(e.target.value.replace(/\D/g, ""))}
+                            placeholder="Enter mobile no"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Pan *</span>
+                            <span className="text-[11px] text-muted-foreground">10 Chars</span>
+                          </div>
+                          <input
+                            value={experianPan}
+                            maxLength={10}
+                            onChange={(e) => setExperianPan(e.target.value.toUpperCase().trim())}
+                            placeholder="Enter pan"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono uppercase outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">First Name *</span>
+                          <input
+                            value={experianFirstName}
+                            onChange={(e) => setExperianFirstName(e.target.value)}
+                            placeholder="Enter first name"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                        <div>
+                          <span className="block text-xs text-muted-foreground mb-1 font-medium">Last Name *</span>
+                          <input
+                            value={experianLastName}
+                            onChange={(e) => setExperianLastName(e.target.value)}
+                            placeholder="Enter last name"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Dob *</span>
+                          <span className="text-[11px] text-muted-foreground">YYYY-MM-DD</span>
+                        </div>
+                        <input
+                          value={experianDob}
+                          onChange={(e) => setExperianDob(e.target.value.trim())}
+                          placeholder="2000-02-20"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-emerald-400">₹{getServicePrice("experian").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Fetches official Experian Bureau credit score, CAIS accounts summary, active loan accounts, and white-labeled PDF report.
+                      </p>
                     </>
                   ) : selectedService === "crif" ? (
                     <>
@@ -3709,16 +3488,22 @@ function TestApiPage() {
                     className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all shadow-md active:scale-[0.99] ${
                       isServiceRevoked
                         ? "bg-amber-500/15 border border-amber-500/30 text-amber-400 cursor-not-allowed hover:bg-amber-500/15"
+                        : selectedService === "statement_analyzer"
+                        ? "bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-lg disabled:opacity-60"
                         : "bg-emerald-600 text-white hover:bg-emerald-500 hover:shadow-lg disabled:opacity-60"
                     }`}
                   >
                     {loading ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Verifying with Bharat API Cloud Gateway...
+                        <Loader2 className="h-4 w-4 animate-spin" /> {selectedService === "statement_analyzer" ? "Analyzing Bank Statement (OCR & AI Engine)..." : "Verifying with Bharat API Cloud Gateway..."}
                       </>
                     ) : isServiceRevoked ? (
                       <>
                         <AlertCircle className="h-4 w-4 text-amber-400" /> 🔒 API Not Assigned (Contact Admin)
+                      </>
+                    ) : selectedService === "statement_analyzer" ? (
+                      <>
+                        <Sparkles className="h-4 w-4" /> ⚡ Analyze Bank Statement (1-Shot)
                       </>
                     ) : (
                       <>
@@ -5371,51 +5156,72 @@ function TestApiPage() {
                           (() => {
                             const anyRes: any = responseJson || {};
                             const data: any = (responseJson?.data || responseJson?.result || responseJson) || {};
-                            const accountInfo: any = (data.account_info || data.account_information || data.account_details || data.accountDetails || data?.data?.account_info || {});
+                            const accountObj: any = (Array.isArray(data.accounts) && data.accounts[0]) ? data.accounts[0] : (data.account_info || data.account_information || data.account_details || data.accountDetails || data?.data?.account_info || {});
+                            const customerInfo: any = data.customer_info || {};
+                            const overallObj: any = (data.analysis_data && data.analysis_data.Overall) || data.Overall || data.summary || data.financial_summary || data.analytics || {};
                             const summary: any = (data.summary || data.financial_summary || data.analytics || data?.data?.summary || {});
 
                             // Session tracking
-                            const stepToken = String(data.token || anyRes.token || statementToken || "—");
-                            const stepRequestId = String(data.request_id || anyRes.request_id || statementRequestId || "—");
-                            const stepTxnId = String(data.txn_id || anyRes.txn_id || statementTxnId || "—");
+                            const stepToken = String(data.token || anyRes.token || "—");
+                            const stepRequestId = String(data.request_id || anyRes.request_id || "—");
+                            const stepTxnId = String(data.txn_id || anyRes.txn_id || "—");
                             const rawStatus = String(data.status || anyRes.status_message || anyRes.message || (responseStatus === 200 ? "COMPLETED" : "PROCESSING")).toUpperCase();
 
                             // Account info
-                            const bankName = String(accountInfo.bank_name || accountInfo.bank || data.bank_name || "Bank Statement");
-                            const accountHolder = String(accountInfo.holder_name || accountInfo.name || accountInfo.customer_name || data.holder_name || resData.name || resData.fullname || "—");
-                            const accountNumber = String(accountInfo.account_number || accountInfo.account_no || data.account_number || "—");
-                            const accountType = String(accountInfo.account_type || data.account_type || "Savings / Current");
-                            const ifscVal = String(accountInfo.ifsc || accountInfo.ifsc_code || "—");
-                            const branchVal = String(accountInfo.branch || accountInfo.branch_name || "—");
+                            const bankName = String(accountObj.bank || accountObj.bank_name || data.bank_name || "Bank Statement");
+                            const accountHolder = String(customerInfo.name || accountObj.holder_name || accountObj.name || accountObj.customer_name || resData.name || resData.fullname || "—");
+                            const accountNumber = String(accountObj.account_number || accountObj.account_no || data.account_number || "—");
+                            const accountType = String(accountObj.account_type || data.account_type || "Savings");
+                            const ifscVal = String(accountObj.ifsc_code || accountObj.ifscCode || accountObj.ifsc || "—");
+                            const branchVal = String(accountObj.location || accountObj.branch || accountObj.branch_name || "—");
 
                             // Period
-                            const periodObj: any = (accountInfo.statement_period || data.statement_period || {});
-                            const periodFrom = String(periodObj.from || periodObj.start_date || accountInfo.start_date || "—");
-                            const periodTo = String(periodObj.to || periodObj.end_date || accountInfo.end_date || "—");
+                            const periodObj: any = (accountObj.statement_period || data.statement_period || {});
+                            const periodFrom = String(data.statement_start_date || accountObj.transaction_start_date || periodObj.from || periodObj.start_date || "—");
+                            const periodTo = String(data.statement_end_date || accountObj.transaction_end_date || periodObj.to || periodObj.end_date || "—");
 
                             // Financial metrics
-                            const totalCredits = Number(summary.total_credits || summary.total_credit_amount || summary.totalCredits || 0);
-                            const totalDebits = Number(summary.total_debits || summary.total_debit_amount || summary.totalDebits || 0);
-                            const avgMonthlyBalance = Number(summary.average_monthly_balance || summary.amb || summary.averageMonthlyBalance || 0);
-                            const netInflow = Number(summary.net_inflow || summary.netInflow || (totalCredits - totalDebits));
-                            const creditTxnCount = Number(summary.credit_transaction_count || summary.creditCount || 0);
-                            const debitTxnCount = Number(summary.debit_transaction_count || summary.debitCount || 0);
+                            const totalCredits = Number(overallObj["Total Amount of Credit Transactions"] || overallObj["Total Net Credit Amount"] || summary.total_credits || summary.total_credit_amount || 0);
+                            const totalDebits = Number(overallObj["Total Amount of Debit Transactions"] || overallObj["Total Net Debit Amount"] || summary.total_debits || summary.total_debit_amount || 0);
+                            const avgMonthlyBalance = Number(overallObj["Monthly Average Balance"] || overallObj["Average Bank Balance"] || overallObj["Average EOD Balance"] || summary.average_monthly_balance || summary.amb || 0);
+                            const netInflow = Number(summary.net_inflow || (totalCredits - totalDebits));
+                            const creditTxnCount = Number(overallObj["Total No. of Credit Transactions"] || summary.credit_transaction_count || summary.creditCount || 0);
+                            const debitTxnCount = Number(overallObj["Total No. of Debit Transactions"] || summary.debit_transaction_count || summary.debitCount || 0);
 
                             // Salary detection
-                            const salaryDetected = Boolean(summary.salary_detected || summary.is_salaried || summary.salaryCredit || summary.estimated_salary);
-                            const estimatedSalary = Number(summary.estimated_salary || summary.salary_amount || 0);
-                            const employerName = String(summary.employer_name || summary.employer || "—");
+                            const salaryCount = Number(overallObj["Total No of Salary Credits"] || overallObj["salary_count"] || 0);
+                            const salaryDetected = Boolean(salaryCount > 0 || summary.salary_detected || summary.is_salaried || summary.salaryCredit || summary.estimated_salary);
+                            const estimatedSalary = Number(overallObj["Average Salary Amount"] || overallObj["Total Amount of Salary Credits"] || summary.estimated_salary || summary.salary_amount || 0);
+                            const employerName = String(summary.employer_name || summary.employer || (Array.isArray(overallObj["Employer Name"]) && overallObj["Employer Name"][0]) || "—");
 
                             // Risk indicators
-                            const bounceCount = Number(summary.bounce_count || summary.cheque_bounce_count || summary.ecs_bounce_count || summary.inward_bounce_count || 0);
-                            const negativeDays = Number(summary.negative_balance_days || summary.negativeBalanceDays || 0);
-                            const openingBalance = Number(summary.opening_balance || summary.openingBalance || 0);
-                            const closingBalance = Number(summary.closing_balance || summary.closingBalance || 0);
-                            const totalTransactions = Number(data.total_transactions || summary.total_transactions || (creditTxnCount + debitTxnCount) || 0);
-                            const totalPages = Number(data.total_pages || 0);
+                            const bounceCount = Number(overallObj["Total No.of I / W Bounced"] || overallObj["Total Number of Outward Cheque Bounces"] || summary.bounce_count || summary.cheque_bounce_count || summary.ecs_bounce_count || 0);
+                            const negativeDays = Number(overallObj["Total -ve event transactions in last 6 months"] || summary.negative_balance_days || 0);
+                            const openingBalance = Number(overallObj["Min Opening Balance"] || overallObj["Opening"] || summary.opening_balance || 0);
+                            const closingBalance = Number(overallObj["Closing Balance"] || overallObj["Current Balance"] || summary.closing_balance || 0);
+                            const totalTransactions = Number(overallObj["No. of transactions in BS"] || data.total_transactions || summary.total_transactions || (creditTxnCount + debitTxnCount) || 0);
+                            const totalPages = Number(data.max_pages_in_pdf || data.total_pages || 0);
 
-                            const monthlyData: any[] = Array.isArray(data.monthly_analysis) ? data.monthly_analysis : Array.isArray(data.monthly_summary) ? data.monthly_summary : Array.isArray(summary.monthly_breakdown) ? summary.monthly_breakdown : [];
-                            const hasFullReport = Boolean(accountInfo.bank_name || summary.total_credits || totalCredits > 0 || avgMonthlyBalance > 0);
+                            // Month-wise analytics extraction
+                            const analysisDataObj = data.analysis_data || {};
+                            const analysisMonths = Object.keys(analysisDataObj).filter((k) => k !== "Overall" && k !== "Overall_max_sum" && k !== "Overall_max_average");
+                            const monthlyData: any[] = analysisMonths.length > 0
+                              ? analysisMonths.map((mKey) => ({
+                                  month: mKey,
+                                  total_credits: Number(analysisDataObj[mKey]["Total Amount of Credit Transactions"] || analysisDataObj[mKey]["Total Net Credit Amount"] || 0),
+                                  total_debits: Number(analysisDataObj[mKey]["Total Amount of Debit Transactions"] || analysisDataObj[mKey]["Total Net Debit Amount"] || 0),
+                                  closing_balance: Number(analysisDataObj[mKey]["Closing Balance"] || analysisDataObj[mKey]["Last Day EOD Balance"] || 0),
+                                  bounce_count: Number(analysisDataObj[mKey]["Total No.of I / W Bounced"] || 0),
+                                }))
+                              : Array.isArray(data.monthly_analysis) ? data.monthly_analysis : Array.isArray(data.monthly_summary) ? data.monthly_summary : Array.isArray(summary.monthly_breakdown) ? summary.monthly_breakdown : [];
+
+                            // Tamper & Fraud analysis
+                            const tamperDetails: any[] = Array.isArray(data.tamper_detection_details) ? data.tamper_detection_details : [];
+                            const fraudAnalysisList: any[] = Array.isArray(data.fraud_analysis) ? data.fraud_analysis.filter((f: any) => f.result === "applicable") : [];
+                            const topSpentList: any[] = Array.isArray(data.top_spent_categories) ? data.top_spent_categories.filter((c: any) => Number(c.amount || 0) > 0) : [];
+                            const rawTransactionsList: any[] = Array.isArray(data.raw_data) ? data.raw_data : (Array.isArray(accountObj.transactions) ? accountObj.transactions : []);
+
+                            const hasFullReport = Boolean(accountObj.bank || bankName !== "Bank Statement" || data.accounts || data.analysis_data || totalCredits > 0 || avgMonthlyBalance > 0);
 
                             return (
                               <div className="space-y-4">
@@ -5641,55 +5447,121 @@ function TestApiPage() {
                                         </div>
                                       </div>
                                     )}
+
+                                    {/* Tamper Detection & Fraud Analysis Section */}
+                                    {(tamperDetails.length > 0 || fraudAnalysisList.length > 0) && (
+                                      <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                        {/* Tamper Detection */}
+                                        {tamperDetails.length > 0 && (
+                                          <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Tamper & Font Forensics
+                                            </span>
+                                            <div className="space-y-1.5 font-mono text-[11px]">
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Original PDF Score:</span>
+                                                <span className="font-bold text-emerald-400">{tamperDetails[0]?.original_pdf_confidence_score ?? 100}%</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Tampering Detected:</span>
+                                                <span className="font-bold text-foreground">{tamperDetails[0]?.txn_amt_bal_tampering_detected || "NO"}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Standard Bank Font:</span>
+                                                <span className="font-bold text-foreground">{tamperDetails[0]?.is_standard_bank_font === 1 ? "✓ Verified" : "Standard"}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Fraud Alerts */}
+                                        {fraudAnalysisList.length > 0 && (
+                                          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 space-y-2">
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                              <AlertCircle className="h-3.5 w-3.5" /> Fraud & Anomaly Indicators ({fraudAnalysisList.length})
+                                            </span>
+                                            <div className="space-y-1">
+                                              {fraudAnalysisList.map((f: any, fIdx: number) => (
+                                                <div key={fIdx} className="rounded bg-amber-500/10 border border-amber-500/20 px-2 py-1 text-[11px] text-amber-300 flex items-center gap-1.5">
+                                                  <span>⚠️</span>
+                                                  <span className="truncate">{f.type}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Top Spending Categories (if present) */}
+                                    {topSpentList.length > 0 && (
+                                      <div className="rounded-xl border border-border bg-card p-4 space-y-2.5">
+                                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                          <TrendingDown className="h-3.5 w-3.5 text-rose-400" /> Top Spending Categories
+                                        </span>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                          {topSpentList.slice(0, 4).map((c: any, cIdx: number) => (
+                                            <div key={cIdx} className="rounded-lg border border-border/60 bg-secondary/20 p-2.5 space-y-0.5 font-mono">
+                                              <p className="text-[11px] font-semibold text-foreground truncate">{c.category}</p>
+                                              <p className="text-xs font-bold text-rose-400">₹{Number(c.amount).toLocaleString("en-IN")}</p>
+                                              <span className="text-[10px] text-muted-foreground">{c.percentage}% of spends</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Recent Transactions Ledger (if present) */}
+                                    {rawTransactionsList.length > 0 && (
+                                      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                          <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-400" /> Statement Transactions ({rawTransactionsList.length} total)
+                                        </span>
+                                        <div className="overflow-x-auto max-h-60">
+                                          <table className="w-full text-left text-xs font-mono">
+                                            <thead className="sticky top-0 bg-card border-b border-border/60 text-muted-foreground text-[10px] uppercase">
+                                              <tr>
+                                                <th className="py-1 px-2">Date</th>
+                                                <th className="py-1 px-2">Narration</th>
+                                                <th className="py-1 px-2">Category</th>
+                                                <th className="py-1 px-2 text-right">Amount</th>
+                                                <th className="py-1 px-2 text-right">Balance</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/40">
+                                              {rawTransactionsList.slice(0, 10).map((t: any, tIdx: number) => {
+                                                const isCredit = Boolean(t.Credit || (typeof t.amount === "number" && t.amount > 0));
+                                                const amountVal = t.Credit || t.Debit || Math.abs(t.amount || 0);
+                                                return (
+                                                  <tr key={tIdx} className="hover:bg-secondary/30 text-[11px]">
+                                                    <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">{t.Date || t.date || "—"}</td>
+                                                    <td className="py-1.5 px-2 text-foreground max-w-xs truncate" title={t.Description || t.narration}>{t.Description || t.narration || "—"}</td>
+                                                    <td className="py-1.5 px-2 text-indigo-300">{t.Category || t.category || "—"}</td>
+                                                    <td className={`py-1.5 px-2 text-right font-bold whitespace-nowrap ${isCredit ? "text-emerald-400" : "text-rose-400"}`}>
+                                                      {isCredit ? "+" : "-"}₹{Number(amountVal).toLocaleString("en-IN")}
+                                                    </td>
+                                                    <td className="py-1.5 px-2 text-right text-foreground font-semibold whitespace-nowrap">
+                                                      ₹{Number(t.Balance || t.balance || 0).toLocaleString("en-IN")}
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
                                   </>
                                 ) : (
-                                  /* Interim Step Result Notice (for Step 1, 2, 3, 4) */
-                                  <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-3">
+                                  /* Interim or Processing Notice */
+                                  <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-2">
                                     <div className="flex items-center gap-2 text-indigo-400">
                                       <Sparkles className="h-4 w-4" />
-                                      <span className="text-xs font-bold">Workflow Step Output</span>
+                                      <span className="text-xs font-bold">Analysis Status</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                      {String(anyRes.message || "Step executed successfully. Session tokens have been auto-populated into your console.")}
+                                      {String(anyRes.message || "Statement processing initiated via automated 1-shot pipeline.")}
                                     </p>
-                                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                                      {statementStep === "INITIATE_UPLOAD" && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setStatementStep("UPLOAD_FILE")}
-                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
-                                        >
-                                          ➡️ Next: Proceed to Step 2 (Upload File)
-                                        </button>
-                                      )}
-                                      {statementStep === "UPLOAD_FILE" && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setStatementStep("COMPLETE_UPLOAD")}
-                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
-                                        >
-                                          ➡️ Next: Proceed to Step 3 (Complete Upload)
-                                        </button>
-                                      )}
-                                      {statementStep === "COMPLETE_UPLOAD" && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setStatementStep("CHECK_STATUS")}
-                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
-                                        >
-                                          🔍 Next: Proceed to Step 4 (Check Status)
-                                        </button>
-                                      )}
-                                      {statementStep === "CHECK_STATUS" && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setStatementStep("RETRIEVE_STATEMENT")}
-                                          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
-                                        >
-                                          📊 Next: Proceed to Step 5 (Retrieve Report)
-                                        </button>
-                                      )}
-                                    </div>
                                   </div>
                                 )}
 
@@ -5697,7 +5569,7 @@ function TestApiPage() {
                                 <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1.5">
                                   <div className="flex items-center justify-between text-muted-foreground">
                                     <span className="text-[10px] font-bold uppercase tracking-wider">Session Audit Trace</span>
-                                    <span className="text-indigo-400 font-semibold text-[10px]">Method: {statementMode === "one_shot" ? "1-SHOT AUTO PIPELINE" : statementStep}</span>
+                                    <span className="text-indigo-400 font-semibold text-[10px]">Method: 1-SHOT AUTO PIPELINE</span>
                                   </div>
                                   <div className="grid gap-2 sm:grid-cols-3 text-[11px] text-muted-foreground pt-1">
                                     <p className="truncate">Token: <span className="text-foreground">{stepToken}</span></p>
@@ -6267,6 +6139,183 @@ function TestApiPage() {
                                           <div className="flex items-center justify-between">
                                             <span className="font-semibold text-foreground text-[11px]">Step {String(st.step)}: {String(st.name)}</span>
                                             <span className="text-emerald-400 text-[10px] font-bold uppercase">{String(st.status)}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "experian" ? (
+                          (() => {
+                            const rawData = (responseJson?.data || responseJson?.result || responseJson || {}) as any;
+                            const resultJson = rawData?.result_json || rawData || {};
+                            const inProfile = resultJson?.INProfileResponse || resultJson || {};
+                            
+                            // Header & Score
+                            const header = inProfile?.CreditProfileHeader || inProfile?.Header || {};
+                            const scoreObj = inProfile?.SCORE || {};
+                            const scoreVal = Number(scoreObj?.BureauScore || rawData?.score || 0);
+                            const scoreBand = scoreVal >= 750 ? "Excellent" : scoreVal >= 700 ? "Good" : scoreVal >= 600 ? "Fair" : "Poor";
+                            const reportNumber = header?.ReportNumber || rawData?.report_id || (responseJson as any)?.request_id || "EXP_ACTIVE";
+                            const reportDate = header?.ReportDate || new Date().toISOString().split("T")[0];
+                            const pdfUrl = rawData?.pdf_url || (responseJson as any)?.pdf_url || (responseJson as any)?.data?.pdf_url || "";
+
+                            // Demographics
+                            const appDetails = inProfile?.Current_Application?.Current_Application_Details || {};
+                            const applicant = appDetails?.Current_Applicant_Details || {};
+                            const applicantName = [applicant?.First_Name || experianFirstName, applicant?.Middle_Name1, applicant?.Last_Name || experianLastName].filter(Boolean).join(" ").trim().toUpperCase() || "CUSTOMER";
+                            const applicantPan = applicant?.IncomeTaxPan || experianPan || "—";
+                            const applicantMobile = applicant?.MobilePhoneNumber || experianMobile || "—";
+                            const applicantDob = applicant?.Date_Of_Birth_Applicant || experianDob || "—";
+
+                            // CAIS Account Summary
+                            const caisSummary = inProfile?.CAIS_Account?.CAIS_Summary || {};
+                            const creditAcc = caisSummary?.Credit_Account || {};
+                            const totalBalances = caisSummary?.Total_Outstanding_Balance || {};
+                            const accountsList = Array.isArray(inProfile?.CAIS_Account?.CAIS_Account_DETAILS) ? inProfile.CAIS_Account.CAIS_Account_DETAILS : [];
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Badge Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="rounded-lg bg-emerald-500/20 p-2 text-emerald-400 border border-emerald-500/40">
+                                      <ShieldCheck className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-base font-bold text-foreground">Experian Bureau Credit Score</p>
+                                        <span className={`rounded font-mono text-[10px] px-2 py-0.5 border font-bold uppercase ${
+                                          scoreVal >= 750
+                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                            : scoreVal >= 700
+                                            ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
+                                            : scoreVal >= 600
+                                            ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                            : "bg-rose-500/15 border-rose-500/30 text-rose-400"
+                                        }`}>
+                                          {scoreBand} ({scoreVal || "—"})
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        Report Date: <span className="text-foreground">{reportDate}</span> · Report No: <span className="text-foreground">{reportNumber}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {pdfUrl && (
+                                      <a
+                                        href={pdfUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 border border-emerald-400/60 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 shadow-md transition-all hover:scale-[1.02] cursor-pointer"
+                                      >
+                                        <FileText className="h-3.5 w-3.5" /> View Experian PDF
+                                      </a>
+                                    )}
+                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1">
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> BUREAU VERIFIED
+                                    </span>
+                                    <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-1 text-[11px] font-semibold text-emerald-300">
+                                      ₹25.00 Billed
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Prominent PDF Action Banner */}
+                                {pdfUrl && (
+                                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-emerald-500/50 bg-gradient-to-r from-emerald-950/50 via-emerald-900/30 to-card p-4 shadow-lg">
+                                    <div className="flex items-center gap-3">
+                                      <div className="rounded-xl bg-emerald-500/25 p-2.5 text-emerald-300 border border-emerald-400/50 shadow-inner">
+                                        <FileText className="h-6 w-6 text-emerald-300" />
+                                      </div>
+                                      <div>
+                                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                          Official Experian Credit Information Report (PDF Ready)
+                                        </h4>
+                                        <p className="text-xs text-emerald-200/80">
+                                          Complete bureau report with CAIS Tradelines, Score Analysis &amp; Accounts.
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                      <a
+                                        href={pdfUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-extrabold text-black hover:bg-emerald-400 shadow-md transition-all hover:scale-105 cursor-pointer"
+                                      >
+                                        <ExternalLink className="h-4 w-4 text-black" /> View PDF Report
+                                      </a>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Score & Demographics Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <span className="text-[11px] text-muted-foreground uppercase font-medium">Applicant Name</span>
+                                    <p className="text-sm font-bold text-foreground">{applicantName}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <span className="text-[11px] text-muted-foreground uppercase font-medium">PAN Number</span>
+                                    <p className="text-sm font-mono font-bold text-primary">{applicantPan}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <span className="text-[11px] text-muted-foreground uppercase font-medium">Mobile Number</span>
+                                    <p className="text-sm font-mono font-bold text-foreground">{applicantMobile}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                                    <span className="text-[11px] text-muted-foreground uppercase font-medium">Bureau Credit Score</span>
+                                    <p className="text-sm font-bold text-emerald-400">{scoreVal || "N/A"}</p>
+                                  </div>
+                                </div>
+
+                                {/* CAIS Summary Cards */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  <div className="rounded-xl border border-border bg-secondary/30 p-3 text-center space-y-1">
+                                    <span className="text-[11px] text-muted-foreground">Total Accounts</span>
+                                    <p className="text-lg font-bold text-foreground">{creditAcc?.CreditAccountTotal || "0"}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-border bg-secondary/30 p-3 text-center space-y-1">
+                                    <span className="text-[11px] text-muted-foreground">Active Accounts</span>
+                                    <p className="text-lg font-bold text-emerald-400">{creditAcc?.CreditAccountActive || "0"}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-border bg-secondary/30 p-3 text-center space-y-1">
+                                    <span className="text-[11px] text-muted-foreground">Closed Accounts</span>
+                                    <p className="text-lg font-bold text-blue-400">{creditAcc?.CreditAccountClosed || "0"}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-border bg-secondary/30 p-3 text-center space-y-1">
+                                    <span className="text-[11px] text-muted-foreground">Outstanding Balance</span>
+                                    <p className="text-lg font-bold text-amber-400">₹{Number(totalBalances?.Outstanding_Balance_All || 0).toLocaleString("en-IN")}</p>
+                                  </div>
+                                </div>
+
+                                {/* Accounts Breakdown */}
+                                {accountsList.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                    <h4 className="text-xs font-bold text-foreground flex items-center justify-between">
+                                      <span>CAIS Credit Accounts &amp; Loans ({accountsList.length})</span>
+                                    </h4>
+                                    <div className="space-y-2">
+                                      {accountsList.map((acc: any, idx: number) => (
+                                        <div key={idx} className="rounded-lg border border-border/80 bg-secondary/20 p-3 text-xs flex flex-wrap items-center justify-between gap-2">
+                                          <div>
+                                            <p className="font-bold text-foreground">{acc.Subscriber_Name || `Account #${idx + 1}`}</p>
+                                            <p className="text-[11px] text-muted-foreground font-mono">
+                                              Acc No: {acc.Account_Number || "—"} · Opened: {acc.Open_Date || "—"}
+                                            </p>
+                                          </div>
+                                          <div className="text-right">
+                                            <p className="font-bold text-foreground font-mono">
+                                              ₹{Number(acc.Current_Balance || 0).toLocaleString("en-IN")}
+                                            </p>
+                                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                              Status {acc.Account_Status || "Active"}
+                                            </span>
                                           </div>
                                         </div>
                                       ))}

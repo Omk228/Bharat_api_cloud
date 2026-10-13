@@ -25,6 +25,7 @@ import statementAnalyzerRoutes from './modules/verification/statement_analyzer/s
 import mobileToBankRoutes from './modules/verification/mobile_to_bank/mobileToBank.routes.js';
 import transunionRoutes from './modules/verification/transunion/transunion.routes.js';
 import crifRoutes from './modules/verification/crif/crif.routes.js';
+import experianRoutes from './modules/verification/experian/experian.routes.js';
 import workEmailRoutes from './modules/verification/work_email/workEmail.routes.js';
 import operatorRoutes from './modules/verification/operator/operator.routes.js';
 import dthRoutes from './modules/verification/dth/dth.routes.js';
@@ -147,6 +148,8 @@ app.use('/', transunionRoutes);
 app.use('/srv5/transunion-Score-Hybrid', transunionRoutes);
 app.use('/', crifRoutes);
 app.use('/crif/Credit-ScoreV4', crifRoutes);
+app.use('/', experianRoutes);
+app.use('/srv2/credit-report/experian', experianRoutes);
 app.use('/', workEmailRoutes);
 app.use('/api/v1', workEmailRoutes);
 app.use('/', operatorRoutes);

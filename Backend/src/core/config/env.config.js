@@ -28,6 +28,19 @@ export const ENV = {
     PROD_TOKEN_ID: process.env.IDSPAY_PROD_TOKEN_ID || '',
   },
 
+  STATEMENT_ANALYZER: {
+    ENV: process.env.STATEMENT_ANALYZER_ENV || 'prod',
+    PROD_BASE_URL: process.env.STATEMENT_ANALYZER_PROD_BASE_URL || 'https://javabackend.idspay.in/api/v1/prod',
+    UAT_BASE_URL: process.env.STATEMENT_ANALYZER_UAT_BASE_URL || 'https://javabackend.idspay.in/api/v1/uat',
+    API_ID: process.env.STATEMENT_ANALYZER_API_ID || '',
+    API_KEY: process.env.STATEMENT_ANALYZER_API_KEY || '',
+    TOKEN_ID: process.env.STATEMENT_ANALYZER_TOKEN_ID || '',
+    TIMEOUT_MS: parseInt(process.env.STATEMENT_ANALYZER_TIMEOUT_MS || '60000', 10),
+    MAX_FILE_SIZE_MB: parseInt(process.env.STATEMENT_ANALYZER_MAX_FILE_SIZE_MB || '25', 10),
+    MAX_POLL_ATTEMPTS: parseInt(process.env.STATEMENT_ANALYZER_MAX_POLL_ATTEMPTS || '10', 10),
+    POLL_INTERVAL_MS: parseInt(process.env.STATEMENT_ANALYZER_POLL_INTERVAL_MS || '3000', 10),
+  },
+
   REDIS: {
     HOST: process.env.REDIS_HOST || '127.0.0.1',
     PORT: parseInt(process.env.REDIS_PORT || '6379', 10),
@@ -104,6 +117,20 @@ export const ENV = {
   DTH_ADVANCE: {
     BASE_URL: process.env.DTH_ADVANCE_BASE_URL || process.env.WAY2API_DTH_ADVANCE_BASE_URL || 'https://app.way2api.com/api/v1/dth/info',
     API_KEY: process.env.DTH_ADVANCE_API_KEY || process.env.WAY2API_DTH_ADVANCE_API_KEY || process.env.WAY2API_DTH_API_KEY || process.env.WAY2API_OPERATOR_API_KEY || process.env.WAY2API_BANK_API_KEY || 'w2a_b2582c6c952c61b40af38c96917b33a5506ed5cfdf007c6641ea0732ba501bc41c34e1ded9fd917fea13276d24cd8082',
+  },
+
+  STATEMENT_ANALYZER: {
+    BASE_URL: process.env.STATEMENT_ANALYZER_BASE_URL || process.env.STATEMENT_ANALYZER_PROD_BASE_URL || 'https://javabackend.idspay.in/api/v1/prod/srv2/statement-analyzer',
+    API_ID: process.env.STATEMENT_ANALYZER_API_ID || process.env.IDSPAY_PROD_API_ID || 'APID2994',
+    KEY: process.env.STATEMENT_ANALYZER_KEY || process.env.IDSPAY_PROD_API_KEY || '49034a5a-cee5-4562-947b-03cf06608d94',
+    TOKEN_ID: process.env.STATEMENT_ANALYZER_TOKEN_ID || process.env.IDSPAY_PROD_TOKEN_ID || '70Iy81LSYYp0VY1JnAyPNlioXKle2k5J',
+    TOKEN: process.env.STATEMENT_ANALYZER_TOKEN || '',
+    PROD_BASE_URL: process.env.STATEMENT_ANALYZER_PROD_BASE_URL || 'https://javabackend.idspay.in/api/v1/prod',
+    UAT_BASE_URL: process.env.STATEMENT_ANALYZER_UAT_BASE_URL || 'https://javabackend.idspay.in/api/v1/uat',
+    MAX_FILE_SIZE_MB: parseInt(process.env.STATEMENT_ANALYZER_MAX_FILE_SIZE_MB || '25', 10),
+    TIMEOUT_MS: parseInt(process.env.STATEMENT_ANALYZER_TIMEOUT_MS || '300000', 10),
+    MAX_POLL_ATTEMPTS: parseInt(process.env.STATEMENT_ANALYZER_MAX_POLL_ATTEMPTS || '80', 10),
+    POLL_INTERVAL_MS: parseInt(process.env.STATEMENT_ANALYZER_POLL_INTERVAL_MS || '2500', 10),
   },
 };
 

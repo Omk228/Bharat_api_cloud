@@ -4,7 +4,7 @@ import { testDbConnection, dbPool } from './core/config/db.config.js';
 import { initDatabase } from './core/config/initDb.js';
 import { startAuditWorker, stopAuditWorker } from './core/queue/audit.worker.js';
 
-const PORT = ENV.PORT;
+const PORT = ENV.PORT || 5002;
 
 const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log('====================================================');
@@ -23,6 +23,22 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
 
   // Initialize BullMQ Background Audit Worker
   startAuditWorker();
+});
+
+// Configure server socket timeouts for long-running AI / OCR processes (no premature timeouts)
+server.keepAliveTimeout = 600000; // 10 minutes
+server.headersTimeout = 605000;   // 10 minutes + 5s
+if ('requestTimeout' in server) {
+  server.requestTimeout = 0;      // Infinite request timeout (wait for AI / OCR response)
+}
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`🚨 Port ${PORT} is already in use by another process. Please terminate the existing process or choose a different port.`);
+  } else {
+    console.error('🚨 Server listener error:', error);
+  }
+  process.exit(1);
 });
 
 // Graceful Shutdown Handler
@@ -60,7 +76,8 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('🚨 Uncaught Exception caught gracefully:', error);
+  console.error('🚨 Uncaught Exception:', error);
+  process.exit(1);
 });
 
 export default server;

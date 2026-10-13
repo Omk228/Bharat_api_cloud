@@ -54,7 +54,7 @@ class CredentialResolver {
   }
 
   /**
-   * Get upstream credentials for IDSPay (used for PAN, Statement Analyzer, Aadhaar, Bank, Mobile to Bank, UPI, etc.)
+   * Get upstream credentials for IDSPay (used for PAN, Aadhaar, Bank, Mobile to Bank, UPI, etc.)
    */
   async getIdspayCredentials() {
     await this.loadAllCredentials();
@@ -62,6 +62,23 @@ class CredentialResolver {
 
     return {
       baseUrl: cred?.baseUrl || ENV.IDSPAY.PROD_BASE_URL,
+      apiId: cred?.apiId || ENV.IDSPAY.PROD_API_ID,
+      apiKey: cred?.apiKey || ENV.IDSPAY.PROD_API_KEY,
+      tokenId: cred?.tokenId || ENV.IDSPAY.PROD_TOKEN_ID,
+    };
+  }
+
+  /**
+   * Get upstream credentials for Statement Analyzer PDF (Srv2) from IDSPay
+   */
+  async getStatementAnalyzerCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('idspay_master');
+    const isUat = (ENV.STATEMENT_ANALYZER?.ENV === 'uat' || cred?.environment === 'uat');
+    const baseUrl = cred?.baseUrl || (isUat ? ENV.STATEMENT_ANALYZER.UAT_BASE_URL : (ENV.IDSPAY.PROD_BASE_URL || 'https://javabackend.idspay.in/api/v1/prod'));
+
+    return {
+      baseUrl,
       apiId: cred?.apiId || ENV.IDSPAY.PROD_API_ID,
       apiKey: cred?.apiKey || ENV.IDSPAY.PROD_API_KEY,
       tokenId: cred?.tokenId || ENV.IDSPAY.PROD_TOKEN_ID,

@@ -1,22 +1,79 @@
-import { credentialResolver } from '../../../core/credentials/credentialResolver.js';
 import crypto from 'node:crypto';
 import { ENV } from '../../../core/config/env.config.js';
-import { upstreamFetch } from '../../../core/utils/httpAgent.js';
+import { dbPool } from '../../../core/config/db.config.js';
 import QueueService from '../../../core/queue/queue.service.js';
 import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
-import { isUpstreamLowBalance, formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
+import { formatUpstreamLowBalanceResponse } from '../../../core/utils/upstreamHelper.js';
+import StatementAnalyzerClient from './statementAnalyzer.client.js';
 
 export class StatementAnalyzerService {
   /**
-   * Universal Handler for Statement Analyzer PDF (Srv2)
-   * Supports all 6 workflow methods:
-   * 1. INITIATE_UPLOAD (Step 1)
-   * 2. INITIATE_UPLOAD / File Upload (Step 2)
-   * 3. COMPLETE_UPLOAD (Step 3)
-   * 4. CHECK_STATUS (Step 4)
-   * 5. RETRIEVE_STATEMENT (Step 5)
-   * 6. CANCEL_REQUEST (Step 6)
+   * Helper to map upstream errors to standard sanitized BAC responses
+   */
+  static mapUpstreamError(upstreamStatus, upstreamData, fallbackMsg = 'Statement analysis service temporarily unavailable.') {
+    const rawCode = upstreamData?.status?.code || upstreamData?.code || upstreamStatus;
+    const rawMsg = upstreamData?.status?.message || upstreamData?.message || upstreamData?.error || upstreamData?.msg;
+    const finalMsg = rawMsg || fallbackMsg;
+
+    // Upstream validation / unprocessable error
+    if (rawCode === 422 || upstreamStatus === 422) {
+      return {
+        httpCode: 422,
+        isSuccess: false,
+        resultCode: 102,
+        response: {
+          status: {
+            code: 422,
+            type: 'error',
+            message: finalMsg,
+          },
+          message: finalMsg,
+          result_code: 102,
+          ...(upstreamData?.data ? { data: upstreamData.data } : {}),
+        },
+      };
+    }
+
+    // Upstream timeout
+    if (rawCode === 504 || upstreamStatus === 504) {
+      return {
+        httpCode: 504,
+        isSuccess: false,
+        resultCode: 102,
+        response: {
+          status: {
+            code: 504,
+            type: 'error',
+            message: finalMsg.includes('timed out') ? finalMsg : 'Statement analysis upstream request timed out.',
+          },
+          message: finalMsg.includes('timed out') ? finalMsg : 'Statement analysis upstream request timed out.',
+          result_code: 102,
+        },
+      };
+    }
+
+    // Default upstream provider / server error (HTTP 502)
+    return {
+      httpCode: 502,
+      isSuccess: false,
+      resultCode: 102,
+      response: {
+        status: {
+          code: 502,
+          type: 'error',
+          message: finalMsg,
+        },
+        message: finalMsg,
+        result_code: 102,
+        ...(upstreamData?.data ? { data: upstreamData.data } : {}),
+      },
+    };
+  }
+
+  /**
+   * Main processor for Statement Analyzer PDF (Srv2)
+   * Supports both 1-Shot automated pipeline and individual workflow steps.
    */
   static async processStatementAnalyzerRequest({
     method,
@@ -24,457 +81,414 @@ export class StatementAnalyzerService {
     token,
     request_id,
     file,
+    filename = 'statement.pdf',
+    password,
     txn_id,
     report_type,
     report_subtype,
     client_ref_num,
+    correlationId = 'STA_REQ',
     apiClient,
-    rawBody = {},
   }) {
     const startTime = Date.now();
-    const endpoint = '/srv2/statement-upload';
-    const hitCost = await getEffectiveApiPrice(endpoint, apiClient?.user_id);
+    const endpoint = '/api/v1/statement-analyzer';
+    const hitCost = apiClient?.effective_price ?? (await getEffectiveApiPrice(endpoint, apiClient?.user_id));
 
-    // 0. Pre-flight wallet balance check
+    // Pre-flight wallet balance check
     if (apiClient?.user_id && apiClient.wallet_balance < hitCost) {
       throw ApiError.paymentRequired(
         `Insufficient wallet balance (₹${hitCost.toFixed(2)} required). Please recharge your wallet.`
       );
     }
 
-    const idspayCreds = await credentialResolver.getIdspayCredentials();
-    const masterApiId = idspayCreds.apiId;
-    const masterApiKey = idspayCreds.apiKey;
-    const masterTokenId = idspayCreds.tokenId;
-    const upstreamUrl = `${idspayCreds.baseUrl}/srv2/statement-analyzer`;
-
-    const generatedRequestId = request_id || crypto.randomUUID();
     const clientRef = client_ref_num || `STA_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const generatedRequestId = request_id || crypto.randomUUID();
 
     let finalResponse;
     let resultCode = 101;
     let isSuccess = false;
+    let httpStatusCode = 200;
 
-    // Helper to sanitize any upstream IDSPay URLs, domains, and provider references
-    const hostBase = apiClient?.hostBase || ENV.APP_BASE_URL || 'https://brown-goldfish-546701.hostingersite.com';
-    const sanitizeValue = (val) => {
-      if (typeof val === 'string') {
-        let out = val.replace(/https?:\/\/javabackend\.idspay\.in\/api\/v1\/prod/gi, hostBase);
-        out = out.replace(/https?:\/\/javabackend\.idspay\.in/gi, hostBase);
-        out = out.replace(/https?:\/\/[a-zA-Z0-9.-]*idspay\.in[^\s"']*/gi, (match) => {
-          const path = match.replace(/https?:\/\/[^/]+/i, '');
-          return `${hostBase}${path}`;
-        });
-        out = out.replace(/idspay/gi, 'Bharat API');
-        out = out.replace(/IDSPAY/g, 'BHARAT_API');
-        return out;
-      }
-      if (Array.isArray(val)) {
-        return val.map(sanitizeValue);
-      }
-      if (val !== null && typeof val === 'object') {
-        const cleaned = {};
-        for (const [k, v] of Object.entries(val)) {
-          cleaned[k] = sanitizeValue(v);
-        }
-        return cleaned;
-      }
-      return val;
-    };
+    const normalizedMethod = (method || '').trim().toUpperCase();
+    const isExplicitStep = Boolean(normalizedMethod && ['INITIATE_UPLOAD', 'COMPLETE_UPLOAD', 'CHECK_STATUS', 'RETRIEVE_STATEMENT', 'CANCEL_REQUEST'].includes(normalizedMethod));
 
-    const effectiveMethod = (
-      method ||
-      rawBody.method ||
-      rawBody.methodName ||
-      (txn_id ? 'RETRIEVE_STATEMENT' : request_id && !file && !token ? 'CHECK_STATUS' : 'INITIATE_UPLOAD')
-    ).trim();
+    try {
+      // =========================================================================
+      // MODE A: 1-SHOT AUTOMATED PIPELINE (When PDF is provided for analysis)
+      // =========================================================================
+      if (file && (!isExplicitStep || (normalizedMethod === 'INITIATE_UPLOAD' && !token && !request_id))) {
+        // Step 0: Check MySQL DB cache for completed analysis of the exact same file
+        const fileBuffer = Buffer.isBuffer(file) ? file : (file instanceof Uint8Array ? Buffer.from(file) : Buffer.from(file));
+        const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
-    // acceptance_policy is ONLY for Step 1 (session initiation). Must NOT be passed in Step 2 (file upload)
-    const hasTokenOrFile = Boolean(token || rawBody.token || file || rawBody.file);
-    const effectiveAcceptancePolicy =
-      acceptance_policy ||
-      rawBody.acceptance_policy ||
-      (effectiveMethod === 'INITIATE_UPLOAD' && !hasTokenOrFile ? 'atLeastOneTransactionInRange' : undefined);
+        try {
+          const [cachedRows] = await dbPool.query(
+            `SELECT id, request_id, txn_id, status, analysis_data, created_at, completed_at 
+             FROM bank_statement_analysis 
+             WHERE file_hash = ? AND status = 'COMPLETED' AND analysis_data IS NOT NULL 
+             ORDER BY id DESC LIMIT 1`,
+            [fileHash]
+          );
 
-    // Clean file payload if it contains data URI header
-    let processedFile = file || rawBody.file;
-    if (typeof processedFile === 'string' && processedFile.includes(';base64,')) {
-      processedFile = processedFile.split(';base64,')[1];
-    }
+          if (cachedRows && cachedRows.length > 0 && cachedRows[0].analysis_data) {
+            let parsedReport = cachedRows[0].analysis_data;
+            if (typeof parsedReport === 'string') {
+              try {
+                parsedReport = JSON.parse(parsedReport);
+              } catch (e) {
+                // Return as-is if raw
+              }
+            }
 
-    // Construct upstream payload with server-side master credentials
-    const upstreamPayload = {
-      ...rawBody,
-      api_id: masterApiId,
-      api_key: masterApiKey,
-      token_id: masterTokenId,
-      ...(method || rawBody.method ? { method: method || rawBody.method } : {}),
-      ...(effectiveAcceptancePolicy ? { acceptance_policy: effectiveAcceptancePolicy } : {}),
-      ...(token || rawBody.token ? { token: token || rawBody.token } : {}),
-      ...(request_id || rawBody.request_id ? { request_id: request_id || rawBody.request_id } : {}),
-      ...(processedFile ? { file: processedFile } : {}),
-      ...(txn_id || rawBody.txn_id ? { txn_id: txn_id || rawBody.txn_id } : {}),
-      ...(report_type || rawBody.report_type
-        ? { report_type: report_type || rawBody.report_type }
-        : {}),
-      ...(report_subtype || rawBody.report_subtype
-        ? { report_subtype: report_subtype || rawBody.report_subtype }
-        : {}),
-    };
+            console.log(`[StatementAnalyzer][${correlationId}] Cache Hit (file_hash: ${fileHash.substring(0, 12)}...). Returning cached analysis with ZERO upstream hits.`);
 
-    const effectiveToken = token || rawBody.token;
-    const effectiveRequestId = request_id || rawBody.request_id;
-    const isExplicitSubMethod = Boolean(method || rawBody.method) &&
-      ['CHECK_STATUS', 'RETRIEVE_STATEMENT', 'CANCEL_REQUEST', 'COMPLETE_UPLOAD'].includes(String(method || rawBody.method).toUpperCase());
-
-    // -------------------------------------------------------------
-    // CASE A: 1-SHOT AUTOMATED STATEMENT ANALYSIS PIPELINE
-    // When a file is provided and no specific sub-method is requested
-    // -------------------------------------------------------------
-    if (processedFile && !isExplicitSubMethod && masterApiId && masterApiKey && masterTokenId) {
-      try {
-        console.log(`🚀 [1-SHOT PIPELINE] Executing complete Statement Analyzer pipeline in 1 hit...`);
-
-        // 1. INITIATE_UPLOAD
-        console.log(`📡 [PIPELINE 1/4] Initiating upload session with upstream...`);
-        const initPayload = {
-          api_id: masterApiId,
-          api_key: masterApiKey,
-          token_id: masterTokenId,
-          method: 'INITIATE_UPLOAD',
-          acceptance_policy: effectiveAcceptancePolicy || 'atLeastOneTransactionInRange',
-        };
-
-        const initRes = await upstreamFetch(upstreamUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Id': masterApiId,
-            'X-Api-Key': masterApiKey,
-            'X-Token-Id': masterTokenId,
-          },
-          body: JSON.stringify(initPayload),
-        });
-
-        const initData = await initRes.json().catch(() => null);
-        console.log(`📥 [PIPELINE 1/4 INIT RESPONSE] Status: ${initRes.status}`, JSON.stringify(initData));
-
-        if (!initRes.ok || !initData || initData.status === 'error' || !initData.data?.token) {
-          throw new Error(initData?.message || initData?.error?.msg || 'Failed to initiate statement upload session.');
-        }
-
-        const sessionToken = initData.data.token;
-        const sessionRequestId = initData.data.request_id || initData.request_id;
-        const uploadUrl = initData.data.url || 'https://svc.digitap.ai/bank-data/uploadstmt';
-
-        // 2. STEP 2: INITIATE_UPLOAD WITH FILE & TOKEN (AS PER SPEC)
-        console.log(`📡 [PIPELINE 2/4] Executing Step 2 INITIATE_UPLOAD with file to: ${upstreamUrl}...`);
-        const step2Payload = {
-          api_id: masterApiId,
-          api_key: masterApiKey,
-          token_id: masterTokenId,
-          method: 'INITIATE_UPLOAD',
-          token: sessionToken,
-          request_id: sessionRequestId,
-          file: processedFile,
-        };
-
-        const step2Res = await upstreamFetch(upstreamUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Id': masterApiId,
-            'X-Api-Key': masterApiKey,
-            'X-Token-Id': masterTokenId,
-          },
-          body: JSON.stringify(step2Payload),
-        });
-
-        const step2Data = await step2Res.json().catch(() => null);
-        console.log(`📥 [PIPELINE 2/4 STEP 2 RESPONSE] Status: ${step2Res.status}`, JSON.stringify(step2Data));
-
-        // Sync upload to Digitap uploadUrl if provided in step 1 response
-        if (uploadUrl) {
-          try {
-            const fileBuffer = Buffer.isBuffer(processedFile)
-              ? processedFile
-              : Buffer.from(processedFile, 'base64');
-            const blob = new Blob([fileBuffer], { type: 'application/pdf' });
-            const formData = new FormData();
-            formData.append('token', sessionToken);
-            formData.append('request_id', String(sessionRequestId));
-            formData.append('file', blob, 'statement.pdf');
-
-            const uploadTargetUrl = uploadUrl.includes('?')
-              ? `${uploadUrl}&token=${encodeURIComponent(sessionToken)}`
-              : `${uploadUrl}?token=${encodeURIComponent(sessionToken)}`;
-
-            const directRes = await fetch(uploadTargetUrl, {
-              method: 'POST',
-              headers: {
-                'token': sessionToken,
-                'Authorization': sessionToken,
-              },
-              body: formData,
-            });
-            const directData = await directRes.json().catch(() => null);
-            console.log(`📥 [PIPELINE 2/4 DIRECT SYNC RESPONSE] Status: ${directRes.status}`, JSON.stringify(directData));
-          } catch (syncErr) {
-            console.warn('Direct sync upload note:', syncErr.message);
-          }
-        }
-
-        // 3. COMPLETE_UPLOAD
-        console.log(`📡 [PIPELINE 3/4] Marking upload complete for request_id: ${sessionRequestId}...`);
-        const completePayload = {
-          api_id: masterApiId,
-          api_key: masterApiKey,
-          token_id: masterTokenId,
-          method: 'COMPLETE_UPLOAD',
-          request_id: sessionRequestId,
-        };
-
-        const completeRes = await upstreamFetch(upstreamUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Id': masterApiId,
-            'X-Api-Key': masterApiKey,
-            'X-Token-Id': masterTokenId,
-          },
-          body: JSON.stringify(completePayload),
-        });
-
-        const completeData = await completeRes.json().catch(() => null);
-        console.log(`📥 [PIPELINE 3/4 COMPLETE RESPONSE] Status: ${completeRes.status}`, JSON.stringify(completeData));
-
-        const finalTxnId = completeData?.txn_id || completeData?.data?.txn_id || initData.data?.txn_id || sessionRequestId;
-
-        // 4. STEP 4: CHECK_STATUS (wait for OCR processing to complete)
-        console.log(`📡 [PIPELINE 4/5] Checking analysis status for request_id: ${sessionRequestId}...`);
-        const statusPayload = {
-          api_id: masterApiId,
-          api_key: masterApiKey,
-          token_id: masterTokenId,
-          method: 'CHECK_STATUS',
-          request_id: sessionRequestId,
-        };
-
-        let isAnalysisReady = false;
-        let lastStatusData = null;
-
-        // Poll CHECK_STATUS up to 5 times (2s, 3s, 3s, 4s, 4s)
-        const pollDelays = [2000, 3000, 3000, 4000, 4000];
-        for (let attempt = 0; attempt < pollDelays.length; attempt++) {
-          await new Promise((resolve) => setTimeout(resolve, pollDelays[attempt]));
-
-          const statusRes = await upstreamFetch(upstreamUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Api-Id': masterApiId,
-              'X-Api-Key': masterApiKey,
-              'X-Token-Id': masterTokenId,
-            },
-            body: JSON.stringify(statusPayload),
-          });
-
-          lastStatusData = await statusRes.json().catch(() => null);
-          console.log(`📥 [PIPELINE 4/5 STATUS ATTEMPT ${attempt + 1}] Status: ${statusRes.status}`, JSON.stringify(lastStatusData));
-
-          const statusStr = String(
-            lastStatusData?.data?.status ||
-            lastStatusData?.status?.type ||
-            lastStatusData?.status ||
-            ''
-          ).toLowerCase();
-
-          if (statusStr.includes('complete') || statusStr.includes('success')) {
-            isAnalysisReady = true;
-            break;
-          }
-        }
-
-        // 5. STEP 5: RETRIEVE_STATEMENT
-        console.log(`📡 [PIPELINE 5/5] Retrieving Statement Analysis report for txn_id: ${finalTxnId}...`);
-        const retrievePayload = {
-          api_id: masterApiId,
-          api_key: masterApiKey,
-          token_id: masterTokenId,
-          method: 'RETRIEVE_STATEMENT',
-          txn_id: finalTxnId,
-          report_type: report_type || rawBody.report_type || 'json',
-          report_subtype: report_subtype || rawBody.report_subtype || 'type3',
-        };
-
-        const retrieveRes = await upstreamFetch(upstreamUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Id': masterApiId,
-            'X-Api-Key': masterApiKey,
-            'X-Token-Id': masterTokenId,
-          },
-          body: JSON.stringify(retrievePayload),
-        });
-
-        const retrieveData = await retrieveRes.json().catch(() => null);
-        console.log(`📥 [PIPELINE 5/5 RETRIEVE RESPONSE] Status: ${retrieveRes.status}`, JSON.stringify(retrieveData));
-
-        const hasReport =
-          retrieveRes.ok &&
-          retrieveData &&
-          retrieveData.status !== 'error' &&
-          retrieveData?.status?.code !== 404 &&
-          (retrieveData.data || retrieveData.summary || retrieveData.account_info || retrieveData.result);
-
-        if (hasReport) {
-          isSuccess = true;
-          resultCode = 101;
-          finalResponse = {
-            http_response_code: 200,
-            status_code: 200,
-            status_message: 'SUCCESS',
-            result_code: 101,
-            message: 'Bank statement analysis completed successfully.',
-            client_ref_num: clientRef,
-            request_id: sessionRequestId,
-            txn_id: finalTxnId,
-            token: sessionToken,
-            data: sanitizeValue(retrieveData.data || retrieveData),
-          };
-        } else {
-          // Statement upload was successful, OCR analytics is still in progress upstream
-          isSuccess = true;
-          resultCode = 101;
-          finalResponse = {
-            http_response_code: 200,
-            status_code: 200,
-            status_message: 'PROCESSING',
-            result_code: 101,
-            message: 'Bank statement successfully uploaded. OCR analysis in progress.',
-            client_ref_num: clientRef,
-            request_id: sessionRequestId,
-            txn_id: finalTxnId,
-            token: sessionToken,
-            data: {
-              status: 'PROCESSING',
-              request_id: sessionRequestId,
-              txn_id: finalTxnId,
-              message: 'Statement is being processed by OCR engine. You can fetch report using method CHECK_STATUS or RETRIEVE_STATEMENT.',
-              status_info: sanitizeValue(lastStatusData?.data || lastStatusData || 'In Progress'),
-            },
-          };
-        }
-
-      } catch (err) {
-        console.error(`❌ Statement Analysis 1-Shot Error:`, err.message);
-        resultCode = 102;
-        finalResponse = isUpstreamLowBalance(err.message)
-          ? formatUpstreamLowBalanceResponse(generatedRequestId, clientRef)
-          : {
-              http_response_code: 502,
-              status_code: 502,
-              status_message: 'BAD_GATEWAY',
-              result_code: 102,
-              message: `Statement Analyzer error: ${err.message}`,
-              client_ref_num: clientRef,
-              request_id: generatedRequestId,
-            };
-      }
-
-    // -------------------------------------------------------------
-    // CASE B: DIRECT SINGLE METHOD HIT (For explicit sub-method calls)
-    // -------------------------------------------------------------
-    } else if (masterApiId && masterApiKey && masterTokenId) {
-      try {
-        console.log(`📡 [PROXY GATEWAY] 1-Hit Direct Forward [Method: ${upstreamPayload.method || effectiveMethod}] to Upstream: ${upstreamUrl}`);
-
-        const upstreamRes = await upstreamFetch(upstreamUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Id': masterApiId,
-            'X-Api-Key': masterApiKey,
-            'X-Token-Id': masterTokenId,
-          },
-          body: JSON.stringify(upstreamPayload),
-        });
-
-        const upstreamData = await upstreamRes.json().catch(() => null);
-        console.log(`📥 [UPSTREAM RESPONSE] Status: ${upstreamRes.status}`, JSON.stringify(upstreamData));
-
-        if (isUpstreamLowBalance(upstreamData)) {
-          console.warn('⚠️ [UPSTREAM ALERT] Upstream provider returned low balance error during Statement Analyzer request.');
-          finalResponse = formatUpstreamLowBalanceResponse(generatedRequestId, clientRef);
-          resultCode = 102;
-          isSuccess = false;
-        } else {
-          const isOk = upstreamRes.ok && upstreamData && upstreamData.status !== 'error' && upstreamData.status_code !== 400 && upstreamData.status_code !== 404 && upstreamData.status_code !== 500;
-
-          if (isOk) {
+            finalResponse = parsedReport;
+            httpStatusCode = 200;
             isSuccess = true;
             resultCode = 101;
-            finalResponse = {
-              http_response_code: 200,
-              status_code: 200,
-              status_message: 'SUCCESS',
-              result_code: 101,
-              message: upstreamData.message || upstreamData.status?.message || 'Request successful.',
-              client_ref_num: clientRef,
-              request_id: upstreamData.request_id || upstreamData.data?.request_id || generatedRequestId,
-              token: upstreamData.token || upstreamData.data?.token || undefined,
-              txn_id: upstreamData.txn_id || upstreamData.data?.txn_id || undefined,
-              data: sanitizeValue(upstreamData.data || upstreamData.result || upstreamData),
-            };
-          } else {
-            resultCode = 102;
-            const upstreamCode = upstreamRes.status && upstreamRes.status !== 200 ? upstreamRes.status : (upstreamData?.status_code || 400);
-            finalResponse = {
-              http_response_code: upstreamCode,
-              status_code: upstreamCode,
-              status_message: 'FAILED',
-              result_code: 102,
-              message: upstreamData?.message || upstreamData?.status?.message || upstreamData?.error?.msg || 'Request failed.',
-              client_ref_num: clientRef,
-              request_id: generatedRequestId,
-              error: sanitizeValue(upstreamData || null),
+
+            const durationMs = Date.now() - startTime;
+            if (apiClient?.user_id) {
+              QueueService.addAuditJob({
+                userId: apiClient.user_id,
+                credentialId: apiClient.credential_id,
+                endpoint,
+                method: 'POST',
+                requestId: generatedRequestId,
+                clientRefNum: clientRef,
+                statusCode: httpStatusCode,
+                resultCode,
+                durationMs,
+                clientIp: apiClient.client_ip,
+                cost: hitCost,
+                environment: apiClient.environment || 'production',
+                isSuccess,
+              }).catch((err) => {
+                console.error('Queue dispatch error in Statement Analyzer service:', err.message);
+              });
+            }
+
+            return {
+              httpCode: httpStatusCode,
+              body: finalResponse,
             };
           }
+        } catch (cacheErr) {
+          console.warn(`[StatementAnalyzer][${correlationId}] DB cache lookup notice:`, cacheErr.message);
         }
-      } catch (err) {
-        console.error(`❌ Upstream Statement Analyzer [${effectiveMethod}] Error:`, err.message);
-        resultCode = 102;
-        finalResponse = isUpstreamLowBalance(err.message)
-          ? formatUpstreamLowBalanceResponse(generatedRequestId, clientRef)
-          : {
-              http_response_code: 502,
-              status_code: 502,
-              status_message: 'BAD_GATEWAY',
-              result_code: 102,
-              message: `Upstream Statement Analyzer provider error: ${err.message}`,
-              client_ref_num: clientRef,
-              request_id: generatedRequestId,
-            };
+
+        const result = await this.executeOneShotPipeline({
+          file: fileBuffer,
+          filename,
+          password,
+          acceptance_policy: acceptance_policy || 'atLeastOneTransactionInRange',
+          report_type: report_type || 'json',
+          report_subtype: report_subtype || 'type3',
+          clientRef,
+          fileHash,
+          userId: apiClient?.user_id || null,
+          correlationId,
+        });
+
+        httpStatusCode = result.httpCode || 200;
+        finalResponse = result.response;
+        isSuccess = result.isSuccess;
+        resultCode = result.resultCode;
       }
-    } else {
-      isSuccess = false;
-      resultCode = 103;
-      finalResponse = {
-        http_response_code: 500,
-        status_code: 500,
-        status_message: 'FAILED',
-        result_code: 103,
-        message: 'Statement Analyzer service configuration missing.',
-        client_ref_num: clientRef,
-        request_id: generatedRequestId,
-        data: null,
-      };
+      // =========================================================================
+      // MODE B: INDIVIDUAL WORKFLOW STEPS
+      // =========================================================================
+      else {
+        switch (normalizedMethod) {
+          case 'INITIATE_UPLOAD': {
+            if (token && (file || request_id)) {
+              // Step 2: Upload File (Multipart)
+              const upstreamRes = await StatementAnalyzerClient.uploadFile({
+                token,
+                request_id: request_id || generatedRequestId,
+                file,
+                filename,
+                password,
+                acceptance_policy: acceptance_policy || 'atLeastOneTransactionInRange',
+                correlationId,
+              });
+
+              if (!upstreamRes.ok) {
+                const mapped = this.mapUpstreamError(upstreamRes.status, upstreamRes.data, 'Failed to upload statement file to upstream.');
+                finalResponse = mapped.response;
+                httpStatusCode = mapped.httpCode;
+                isSuccess = false;
+                resultCode = 102;
+              } else {
+                finalResponse = upstreamRes.data || {
+                  status: { code: 200, type: 'success', message: 'File uploaded successfully.' },
+                  message: 'File uploaded successfully.',
+                };
+                httpStatusCode = 200;
+                isSuccess = true;
+              }
+            } else {
+              // Step 1: Initiate Session (JSON)
+              const upstreamRes = await StatementAnalyzerClient.initiateUpload({
+                acceptance_policy: acceptance_policy || 'atLeastOneTransactionInRange',
+                client_ref_num: clientRef,
+                correlationId,
+              });
+
+              if (!upstreamRes.ok) {
+                const mapped = this.mapUpstreamError(upstreamRes.status, upstreamRes.data, 'Failed to initiate statement upload session.');
+                finalResponse = mapped.response;
+                httpStatusCode = mapped.httpCode;
+                isSuccess = false;
+                resultCode = 102;
+              } else {
+                finalResponse = upstreamRes.data || {
+                  status: { code: 200, type: 'success', message: 'Session initiated successfully.' },
+                  message: 'Session initiated successfully.',
+                };
+                httpStatusCode = 200;
+                isSuccess = true;
+              }
+            }
+            break;
+          }
+
+          case 'COMPLETE_UPLOAD': {
+            const upstreamRes = await StatementAnalyzerClient.completeUpload({
+              request_id: request_id || generatedRequestId,
+              correlationId,
+            });
+
+            if (!upstreamRes.ok) {
+              const mapped = this.mapUpstreamError(upstreamRes.status, upstreamRes.data, 'Failed to complete statement upload session.');
+              finalResponse = mapped.response;
+              httpStatusCode = mapped.httpCode;
+              isSuccess = false;
+              resultCode = 102;
+            } else {
+              finalResponse = upstreamRes.data || {
+                status: { code: 200, type: 'success', message: 'Upload completed successfully.' },
+                message: 'Upload completed successfully.',
+              };
+              httpStatusCode = 200;
+              isSuccess = true;
+            }
+            break;
+          }
+
+          case 'CHECK_STATUS': {
+            const targetReqId = request_id || generatedRequestId;
+
+            // Check DB cache first
+            try {
+              const [dbRows] = await dbPool.query(
+                `SELECT status, analysis_data, txn_id FROM bank_statement_analysis WHERE request_id = ? LIMIT 1`,
+                [targetReqId]
+              );
+              if (dbRows && dbRows.length > 0 && dbRows[0].status === 'COMPLETED' && dbRows[0].analysis_data) {
+                let parsed = dbRows[0].analysis_data;
+                if (typeof parsed === 'string') {
+                  try { parsed = JSON.parse(parsed); } catch (e) {}
+                }
+                finalResponse = parsed;
+                httpStatusCode = 200;
+                isSuccess = true;
+                resultCode = 101;
+                break;
+              }
+            } catch (dbErr) {
+              console.warn('[StatementAnalyzer] DB status check warning:', dbErr.message);
+            }
+
+            const upstreamRes = await StatementAnalyzerClient.checkStatus({
+              request_id: targetReqId,
+              correlationId,
+            });
+
+            if (!upstreamRes.ok) {
+              const mapped = this.mapUpstreamError(upstreamRes.status, upstreamRes.data, 'Failed to check statement analysis status.');
+              finalResponse = mapped.response;
+              httpStatusCode = mapped.httpCode;
+              isSuccess = false;
+              resultCode = 102;
+            } else {
+              const statusData = upstreamRes.data;
+              const rawStatus = String(
+                statusData?.data?.status || statusData?.status?.type || statusData?.status || ''
+              ).toLowerCase();
+              const msg = String(statusData?.message || statusData?.status?.message || '').toLowerCase();
+
+              if (rawStatus.includes('complete') || rawStatus.includes('success') || msg.includes('report prepared')) {
+                const txnIdToRetrieve = statusData?.data?.txn_id || statusData?.txn_id || targetReqId;
+                const retrieveRes = await StatementAnalyzerClient.retrieveStatement({
+                  txn_id: txnIdToRetrieve,
+                  report_type: report_type || 'json',
+                  report_subtype: report_subtype || 'type3',
+                  correlationId,
+                });
+
+                if (retrieveRes.ok && retrieveRes.data) {
+                  try {
+                    await dbPool.query(
+                      `UPDATE bank_statement_analysis 
+                       SET status = 'COMPLETED', txn_id = ?, analysis_data = ?, completed_at = NOW() 
+                       WHERE request_id = ?`,
+                      [String(txnIdToRetrieve), JSON.stringify(retrieveRes.data), targetReqId]
+                    );
+                  } catch (e) {}
+
+                  finalResponse = retrieveRes.data;
+                  httpStatusCode = 200;
+                  isSuccess = true;
+                  resultCode = 101;
+                  break;
+                }
+              }
+
+              finalResponse = statusData || {
+                status: { code: 200, type: 'success', message: 'Status fetched.' },
+                message: 'Status fetched.',
+              };
+              httpStatusCode = 200;
+              isSuccess = true;
+            }
+            break;
+          }
+
+          case 'RETRIEVE_STATEMENT': {
+            const targetTxnId = txn_id || request_id;
+
+            // Check DB cache first
+            if (targetTxnId) {
+              try {
+                const [dbRows] = await dbPool.query(
+                  `SELECT status, analysis_data FROM bank_statement_analysis WHERE txn_id = ? OR request_id = ? LIMIT 1`,
+                  [targetTxnId, targetTxnId]
+                );
+                if (dbRows && dbRows.length > 0 && dbRows[0].status === 'COMPLETED' && dbRows[0].analysis_data) {
+                  let parsed = dbRows[0].analysis_data;
+                  if (typeof parsed === 'string') {
+                    try { parsed = JSON.parse(parsed); } catch (e) {}
+                  }
+                  finalResponse = parsed;
+                  httpStatusCode = 200;
+                  isSuccess = true;
+                  resultCode = 101;
+                  break;
+                }
+              } catch (dbErr) {
+                console.warn('[StatementAnalyzer] DB retrieve check warning:', dbErr.message);
+              }
+            }
+
+            const upstreamRes = await StatementAnalyzerClient.retrieveStatement({
+              txn_id,
+              report_type: report_type || 'json',
+              report_subtype: report_subtype || 'type3',
+              correlationId,
+            });
+
+            if (!upstreamRes.ok) {
+              const mapped = this.mapUpstreamError(upstreamRes.status, upstreamRes.data, 'Failed to retrieve analyzed statement report.');
+              finalResponse = mapped.response;
+              httpStatusCode = mapped.httpCode;
+              isSuccess = false;
+              resultCode = 102;
+            } else {
+              // Return complete unmodified analytical response
+              finalResponse = upstreamRes.data;
+              httpStatusCode = 200;
+              isSuccess = true;
+
+              // Save to DB cache if txn_id is known
+              if (targetTxnId && finalResponse) {
+                try {
+                  await dbPool.query(
+                    `UPDATE bank_statement_analysis 
+                     SET status = 'COMPLETED', analysis_data = ?, completed_at = NOW() 
+                     WHERE txn_id = ? OR request_id = ?`,
+                    [JSON.stringify(finalResponse), targetTxnId, targetTxnId]
+                  );
+                } catch (e) {}
+              }
+            }
+            break;
+          }
+
+          case 'CANCEL_REQUEST': {
+            const upstreamRes = await StatementAnalyzerClient.cancelRequest({
+              request_id: request_id || generatedRequestId,
+              correlationId,
+            });
+
+            if (!upstreamRes.ok) {
+              const mapped = this.mapUpstreamError(upstreamRes.status, upstreamRes.data, 'Failed to cancel statement analysis request.');
+              finalResponse = mapped.response;
+              httpStatusCode = mapped.httpCode;
+              isSuccess = false;
+              resultCode = 102;
+            } else {
+              try {
+                await dbPool.query(
+                  `UPDATE bank_statement_analysis SET status = 'CANCELLED' WHERE request_id = ?`,
+                  [request_id || generatedRequestId]
+                );
+              } catch (e) {}
+
+              finalResponse = upstreamRes.data || {
+                status: { code: 200, type: 'success', message: 'Request cancelled.' },
+                message: 'Request cancelled.',
+              };
+              httpStatusCode = 200;
+              isSuccess = true;
+            }
+            break;
+          }
+
+          default:
+            throw ApiError.badRequest(`Unsupported workflow method '${method}'. Supported: INITIATE_UPLOAD, COMPLETE_UPLOAD, CHECK_STATUS, RETRIEVE_STATEMENT, CANCEL_REQUEST.`);
+        }
+      }
+    } catch (err) {
+      if (err.isLowBalance) {
+        finalResponse = formatUpstreamLowBalanceResponse(generatedRequestId, clientRef);
+        httpStatusCode = 502;
+        isSuccess = false;
+        resultCode = 102;
+      } else if (err.isTimeout) {
+        finalResponse = {
+          status: {
+            code: 504,
+            type: 'error',
+            message: 'Statement analysis upstream request timed out.',
+          },
+          message: 'Statement analysis upstream request timed out.',
+          result_code: 102,
+        };
+        httpStatusCode = 504;
+        isSuccess = false;
+        resultCode = 102;
+      } else if (err.statusCode) {
+        throw err;
+      } else {
+        finalResponse = {
+          status: {
+            code: 502,
+            type: 'error',
+            message: 'Statement analysis service temporarily unavailable.',
+          },
+          message: 'Statement analysis service temporarily unavailable.',
+          result_code: 102,
+        };
+        httpStatusCode = 502;
+        isSuccess = false;
+        resultCode = 102;
+      }
     }
 
     const durationMs = Date.now() - startTime;
 
-    // Asynchronously dispatch audit job and wallet debit
+    // Asynchronously dispatch audit logging & wallet debit via BullMQ
     if (apiClient?.user_id) {
       QueueService.addAuditJob({
         userId: apiClient.user_id,
@@ -483,7 +497,7 @@ export class StatementAnalyzerService {
         method: 'POST',
         requestId: generatedRequestId,
         clientRefNum: clientRef,
-        statusCode: finalResponse.http_response_code || 200,
+        statusCode: httpStatusCode,
         resultCode,
         durationMs,
         clientIp: apiClient.client_ip,
@@ -495,7 +509,182 @@ export class StatementAnalyzerService {
       });
     }
 
-    return finalResponse;
+    return {
+      httpCode: httpStatusCode,
+      body: finalResponse,
+    };
+  }
+
+  /**
+   * Orchestrates the 1-Shot Automated Statement Analysis Pipeline:
+   * 1. INITIATE_UPLOAD (JSON) ➔ 2. FILE UPLOAD (Multipart) ➔ 3. COMPLETE_UPLOAD (JSON) ➔ 4. BOUNDED POLLING (JSON) ➔ 5. RETRIEVE_STATEMENT (JSON)
+   */
+  static async executeOneShotPipeline({
+    file,
+    filename = 'statement.pdf',
+    password,
+    acceptance_policy,
+    report_type,
+    report_subtype,
+    clientRef,
+    fileHash,
+    userId = null,
+    correlationId = 'STA_1SHOT',
+  }) {
+    const maxPollAttempts = parseInt(process.env.STATEMENT_ANALYZER_MAX_POLL_ATTEMPTS || ENV.STATEMENT_ANALYZER?.MAX_POLL_ATTEMPTS || '80', 10);
+    const pollIntervalMs = parseInt(process.env.STATEMENT_ANALYZER_POLL_INTERVAL_MS || ENV.STATEMENT_ANALYZER?.POLL_INTERVAL_MS || '2500', 10);
+    const maxTimeoutMs = parseInt(process.env.STATEMENT_ANALYZER_TIMEOUT_MS || ENV.STATEMENT_ANALYZER?.TIMEOUT_MS || '300000', 10);
+    const pipelineStartTime = Date.now();
+
+    const policy = acceptance_policy || 'atLeastOneTransactionInRange';
+
+    // 1. INITIATE_UPLOAD (JSON)
+    const initRes = await StatementAnalyzerClient.initiateUpload({ acceptance_policy: policy, client_ref_num: clientRef, correlationId });
+    const initData = initRes.data;
+
+    const token = initData?.data?.token || initData?.token || initData?.result?.token || initData?.data?.session_token || initData?.session_token;
+    const requestId = initData?.data?.request_id || initData?.request_id || initData?.result?.request_id || initData?.data?.requestId || initData?.requestId;
+    const uploadUrl = initData?.data?.url || initData?.url;
+
+    if (!initRes.ok || !token || !requestId) {
+      console.log(`[StatementAnalyzer][${correlationId}] Step 1 Failed. Early termination.`);
+      return this.mapUpstreamError(initRes.status, initData, 'Failed to initiate statement upload session.');
+    }
+
+    // Save initial processing entry into bank_statement_analysis
+    try {
+      await dbPool.query(
+        `INSERT INTO bank_statement_analysis (user_id, source, file_name, file_hash, request_id, status) 
+         VALUES (?, 'UPLOAD', ?, ?, ?, 'PROCESSING')`,
+        [userId, filename, fileHash, String(requestId)]
+      );
+    } catch (insertErr) {
+      console.warn(`[StatementAnalyzer][${correlationId}] DB insert record warning:`, insertErr.message);
+    }
+
+    // 2. FILE UPLOAD (Direct Digitap Upload with IDSPay Fallback)
+    const uploadRes = await StatementAnalyzerClient.uploadFile({
+      uploadUrl,
+      token,
+      request_id: requestId,
+      file,
+      filename,
+      password,
+      acceptance_policy: policy,
+      correlationId,
+    });
+
+    if (!uploadRes.ok) {
+      console.log(`[StatementAnalyzer][${correlationId}] Step 2 (Multipart Upload) Failed. Early termination.`);
+      try {
+        await dbPool.query(`UPDATE bank_statement_analysis SET status = 'FAILED' WHERE request_id = ?`, [String(requestId)]);
+      } catch (e) {}
+      return this.mapUpstreamError(uploadRes.status, uploadRes.data, 'Failed to upload statement file to upstream.');
+    }
+
+    // 3. COMPLETE_UPLOAD (JSON)
+    const completeRes = await StatementAnalyzerClient.completeUpload({ request_id: requestId, correlationId });
+    const completeData = completeRes.data;
+
+    if (!completeRes.ok) {
+      console.log(`[StatementAnalyzer][${correlationId}] Step 3 (Complete Upload) Failed. Early termination.`);
+      try {
+        await dbPool.query(`UPDATE bank_statement_analysis SET status = 'FAILED' WHERE request_id = ?`, [String(requestId)]);
+      } catch (e) {}
+      return this.mapUpstreamError(completeRes.status, completeData, 'Failed to complete statement upload session.');
+    }
+
+    let txnId = completeData?.data?.txn_id || completeData?.txn_id || initData?.data?.txn_id || requestId;
+
+    // 4. BOUNDED STATUS POLLING (JSON) - Only CHECK_STATUS, no aggressive retrieval
+    let isCompleted = false;
+    let pollCount = 0;
+
+    while (pollCount < maxPollAttempts && Date.now() - pipelineStartTime < maxTimeoutMs) {
+      pollCount++;
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+      try {
+        const statusRes = await StatementAnalyzerClient.checkStatus({ request_id: requestId, correlationId });
+        const statusData = statusRes.data;
+        const rawStatus = String(
+          statusData?.data?.status || statusData?.status?.type || statusData?.status || ''
+        ).toLowerCase();
+        const msg = String(statusData?.message || statusData?.status?.message || '').toLowerCase();
+
+        if (statusData?.data?.txn_id || statusData?.txn_id) {
+          txnId = statusData?.data?.txn_id || statusData?.txn_id;
+        }
+
+        if (
+          rawStatus.includes('complete') ||
+          rawStatus.includes('success') ||
+          msg.includes('report prepared') ||
+          msg.includes('success')
+        ) {
+          isCompleted = true;
+          break;
+        }
+      } catch (pollErr) {
+        // Continue polling on transient network error
+      }
+    }
+
+    // 5. RETRIEVE STATEMENT IF READY (JSON) - Exactly 1 retrieve hit once status confirms complete
+    if (isCompleted) {
+      const retrieveRes = await StatementAnalyzerClient.retrieveStatement({
+        txn_id: txnId,
+        report_type,
+        report_subtype,
+        correlationId,
+      });
+
+      if (retrieveRes.ok && retrieveRes.data) {
+        // Cache complete analytical report in MySQL DB
+        try {
+          await dbPool.query(
+            `UPDATE bank_statement_analysis 
+             SET status = 'COMPLETED', txn_id = ?, analysis_data = ?, completed_at = NOW() 
+             WHERE request_id = ?`,
+            [String(txnId), JSON.stringify(retrieveRes.data), String(requestId)]
+          );
+        } catch (updateErr) {
+          console.warn(`[StatementAnalyzer][${correlationId}] DB update record warning:`, updateErr.message);
+        }
+
+        // Return 100% unmodified upstream analytical JSON
+        return {
+          httpCode: 200,
+          isSuccess: true,
+          resultCode: 101,
+          response: retrieveRes.data,
+        };
+      }
+
+      console.log(`[StatementAnalyzer][${correlationId}] Step 5 (Retrieve) Failed. Early termination.`);
+      return this.mapUpstreamError(retrieveRes.status, retrieveRes.data, 'Failed to retrieve analyzed statement report.');
+    }
+
+    // 6. ASYNC / PROCESSING STATUS (HTTP 202 Accepted)
+    return {
+      httpCode: 202,
+      isSuccess: true,
+      resultCode: 101,
+      response: {
+        status: {
+          code: 202,
+          type: 'processing',
+          message: 'Statement analysis is still processing.',
+        },
+        message: 'Statement analysis is still processing.',
+        data: {
+          request_id: requestId,
+          txn_id: txnId,
+          status: 'PROCESSING',
+          client_ref_num: clientRef,
+        },
+      },
+    };
   }
 }
 

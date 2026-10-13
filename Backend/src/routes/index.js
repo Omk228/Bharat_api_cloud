@@ -18,10 +18,12 @@ import pricingRoutes from '../modules/pricing/pricing.routes.js';
 import mobileToBankRoutes from '../modules/verification/mobile_to_bank/mobileToBank.routes.js';
 import transunionRoutes from '../modules/verification/transunion/transunion.routes.js';
 import crifRoutes from '../modules/verification/crif/crif.routes.js';
+import experianRoutes from '../modules/verification/experian/experian.routes.js';
 import domainRoutes from '../modules/domain/domain.routes.js';
 import workEmailRoutes from '../modules/verification/work_email/workEmail.routes.js';
 import operatorRoutes from '../modules/verification/operator/operator.routes.js';
 import dthRoutes from '../modules/verification/dth/dth.routes.js';
+import statementAnalyzerRoutes from '../modules/verification/statement_analyzer/statementAnalyzer.routes.js';
 
 const apiRouter = Router();
 
@@ -34,6 +36,8 @@ apiRouter.use('/pricing', pricingRoutes);
 apiRouter.use('/', transunionRoutes);
 apiRouter.use('/', crifRoutes);
 apiRouter.use('/crif', crifRoutes);
+apiRouter.use('/', experianRoutes);
+apiRouter.use('/srv2/credit-report/experian', experianRoutes);
 apiRouter.use('/', panRoutes);
 apiRouter.use('/', aadhaarRoutes);
 apiRouter.use('/', bankRoutes);
@@ -62,5 +66,7 @@ apiRouter.use('/', ifscRoutes);
 apiRouter.use('/', workEmailRoutes);
 apiRouter.use('/', operatorRoutes);
 apiRouter.use('/', dthRoutes);
+apiRouter.use('/', statementAnalyzerRoutes);
+apiRouter.use('/statement-analyzer', statementAnalyzerRoutes);
 
 export default apiRouter;

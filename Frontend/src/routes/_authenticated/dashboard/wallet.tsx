@@ -66,10 +66,9 @@ interface RechargePack {
 }
 
 const RECHARGE_PACKS: RechargePack[] = [
-  { amount: 10000, label: "Starter", bonus: 0, tag: "Standard" },
-  { amount: 20000, label: "Growth", bonus: 0, tag: "Standard", popular: true },
-  { amount: 30000, label: "Scale", bonus: 3000, tag: "+₹3,000 Bonus", special: true, badge: "+₹3,000 BONUS" },
-  { amount: 50000, label: "Enterprise", bonus: 5000, tag: "+₹5,000 Bonus", special: true, badge: "+₹5,000 BONUS" },
+  { amount: 50000, label: "Growth", bonus: 0, tag: "Standard", popular: true },
+  { amount: 80000, label: "Scale", bonus: 0, tag: "Standard" },
+  { amount: 100000, label: "Enterprise", bonus: 0, tag: "Standard" },
 ];
 
 const BANK_DETAILS = {
@@ -87,7 +86,7 @@ function WalletPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Recharge selection state
-  const [selectedPack, setSelectedPack] = useState<number>(10000);
+  const [selectedPack, setSelectedPack] = useState<number>(50000);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [gstin, setGstin] = useState<string>("");
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -437,7 +436,15 @@ function WalletPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                    {/* Highlighted Notice: Minimum Wallet Recharge is 50k */}
+                    <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <span className="leading-relaxed">
+                        <strong className="font-semibold text-amber-900 dark:text-amber-100">Notice:</strong> Minimum wallet recharge is <strong>₹50,000 (50k)</strong>.
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                       {RECHARGE_PACKS.map((pack) => {
                         const isSelected = selectedPack === pack.amount && !customAmount;
                         return (
@@ -488,7 +495,7 @@ function WalletPage() {
                         <input
                           type="number"
                           min={1}
-                          placeholder="e.g. 10000"
+                          placeholder="e.g. 50000"
                           value={customAmount}
                           onChange={(e) => setCustomAmount(e.target.value)}
                           className="w-full rounded-xl border border-border bg-background pl-8 pr-4 py-2.5 font-mono text-sm font-semibold outline-none focus:border-primary transition-colors"
