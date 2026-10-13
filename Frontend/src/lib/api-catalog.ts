@@ -55,6 +55,63 @@ export const DEFAULT_ERROR_CODES: ApiErrorCode[] = [
 export const endpoints: ApiEndpoint[] = [
   /* ---------------- KYC ---------------- */
   {
+    id: "mobile-intelligence",
+    group: "KYC",
+    method: "POST",
+    path: "/api/v1/verify/mobile-intelligence",
+    title: "Mobile Intelligence",
+    desc: "Reverse caller intelligence and phone search providing caller identity, telecom circle, operator, alternate contact numbers, address records, and multi-field confidence matching scores.",
+    tags: ["mobile intelligence", "caller id", "phone lookup", "reverse phone", "identity", "telecom", "kyc"],
+    latency: "~150ms",
+    params: [
+      { name: "phone", type: "string", required: true, desc: "10-digit Indian mobile number or with 91 prefix (e.g. 9876543210 or 919876543210)" },
+      { name: "client_ref_num", type: "string", required: false, desc: "Optional client reference number for tracking" },
+      { name: "api_id", type: "string", desc: "Your Bharat API ID" },
+      { name: "api_key", type: "string", desc: "Your Bharat API Key" },
+      { name: "token_id", type: "string", desc: "Your Bharat API Token ID" },
+    ],
+    sampleBody: {
+      phone: "9876543210",
+      client_ref_num: "MOB_REF_001",
+      api_id: "APID••••••••",
+      api_key: "••••••••-••••-••••-••••-••••••••••••",
+      token_id: "••••••••••••••••••••••••••••••••",
+    },
+    sampleResponse: {
+      status: "success",
+      status_message: "completed",
+      http_response_code: 200,
+      result_code: 101,
+      request_id: "req_f8b1a2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+      client_ref_num: "MOB_REF_001",
+      data: {
+        query: "919876543210",
+        phone: "9876543210",
+        total_records: 1,
+        time_ms: 45,
+        primary_result: {
+          name: "Budhabhai",
+          fname: "Bhadena kolivas Rajpar Dasada Surendra Nagar Gujarat 382775",
+          mobile: "9876543210",
+          alt: "6353090771",
+          id: "Buha Vasantbhai Limbabhai",
+          address: "919876543210",
+          country: "India 🇮🇳 (+91)",
+          confidence: 90.0,
+          match_score: "100.0% Confidence Match (Exact Phone)",
+        },
+        results: [
+          {
+            name: "Budhabhai",
+            mobile: "9876543210",
+            confidence: 90.0,
+            match_score: "100.0% Confidence Match (Exact Phone)",
+          },
+        ],
+      },
+    },
+  },
+  {
     id: "work-email-verifier",
     group: "KYC",
     method: "POST",

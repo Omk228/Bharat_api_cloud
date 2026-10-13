@@ -223,13 +223,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | undefined;
+  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "dth_advance" || search["service"] === "dth-advance" || search["service"] === "dth_operator_advance" || search["service"] === "dth-operator-advance" || search["service"] === "dth_info" || search["service"] === "dth-info"
+      search["service"] === "mobile_intelligence" || search["service"] === "mobile-intelligence" || search["service"] === "whocalled" || search["service"] === "caller_intelligence"
+        ? "mobile_intelligence"
+        : search["service"] === "dth_advance" || search["service"] === "dth-advance" || search["service"] === "dth_operator_advance" || search["service"] === "dth-operator-advance" || search["service"] === "dth_info" || search["service"] === "dth-info"
         ? "dth_advance"
         : search["service"] === "dth_operator" || search["service"] === "dth-operator" || search["service"] === "dth_check" || search["service"] === "dth-check" || search["service"] === "dth-operator-check" || search["service"] === "dth"
         ? "dth_operator"
@@ -296,8 +298,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance">(
-    searchParams.service === "dth_advance"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+    searchParams.service === "mobile_intelligence"
+      ? "mobile_intelligence"
+      : searchParams.service === "dth_advance"
       ? "dth_advance"
       : searchParams.service === "dth_operator"
       ? "dth_operator"
@@ -396,6 +400,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "mobile_intelligence" || serviceKey === "mobile-intelligence") return 2.0;
     if (serviceKey === "dth_advance" || serviceKey === "dth-advance" || serviceKey === "dth_operator_advance" || serviceKey === "dth-operator-advance" || serviceKey === "dth_info") return 2.5;
     if (serviceKey === "dth_operator" || serviceKey === "dth-operator" || serviceKey === "dth_check" || serviceKey === "dth-check" || serviceKey === "dth-operator-check" || serviceKey === "dth") return 2.0;
     if (serviceKey === "mobile_operator" || serviceKey === "mobile-operator" || serviceKey === "operator_circle" || serviceKey === "operator-circle" || serviceKey === "mobile-operator-check") return 2.0;
@@ -492,6 +497,10 @@ function TestApiPage() {
   const [crifFirstName, setCrifFirstName] = useState("");
   const [crifLastName, setCrifLastName] = useState("");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // Mobile Intelligence (WhoCalled) fields
+  const [mobileIntelligencePhone, setMobileIntelligencePhone] = useState("");
+  const [mobileIntelligenceClientRef, setMobileIntelligenceClientRef] = useState("");
 
   // DTH Operator Advance fields
   const [dthAdvanceNumber, setDthAdvanceNumber] = useState("");
@@ -834,7 +843,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "dth_advance"
+    selectedService === "mobile_intelligence"
+      ? {
+          phone: mobileIntelligencePhone.trim() || "<10-digit Phone>",
+          ...(mobileIntelligenceClientRef.trim() ? { client_ref_num: mobileIntelligenceClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "dth_advance"
       ? {
           dth_number: dthAdvanceNumber.trim(),
           operator: dthAdvanceOperator.trim(),
@@ -1073,6 +1090,13 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "mobile_intelligence") {
+      const cleanMob = mobileIntelligencePhone.trim().replace(/\D/g, "");
+      if (!cleanMob || (cleanMob.length !== 10 && cleanMob.length !== 12)) {
+        toast.error("Please enter a valid 10-digit Indian mobile number (e.g. 9876543210 or 919876543210)");
+        return;
+      }
+    }
     if (selectedService === "dth_advance") {
       const cleanDth = dthAdvanceNumber.trim();
       if (!cleanDth) {
@@ -1242,7 +1266,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "dth_advance") {
+      if (selectedService === "mobile_intelligence") {
+        rawData = await apiClient.searchMobileIntelligence({
+          phone: mobileIntelligencePhone.trim().replace(/\D/g, ""),
+          client_ref_num: mobileIntelligenceClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "dth_advance") {
         rawData = await apiClient.checkDthAdvance({
           dth_number: dthAdvanceNumber.trim(),
           operator: dthAdvanceOperator.trim(),
@@ -1687,7 +1719,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "dth_advance"
+    selectedService === "mobile_intelligence"
+      ? "/api/v1/verify/mobile-intelligence"
+      : selectedService === "dth_advance"
       ? "/api/v1/verify/dth-advance"
       : selectedService === "dth_operator"
       ? "/api/v1/verify/dth-operator"
@@ -1740,7 +1774,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "dth_advance"
+    selectedService === "mobile_intelligence"
+      ? "Mobile Intelligence"
+      : selectedService === "dth_advance"
       ? "DTH operator advance"
       : selectedService === "dth_operator"
       ? "DTH operator check"
@@ -1817,7 +1853,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "dth_advance"
+                {selectedService === "mobile_intelligence"
+                  ? "Direct live Mobile Intelligence & Caller ID search gateway: comprehensive identity signals, alternate numbers, address history, telecom details, and multi-field confidence matching scores powered by Bharat API Cloud."
+                  : selectedService === "dth_advance"
                   ? "Direct live DTH Operator Advance gateway: comprehensive subscriber intelligence including customer name, registered mobile, account balance, monthly plan, recharge timelines, and installation address powered by Bharat API Cloud."
                   : selectedService === "dth_operator"
                   ? "Direct live DTH Operator Check gateway: real-time Direct-to-Home subscriber ID and operator identification (Tata Play, Sun Direct, Dish TV, Airtel Digital TV, D2H) powered by Bharat API Cloud."
@@ -1864,7 +1902,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "dth_advance"
+                    selectedService === "mobile_intelligence"
+                      ? "mobile-intelligence"
+                      : selectedService === "dth_advance"
                       ? "dth-operator-advance"
                       : selectedService === "dth_operator"
                       ? "dth-operator-check"
@@ -1930,6 +1970,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
                   {selectedService === "dth_advance" && <Tv className="h-4 w-4 text-amber-400" />}
                   {selectedService === "dth_operator" && <Tv className="h-4 w-4 text-amber-400" />}
                   {selectedService === "mobile_operator" && <Smartphone className="h-4 w-4 text-sky-400" />}
@@ -1957,6 +1998,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
                     {selectedService === "dth_advance" && "DTH operator advance (/api/v1/verify/dth-advance)"}
                     {selectedService === "dth_operator" && "DTH operator check (/api/v1/verify/dth-operator)"}
                     {selectedService === "mobile_operator" && "Mobile Operator Check (/api/v1/verify/operator-circle)"}
@@ -2202,7 +2244,65 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "dth_advance" ? (
+                  {selectedService === "mobile_intelligence" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Smartphone className="h-3.5 w-3.5 text-purple-400" /> Mobile Number *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-digit or 91XXXXXXXXXX</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={mobileIntelligencePhone}
+                            onChange={(e) => setMobileIntelligencePhone(e.target.value.trim())}
+                            placeholder="e.g. 9876543210 or 919876543210"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-purple-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setMobileIntelligencePhone("9876543210")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample Number
+                        </button>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Tracking ID</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={mobileIntelligenceClientRef}
+                          onChange={(e) => setMobileIntelligenceClientRef(e.target.value.trim())}
+                          placeholder="e.g. MOB_REF_001"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none placeholder:text-muted-foreground/50 focus:border-purple-400"
+                        />
+                      </div>
+
+                      <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3 text-xs text-muted-foreground space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-foreground">Pricing:</span>
+                          <span className="font-bold text-purple-400">₹{getServicePrice("mobile_intelligence").toFixed(2)} / Query</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+                          Reverse mobile intelligence engine querying WhoCalled database for caller identities, confidence match scores, alternate contact numbers, addresses, and operator records.
+                        </p>
+                      </div>
+                    </>
+                  ) : selectedService === "dth_advance" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -3704,7 +3804,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -3715,7 +3815,9 @@ function TestApiPage() {
                     {/* Success Verification / Dedicated Service Card */}
                     {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
                       <div className={`rounded-xl border p-5 space-y-4 ${
-                        selectedService === "work_email_plus"
+                        selectedService === "mobile_intelligence"
+                          ? "border-purple-500/30 bg-gradient-to-b from-purple-500/5 to-transparent"
+                          : selectedService === "work_email_plus"
                           ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                           : selectedService === "work_email"
                           ? "border-violet-500/30 bg-gradient-to-b from-violet-500/5 to-transparent"
@@ -3724,9 +3826,164 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 🏦 BANK ACCOUNT VALIDATION V2 DEDICATED VISUAL CARD       */}
+                        {/* 📱 MOBILE INTELLIGENCE (WHOCALLED) DEDICATED VISUAL CARD   */}
                         {/* ========================================================= */}
-                        {selectedService === "bank_v2" ? (
+                        {selectedService === "mobile_intelligence" ? (
+                          (() => {
+                            const mData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
+                            const rawResult: any = mData?.primary_result || (Array.isArray(mData?.results) && mData.results[0]) || mData;
+                            const recordsList: any[] = Array.isArray(mData?.results) ? mData.results : [];
+
+                            const primaryName = String(rawResult?.name || rawResult?.fullname || rawResult?.id || "—");
+                            const fatherInfo = String(rawResult?.fname || "—");
+                            const primaryPhone = String(rawResult?.mobile || mData?.phone || mobileIntelligencePhone || "—");
+                            const altPhone = String(rawResult?.alt || "—");
+                            const registeredId = String(rawResult?.id || "—");
+                            const addressStr = String(rawResult?.address || "—");
+                            const countryStr = String(rawResult?.country || "India (+91)");
+                            const confidence = typeof rawResult?.confidence === 'number' ? rawResult.confidence : 0;
+                            const matchScore = String(rawResult?.match_score || (confidence > 0 ? `${confidence}% Confidence Match` : "Live Record Match"));
+                            const totalFound = Number(mData?.total_records ?? recordsList.length);
+                            const speedMs = Number(mData?.time_ms || responseTime || 0);
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Header / Verified Badge Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400">
+                                      <Smartphone className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                                        {primaryName !== "—" ? primaryName : "Mobile Intelligence Record"}
+                                        <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                                          LIVE RECORD
+                                        </span>
+                                      </h3>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        Query: +{primaryPhone} · {totalFound} {totalFound === 1 ? "Record" : "Records"} Found
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-400">
+                                      {matchScore}
+                                    </span>
+                                    {speedMs > 0 && (
+                                      <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-mono text-muted-foreground">
+                                        <Clock className="inline mr-1 h-3 w-3" />{speedMs}ms
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Core Identity & Contact Grid */}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                  <div className="rounded-lg border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Primary Mobile</span>
+                                    <span className="text-sm font-bold text-foreground font-mono mt-0.5 block">
+                                      {primaryPhone}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Alternate Mobile</span>
+                                    <span className="text-sm font-semibold text-foreground font-mono mt-0.5 block">
+                                      {altPhone !== "—" ? altPhone : "None Listed"}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Match Confidence</span>
+                                    <span className="text-sm font-bold text-emerald-400 mt-0.5 block">
+                                      {confidence}% Match
+                                    </span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Region / Country</span>
+                                    <span className="text-sm font-semibold text-foreground mt-0.5 block truncate" title={countryStr}>
+                                      {countryStr}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Demographic & Address Breakdown */}
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="rounded-lg border border-border/80 bg-background/60 p-3.5 space-y-2">
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      <User className="h-3.5 w-3.5 text-purple-400" /> Identity / Government Record
+                                    </span>
+                                    <div className="text-xs space-y-1">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Registered Name:</span>
+                                        <span className="font-semibold text-foreground">{primaryName}</span>
+                                      </div>
+                                      {registeredId !== "—" && registeredId !== primaryName && (
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">Profile/ID:</span>
+                                          <span className="font-mono text-foreground text-right">{registeredId}</span>
+                                        </div>
+                                      )}
+                                      {fatherInfo !== "—" && (
+                                        <div className="flex flex-col pt-1">
+                                          <span className="text-muted-foreground text-[11px]">Parent / Circle Info:</span>
+                                          <span className="text-foreground text-[11px] font-medium leading-relaxed mt-0.5">{fatherInfo}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-lg border border-border/80 bg-background/60 p-3.5 space-y-2">
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      <MapPin className="h-3.5 w-3.5 text-purple-400" /> Address & Location
+                                    </span>
+                                    <div className="text-xs space-y-1.5">
+                                      <p className="text-foreground text-xs leading-relaxed font-mono">
+                                        {addressStr !== "—" ? addressStr : fatherInfo !== "—" ? fatherInfo : "Address details verified from operator circle."}
+                                      </p>
+                                      <div className="flex items-center gap-2 pt-1">
+                                        <span className="text-muted-foreground text-[11px]">Region:</span>
+                                        <span className="text-xs font-medium text-foreground">{countryStr}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Additional Records List (if multiple found) */}
+                                {recordsList.length > 1 && (
+                                  <div className="rounded-lg border border-border bg-background/40 p-3.5 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-semibold text-foreground">
+                                        All Discovered Records ({recordsList.length})
+                                      </span>
+                                      <span className="text-[11px] text-muted-foreground">WhoCalled Identity Index</span>
+                                    </div>
+                                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                      {recordsList.map((rec: any, idx: number) => (
+                                        <div key={idx} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-background/60 p-2 text-xs">
+                                          <div className="min-w-0 flex-1">
+                                            <div className="font-semibold text-foreground flex items-center gap-1.5">
+                                              <span>{rec.name || rec.id || `Record #${idx + 1}`}</span>
+                                              {rec.confidence > 0 && (
+                                                <span className="text-[10px] text-emerald-400 font-normal">({rec.confidence}%)</span>
+                                              )}
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground truncate" title={rec.fname || rec.address}>
+                                              {rec.fname || rec.address || rec.country || "—"}
+                                            </p>
+                                          </div>
+                                          <div className="text-right shrink-0">
+                                            <span className="font-mono text-[11px] text-foreground block">{rec.mobile || primaryPhone}</span>
+                                            {rec.alt && <span className="font-mono text-[10px] text-muted-foreground block">Alt: {rec.alt}</span>}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "bank_v2" ? (
                           (() => {
                             const anyRes: any = responseJson || {};
                             const bData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
@@ -9591,6 +9848,8 @@ function TestApiPage() {
                               ? `Mobile: ${mobileUpiNumber}`
                               : selectedService === "domain_age"
                               ? `Domain: ${domainName}`
+                              : selectedService === "mobile_intelligence"
+                              ? `Mobile: ${mobileIntelligencePhone || "N/A"}`
                               : selectedService === "dth_advance"
                               ? `DTH Number: ${dthAdvanceNumber || "N/A"} · Operator: ${dthAdvanceOperator || "N/A"}`
                               : selectedService === "dth_operator"

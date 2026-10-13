@@ -112,6 +112,12 @@ export const API_PRICING = {
   'dth_advance': 2.50,
   'dth_operator_advance': 2.50,
   'dth_info': 2.50,
+  '/api/v1/verify/mobile-intelligence': 2.00,
+  '/verify/mobile-intelligence': 2.00,
+  '/srv2/mobile-intelligence': 2.00,
+  '/api/v1/mobile-intelligence': 2.00,
+  'mobile_intelligence': 2.00,
+  'mobile-intelligence': 2.00,
   default: 2.00,
 };
 

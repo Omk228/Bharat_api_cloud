@@ -222,6 +222,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for Mobile Intelligence (WhoCalled)
+   */
+  async getMobileIntelligenceCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('whocalled_master') || this.cache.get('mobile_intelligence_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.MOBILE_INTELLIGENCE.BASE_URL,
+      apiKey: cred?.apiKey || ENV.MOBILE_INTELLIGENCE.API_KEY,
+      timeoutMs: ENV.MOBILE_INTELLIGENCE.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

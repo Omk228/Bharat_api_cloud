@@ -1,4 +1,10 @@
 import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
 
 export const ENV = {
@@ -131,6 +137,12 @@ export const ENV = {
     TIMEOUT_MS: parseInt(process.env.STATEMENT_ANALYZER_TIMEOUT_MS || '300000', 10),
     MAX_POLL_ATTEMPTS: parseInt(process.env.STATEMENT_ANALYZER_MAX_POLL_ATTEMPTS || '80', 10),
     POLL_INTERVAL_MS: parseInt(process.env.STATEMENT_ANALYZER_POLL_INTERVAL_MS || '2500', 10),
+  },
+
+  MOBILE_INTELLIGENCE: {
+    BASE_URL: process.env.MOBILE_INTELLIGENCE_BASE_URL || 'https://whocalled.ddns.net/api/search',
+    API_KEY: process.env.MOBILE_INTELLIGENCE_API_KEY || 'wc_live_90b6ec2ea00cd92da7422dcd9bc306b5',
+    TIMEOUT_MS: parseInt(process.env.MOBILE_INTELLIGENCE_TIMEOUT_MS || '20000', 10),
   },
 };
 
