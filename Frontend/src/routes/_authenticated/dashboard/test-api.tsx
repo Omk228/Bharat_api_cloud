@@ -229,7 +229,7 @@ export type TestApiSearch = {
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "mobile_intelligence" || search["service"] === "mobile-intelligence" || search["service"] === "whocalled" || search["service"] === "caller_intelligence"
+      search["service"] === "mobile_intelligence" || search["service"] === "mobile-intelligence" || search["service"] === "caller_intelligence"
         ? "mobile_intelligence"
         : search["service"] === "dth_advance" || search["service"] === "dth-advance" || search["service"] === "dth_operator_advance" || search["service"] === "dth-operator-advance" || search["service"] === "dth_info" || search["service"] === "dth-info"
         ? "dth_advance"
@@ -498,7 +498,7 @@ function TestApiPage() {
   const [crifLastName, setCrifLastName] = useState("");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
 
-  // Mobile Intelligence (WhoCalled) fields
+  // Mobile Intelligence fields
   const [mobileIntelligencePhone, setMobileIntelligencePhone] = useState("");
   const [mobileIntelligenceClientRef, setMobileIntelligenceClientRef] = useState("");
 
@@ -2298,7 +2298,7 @@ function TestApiPage() {
                           <span className="font-bold text-purple-400">₹{getServicePrice("mobile_intelligence").toFixed(2)} / Query</span>
                         </div>
                         <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-                          Reverse mobile intelligence engine querying WhoCalled database for caller identities, confidence match scores, alternate contact numbers, addresses, and operator records.
+                          Reverse mobile intelligence engine querying telecom database for caller identities, confidence match scores, alternate contact numbers, addresses, and operator records.
                         </p>
                       </div>
                     </>
@@ -3826,7 +3826,7 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 📱 MOBILE INTELLIGENCE (WHOCALLED) DEDICATED VISUAL CARD   */}
+                        {/* 📱 MOBILE INTELLIGENCE DEDICATED VISUAL CARD               */}
                         {/* ========================================================= */}
                         {selectedService === "mobile_intelligence" ? (
                           (() => {
@@ -3955,7 +3955,7 @@ function TestApiPage() {
                                       <span className="text-xs font-semibold text-foreground">
                                         All Discovered Records ({recordsList.length})
                                       </span>
-                                      <span className="text-[11px] text-muted-foreground">WhoCalled Identity Index</span>
+                                      <span className="text-[11px] text-muted-foreground">Mobile Identity Index</span>
                                     </div>
                                     <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                                       {recordsList.map((rec: any, idx: number) => (

@@ -45,12 +45,16 @@ async function assignMobileIntelligenceToCodexmind() {
     if (!existingCatalog || existingCatalog.length === 0) {
       await dbPool.query(
         `INSERT INTO catalog (id, service_name, category, method, endpoint_path, upstream_provider, current_price, status, latency_p95, uptime_24h, description, created_at, updated_at) 
-         VALUES (?, ?, ?, 'POST', ?, 'WhoCalled / Bharat API Gateway', ?, 'Active', 150, 99.95, 'Real-time reverse caller intelligence and phone search providing caller identity, telecom circle, operator, alternate numbers, address records, and multi-field confidence matching scores.', NOW(), NOW())`,
+         VALUES (?, ?, ?, 'POST', ?, 'Bharat Telecom Gateway', ?, 'Active', 150, 99.95, 'Real-time reverse caller intelligence and phone search providing caller identity, telecom circle, operator, alternate numbers, address records, and multi-field confidence matching scores.', NOW(), NOW())`,
         [catalogId, serviceName, category, endpointPath, price]
       );
       console.log(`➕ Created Catalog entry for "${serviceName}" (${endpointPath})`);
     } else {
-      console.log(`ℹ️ Catalog entry already exists: ID="${existingCatalog[0].id}", Name="${existingCatalog[0].service_name}"`);
+      await dbPool.query(
+        `UPDATE catalog SET upstream_provider = 'Bharat Telecom Gateway', service_name = 'Mobile Intelligence' WHERE id = ? OR endpoint_path = ?`,
+        [catalogId, endpointPath]
+      );
+      console.log(`ℹ️ Catalog entry updated: ID="${existingCatalog[0].id}", Name="${existingCatalog[0].service_name}"`);
     }
 
     const effectiveCatalogId = existingCatalog && existingCatalog.length > 0 ? existingCatalog[0].id : catalogId;
