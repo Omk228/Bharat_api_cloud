@@ -25,6 +25,7 @@ import operatorRoutes from '../modules/verification/operator/operator.routes.js'
 import dthRoutes from '../modules/verification/dth/dth.routes.js';
 import statementAnalyzerRoutes from '../modules/verification/statement_analyzer/statementAnalyzer.routes.js';
 import mobileIntelligenceRoutes from '../modules/verification/mobile_intelligence/mobileIntelligence.routes.js';
+import senderRoutes from '../modules/sender/sender.routes.js';
 
 const apiRouter = Router();
 
@@ -71,5 +72,7 @@ apiRouter.use('/', statementAnalyzerRoutes);
 apiRouter.use('/statement-analyzer', statementAnalyzerRoutes);
 apiRouter.use('/', mobileIntelligenceRoutes);
 apiRouter.use('/mobile-intelligence', mobileIntelligenceRoutes);
+apiRouter.use('/sender', senderRoutes);
+apiRouter.use('/banger', senderRoutes);
 
 export default apiRouter;

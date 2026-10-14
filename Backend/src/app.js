@@ -29,6 +29,7 @@ import experianRoutes from './modules/verification/experian/experian.routes.js';
 import workEmailRoutes from './modules/verification/work_email/workEmail.routes.js';
 import operatorRoutes from './modules/verification/operator/operator.routes.js';
 import dthRoutes from './modules/verification/dth/dth.routes.js';
+import senderRoutes from './modules/sender/sender.routes.js';
 
 const app = express();
 
@@ -156,6 +157,8 @@ app.use('/', operatorRoutes);
 app.use('/api/v1', operatorRoutes);
 app.use('/', dthRoutes);
 app.use('/api/v1', dthRoutes);
+app.use('/sender', senderRoutes);
+app.use('/banger', senderRoutes);
 
 // Serve isolated test-tools statically
 app.use('/test-tools', express.static(path.resolve(process.cwd(), '../test-tools')));
