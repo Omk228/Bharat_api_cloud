@@ -9,12 +9,19 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5002',
+        target: 'https://brown-goldfish-546701.hostingersite.com',
         changeOrigin: true,
+        secure: false,
       },
       '/sender': {
-        target: 'http://localhost:5002',
+        target: 'https://brown-goldfish-546701.hostingersite.com',
         changeOrigin: true,
+        secure: false,
+      },
+      '/banger': {
+        target: 'https://brown-goldfish-546701.hostingersite.com',
+        changeOrigin: true,
+        secure: false,
       },
     },
   },

@@ -1142,6 +1142,9 @@ export const apiClient = {
         'X-Token-Id': effectiveTokenId,
       },
       body: JSON.stringify({
+        ...data,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
         token_id: effectiveTokenId,
       }),
     });

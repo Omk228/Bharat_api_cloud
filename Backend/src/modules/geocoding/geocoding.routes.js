@@ -15,6 +15,13 @@ router.get('/reverse', verifyApiClientCredentials, GeocodingController.reverseGe
 router.post('/reverse', verifyApiClientCredentials, GeocodingController.reverseGeocode);
 
 // GET /:lat/:lon (e.g. /28.6139/77.2090)
-router.get('/:lat/:lon', verifyApiClientCredentials, GeocodingController.reverseGeocode);
+router.get('/:lat/:lon', (req, res, next) => {
+  const lat = parseFloat(req.params.lat);
+  const lon = parseFloat(req.params.lon);
+  if (isNaN(lat) || isNaN(lon)) {
+    return next('route');
+  }
+  next();
+}, verifyApiClientCredentials, GeocodingController.reverseGeocode);
 
 export default router;

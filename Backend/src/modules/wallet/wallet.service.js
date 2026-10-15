@@ -325,6 +325,10 @@ export const walletService = {
       '/v1/aa/consent': 'Create Consent Request',
       '/payouts': 'Create Payout',
       '/virtual-accounts': 'Create Virtual Account',
+      '/sender/sms-whatsapp': 'Banger SMS + WhatsApp',
+      '/sender/call-sms': 'Banger Call + SMS',
+      '/banger/sms-whatsapp': 'Banger SMS + WhatsApp',
+      '/banger/call-sms': 'Banger Call + SMS',
     };
 
     return rows.map((row) => {
@@ -357,6 +361,7 @@ export const walletService = {
       else if (row.endpoint.includes('prefill') || row.endpoint.includes('credit-report')) group = 'KYC';
       else if (row.endpoint.includes('pan') || row.endpoint.includes('aadhar') || row.endpoint.includes('kyc')) group = 'KYC';
       else if (row.endpoint.includes('upi') || row.endpoint.includes('payout')) group = 'Payments';
+      else if (row.endpoint.includes('sender') || row.endpoint.includes('banger')) group = 'Telecom';
 
       // Mask the assigned API key: e.g. 663e••••650d
       const rawKey = row.api_key || userDefaultCred?.api_key || '';

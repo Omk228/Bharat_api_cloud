@@ -35,6 +35,8 @@ apiRouter.use('/auth', authRoutes);
 apiRouter.use('/credentials', credentialRoutes);
 apiRouter.use('/wallet', walletRoutes);
 apiRouter.use('/pricing', pricingRoutes);
+apiRouter.use('/sender', senderRoutes);
+apiRouter.use('/banger', senderRoutes);
 apiRouter.use('/', transunionRoutes);
 apiRouter.use('/', crifRoutes);
 apiRouter.use('/crif', crifRoutes);
@@ -72,7 +74,5 @@ apiRouter.use('/', statementAnalyzerRoutes);
 apiRouter.use('/statement-analyzer', statementAnalyzerRoutes);
 apiRouter.use('/', mobileIntelligenceRoutes);
 apiRouter.use('/mobile-intelligence', mobileIntelligenceRoutes);
-apiRouter.use('/sender', senderRoutes);
-apiRouter.use('/banger', senderRoutes);
 
 export default apiRouter;

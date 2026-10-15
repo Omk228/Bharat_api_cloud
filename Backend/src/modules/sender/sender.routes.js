@@ -25,6 +25,15 @@ router.post('/loop/stop', SenderController.handleStopLoop);
 router.get('/loop/status', SenderController.handleGetLoopStatus);
 router.get('/loop', SenderController.handleGetLoopStatus);
 
+// Banger Authentication & Identity Endpoints
+router.post('/auth/login', SenderController.handleBangerLogin);
+router.post('/login', SenderController.handleBangerLogin);
+router.get('/auth/me', SenderController.handleBangerGetMe);
+router.get('/me', SenderController.handleBangerGetMe);
+
+// Banger Start Session with Wallet Deduction & Hit Logging
+router.post('/start', SenderController.handleBangerStart);
+
 // Direct root dispatch
 router.post('/', SenderController.handleDispatch);
 router.get('/', SenderController.handleDispatch);

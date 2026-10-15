@@ -102,6 +102,10 @@ const SERVICE_NAME_MAP: Record<string, string> = {
   "/aa/fi/fetch": "Fetch Financial Data (AA)",
   "/payouts": "Create Payout",
   "/virtual-accounts": "Create Virtual Account",
+  "/sender/sms-whatsapp": "Banger SMS + WhatsApp",
+  "/sender/call-sms": "Banger Call + SMS",
+  "/banger/sms-whatsapp": "Banger SMS + WhatsApp",
+  "/banger/call-sms": "Banger Call + SMS",
 };
 
 function resolveLogServiceName(log: ApiHitLogRow): string {
