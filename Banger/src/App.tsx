@@ -108,7 +108,10 @@ export const getWalletBalanceNumber = (bal: any): number => {
 // Backend API Gateway base URL
 const DEPLOYED_HOST_URL = "https://brown-goldfish-546701.hostingersite.com";
 const BACKEND_API_BASE =
-  (import.meta as any).env?.VITE_BACKEND_URL || `${DEPLOYED_HOST_URL}/api/v1`;
+  (import.meta as any).env?.VITE_BACKEND_URL ||
+  (typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost:5173")
+    ? `${window.location.origin}/api/v1`
+    : `${DEPLOYED_HOST_URL}/api/v1`);
 
 // Helper to trigger backend SMS and Call sender APIs with user credentials
 async function callBackendSender(
