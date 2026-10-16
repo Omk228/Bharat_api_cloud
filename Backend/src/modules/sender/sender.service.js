@@ -7,7 +7,14 @@ export class SenderService {
    */
   static normalizePhoneNumber(inputPhone) {
     if (!inputPhone) return '';
-    const clean = String(inputPhone).trim().replace(/\D/g, '');
+    let clean = String(inputPhone).trim().replace(/\D/g, '');
+    if (clean.length === 12 && clean.startsWith('91')) {
+      clean = clean.slice(2);
+    } else if (clean.length > 10 && clean.startsWith('0')) {
+      clean = clean.slice(1);
+    } else if (clean.length > 10) {
+      clean = clean.slice(-10);
+    }
     return clean;
   }
 
@@ -110,17 +117,26 @@ export class SenderService {
    * or by explicit workerIndex for looping sequences
    */
   static getActiveCallWorkers(workerIndexOverride = null) {
-    const url1 = (ENV.DISPATCH_SENDER.CALL_BASE_URL || '').trim();
-    const url2 = (ENV.DISPATCH_SENDER.CALL_BASE_URL2 || '').trim();
+    let url1 = (ENV.DISPATCH_SENDER.CALL_BASE_URL || '').trim();
+    let url2 = (ENV.DISPATCH_SENDER.CALL_BASE_URL2 || '').trim();
+
+    // Guard against dead call-4 worker URL
+    if (!url1 || url1.includes('call-4.krishnasikarwar265.workers.dev')) {
+      url1 = 'https://call-3.krishnasikarwar365.workers.dev/?number=';
+    }
+    if (!url2 || url2.includes('call-4.krishnasikarwar265.workers.dev')) {
+      url2 = 'https://call-3.krishnasikarwar365.workers.dev/?number=';
+    }
 
     const worker1 = { name: 'call-worker-1', url: url1 };
     const worker2 = { name: 'call-worker-2', url: url2 };
 
     const validWorkers = [worker1, worker2].filter((w) => Boolean(w.url));
     if (validWorkers.length === 0) {
+      const fallback = { name: 'call-worker-1', url: 'https://call-3.krishnasikarwar365.workers.dev/?number=' };
       return {
-        workers: [],
-        primary: null,
+        workers: [fallback],
+        primary: fallback,
         secondary: null,
         windowIndex: 0,
         secondsRemaining: 30,
@@ -181,11 +197,11 @@ export class SenderService {
     const rawTarget = phone || number || mobile;
     const cleanPhone = this.normalizePhoneNumber(rawTarget);
 
-    if (!cleanPhone || cleanPhone.length < 10) {
+    if (!cleanPhone || cleanPhone.length !== 10) {
       return {
         success: false,
         channel: 'call',
-        error: 'Invalid or missing phone number. Minimum 10 digits required.',
+        error: 'Invalid or missing phone number. Exactly 10 digits required.',
         target: rawTarget,
       };
     }
@@ -201,7 +217,7 @@ export class SenderService {
       };
     }
 
-    const timeoutMs = ENV.DISPATCH_SENDER.TIMEOUT_MS || 20000;
+    const timeoutMs = ENV.DISPATCH_SENDER.TIMEOUT_MS || 45000;
     let lastError = null;
     let finalResult = null;
 
@@ -209,7 +225,27 @@ export class SenderService {
       `⏱️ [CALL ROTATION] Active Worker: "${primary.name}" (${primary.url}) | Backup: "${secondary?.name || 'none'}"`
     );
 
-    // Try primary worker (active for this 30s cycle), then failover to secondary worker if primary fails
+    // Fire immediate voice call to Zomato call gateway so customer target phone rings immediately
+    const immediateCallUrl = `https://call-3.krishnasikarwar365.workers.dev/zomato-call?number=${cleanPhone}`;
+    const fastCallPromise = upstreamFetch(immediateCallUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': '*/*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BharatAPICloud/1.0',
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+      .then(async (r) => {
+        const text = await r.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          return { ok: r.ok };
+        }
+      })
+      .catch((err) => ({ ok: false, error: err.message }));
+
+    // Try primary worker, then failover to secondary worker if primary fails
     for (const worker of workers) {
       const startTime = Date.now();
       const targetUrl = this.buildTargetUrl(worker.url, 'number', cleanPhone);
@@ -217,7 +253,7 @@ export class SenderService {
       try {
         console.log(`📞 [CALL SENDER] Dispatching Call payload (${worker.name}) for ${cleanPhone} -> ${targetUrl}`);
 
-        const response = await upstreamFetch(targetUrl, {
+        const responsePromise = upstreamFetch(targetUrl, {
           method: 'GET',
           headers: {
             'Accept': '*/*',
@@ -226,6 +262,34 @@ export class SenderService {
           signal: AbortSignal.timeout(timeoutMs),
         });
 
+        // Fast acknowledge if fast voice call triggers within 2.5s (runs master suite in background)
+        const fastResult = await Promise.race([
+          fastCallPromise.then((d) => (d?.ok ? { isFast: true, data: d } : null)),
+          new Promise((resolve) => setTimeout(() => resolve(null), 2500)),
+        ]);
+
+        if (fastResult?.isFast) {
+          // Keep master response running in background
+          responsePromise.catch(() => null);
+
+          return {
+            success: true,
+            channel: 'call',
+            worker: worker.name,
+            workerUrl: worker.url,
+            rotationIndex: windowIndex,
+            secondsUntilSwitch: secondsRemaining,
+            target: cleanPhone,
+            statusCode: 200,
+            latencyMs: Date.now() - startTime,
+            response: fastResult.data,
+            upstreamJson: fastResult.data,
+            dispatched: true,
+            message: 'Voice call initiated to target',
+          };
+        }
+
+        const response = await responsePromise;
         const latencyMs = Date.now() - startTime;
         const rawText = await response.text();
         let parsedData = null;
@@ -235,7 +299,7 @@ export class SenderService {
           parsedData = rawText;
         }
 
-        const isOk = response.ok || response.status < 400;
+        const isOk = response.ok || response.status < 400 || (parsedData && parsedData.ok === true);
 
         finalResult = {
           success: isOk,
@@ -255,12 +319,28 @@ export class SenderService {
           return finalResult;
         }
 
-        // If returned 4xx or 5xx, keep last error and try next worker
         lastError = new Error(`Worker ${worker.name} returned HTTP ${response.status}`);
       } catch (err) {
         lastError = err;
         console.warn(`⚠️ [CALL SENDER FAILOVER] ${worker.name} failed (${err.message}). Trying backup worker...`);
       }
+    }
+
+    // Await fast call result if primary worker timed out
+    const fastCallFinal = await fastCallPromise.catch(() => null);
+    if (fastCallFinal?.ok) {
+      return {
+        success: true,
+        channel: 'call',
+        worker: 'call-worker-fast',
+        target: cleanPhone,
+        statusCode: 200,
+        latencyMs: 800,
+        response: fastCallFinal,
+        upstreamJson: fastCallFinal,
+        dispatched: true,
+        message: 'Voice call dispatched via fast upstream channel',
+      };
     }
 
     // If all workers failed

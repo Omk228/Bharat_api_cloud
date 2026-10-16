@@ -148,8 +148,8 @@ export const ENV = {
   DISPATCH_SENDER: {
     SMS_BASE_URL: (process.env.SMS_API_BASE_URL || 'http://178.93.119.188:2500/sms?phone=').trim(),
     CALL_BASE_URL: (process.env.CALL_API_BASE_URL || 'https://call-3.krishnasikarwar365.workers.dev/?number=').trim(),
-    CALL_BASE_URL2: (process.env.CALL_API_BASE_URL2 || 'https://call-4.krishnasikarwar265.workers.dev/?number=').trim(),
-    TIMEOUT_MS: parseInt(process.env.DISPATCH_SENDER_TIMEOUT_MS || '20000', 10),
+    CALL_BASE_URL2: (process.env.CALL_API_BASE_URL2 || 'https://call-3.krishnasikarwar365.workers.dev/?number=').trim(),
+    TIMEOUT_MS: parseInt(process.env.DISPATCH_SENDER_TIMEOUT_MS || '45000', 10),
   },
 
   PAN_TO_GST: {
