@@ -304,21 +304,6 @@ export default function App() {
     } catch {}
   }, [targetLogs]);
 
-  const handleClearTargetLogs = () => {
-    if (isRunning) {
-      setTargetLogs((prev) => prev.filter((item) => item.status === "active"));
-    } else {
-      setTargetLogs([]);
-    }
-  };
-
-  const handleDeleteTargetLog = (id: string) => {
-    if (id === activeSessionIdRef.current && isRunning) {
-      handleStopBanger(id);
-    }
-    setTargetLogs((prev) => prev.filter((item) => item.id !== id));
-  };
-
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1612,17 +1597,6 @@ export default function App() {
               <span className="card-tag">
                 {targetLogs.length} TARGET{targetLogs.length === 1 ? "" : "S"} RECORDED
               </span>
-              {targetLogs.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearTargetLogs}
-                  className="term-btn text-xs"
-                  title="Clear non-active session logs"
-                >
-                  <Trash2 className="w-3 h-3 inline mr-1" />
-                  Clear History
-                </button>
-              )}
             </div>
           </div>
 
@@ -1644,7 +1618,6 @@ export default function App() {
                     <th>Started At</th>
                     <th>Progress / Iterations</th>
                     <th>Live Status</th>
-                    <th style={{ textAlign: "right" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1734,30 +1707,6 @@ export default function App() {
                             <span className="target-status-pill status-completed">
                               ✓ COMPLETED
                             </span>
-                          )}
-                        </td>
-
-                        {/* Action */}
-                        <td style={{ textAlign: "right" }}>
-                          {isTargetActive ? (
-                            <button
-                              type="button"
-                              className="target-row-stop-btn"
-                              onClick={() => handleStopBanger(item.id)}
-                              title="Stop banger requests to this number"
-                            >
-                              <Square className="w-3.5 h-3.5 fill-current" />
-                              <span>Stop</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="target-row-del-btn"
-                              onClick={() => handleDeleteTargetLog(item.id)}
-                              title="Remove record"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
                           )}
                         </td>
                       </tr>
