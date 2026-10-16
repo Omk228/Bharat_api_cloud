@@ -309,8 +309,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
-    searchParams.service === "cin_to_pan"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "contact_to_gst" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+    searchParams.service === "contact_to_gst"
+      ? "contact_to_gst"
+      : searchParams.service === "cin_to_pan"
       ? "cin_to_pan"
       : searchParams.service === "gst_to_contact"
       ? "gst_to_contact"
@@ -1931,7 +1933,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "cin_to_pan"
+    selectedService === "contact_to_gst"
+      ? "Contact To GST"
+      : selectedService === "cin_to_pan"
       ? "CIN to PAN"
       : selectedService === "gst_to_contact"
       ? "GST to Contact Details"
@@ -2016,7 +2020,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "cin_to_pan"
+                {selectedService === "contact_to_gst"
+                  ? "Direct live Contact To GST gateway: discover all registered GSTINs, taxpayer trade names, legal entities, and GST registration details from a mobile number or email address powered by Bharat API Cloud."
+                  : selectedService === "cin_to_pan"
                   ? "Direct live CIN to PAN gateway: retrieve corporate PAN, company identity, incorporation date, RoC jurisdiction, authorized & paid-up capital, and MCA details from a 21-character Corporate Identification Number (CIN) powered by Bharat API Cloud."
                   : selectedService === "gst_to_contact"
                   ? "Direct live GST to Contact Details gateway: retrieve official registered contact details (mobile numbers, email addresses, authorized signatories, and principal place of business) from an Indian GSTIN powered by Bharat API Cloud."
@@ -2147,6 +2153,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "contact_to_gst" && <Building2 className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "cin_to_pan" && <Building className="h-4 w-4 text-blue-400" />}
                   {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
@@ -2176,8 +2183,6 @@ function TestApiPage() {
                   {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
-                  {selectedService === "contact_to_gst" && <Building2 className="h-4 w-4 text-cyan-400" />}
-                  {selectedService === "cin_to_pan" && <Building className="h-4 w-4 text-blue-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
                     {selectedService === "contact_to_gst" && "Contact To GST (/api/v1/verify/contact-to-gst)"}
