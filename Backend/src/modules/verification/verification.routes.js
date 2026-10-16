@@ -12,6 +12,7 @@ import operatorRoutes from './operator/operator.routes.js';
 import dthRoutes from './dth/dth.routes.js';
 import panToGstRoutes from './pan_to_gst/panToGst.routes.js';
 import gstToContactRoutes from './gst_to_contact/gstToContact.routes.js';
+import cinToPanRoutes from './cin_to_pan/cinToPan.routes.js';
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.use('/', operatorRoutes);
 router.use('/', dthRoutes);
 router.use('/', panToGstRoutes);
 router.use('/', gstToContactRoutes);
+router.use('/', cinToPanRoutes);
 
 export default router;

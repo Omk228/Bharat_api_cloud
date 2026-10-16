@@ -224,13 +224,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "gst_to_contact" || search["service"] === "gst-to-contact" || search["service"] === "gst_contact" || search["service"] === "gstin_to_contact"
+      search["service"] === "cin_to_pan" || search["service"] === "cin-to-pan" || search["service"] === "cin_pan" || search["service"] === "cin"
+        ? "cin_to_pan"
+        : search["service"] === "gst_to_contact" || search["service"] === "gst-to-contact" || search["service"] === "gst_contact" || search["service"] === "gstin_to_contact"
         ? "gst_to_contact"
         : search["service"] === "pan_to_gst" || search["service"] === "pan-to-gst" || search["service"] === "pan_gst" || search["service"] === "gstin_by_pan"
         ? "pan_to_gst"
@@ -303,8 +305,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
-    searchParams.service === "gst_to_contact"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+    searchParams.service === "cin_to_pan"
+      ? "cin_to_pan"
+      : searchParams.service === "gst_to_contact"
       ? "gst_to_contact"
       : searchParams.service === "pan_to_gst"
       ? "pan_to_gst"
@@ -409,6 +413,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "cin_to_pan" || serviceKey === "cin-to-pan") return 3.0;
     if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.0;
     if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.0;
     if (serviceKey === "mobile_intelligence" || serviceKey === "mobile-intelligence") return 2.0;
@@ -508,6 +513,10 @@ function TestApiPage() {
   const [crifFirstName, setCrifFirstName] = useState("");
   const [crifLastName, setCrifLastName] = useState("");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // CIN to PAN fields
+  const [cinToPanNumber, setCinToPanNumber] = useState("");
+  const [cinToPanClientRef, setCinToPanClientRef] = useState("");
 
   // PAN to GST fields
   const [panToGstNumber, setPanToGstNumber] = useState("");
@@ -862,7 +871,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "gst_to_contact"
+    selectedService === "cin_to_pan"
+      ? {
+          cin: cinToPanNumber.trim().toUpperCase() || "<21-char CIN>",
+          ...(cinToPanClientRef.trim() ? { client_ref_num: cinToPanClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "gst_to_contact"
       ? {
           gstin: gstToContactNumber.trim().toUpperCase() || "<15-char GSTIN>",
           ...(gstToContactClientRef.trim() ? { client_ref_num: gstToContactClientRef.trim() } : {}),
@@ -1125,6 +1142,17 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "cin_to_pan") {
+      const cleanCin = cinToPanNumber.trim().toUpperCase();
+      if (!cleanCin) {
+        toast.error("Please enter a 21-character Corporate Identification Number (e.g. U72200DL2018PTC123456)");
+        return;
+      }
+      if (cleanCin.length !== 21) {
+        toast.error("Invalid CIN format. CIN must be exactly 21 alphanumeric characters (e.g. U72200DL2018PTC123456)");
+        return;
+      }
+    }
     if (selectedService === "gst_to_contact") {
       const cleanGst = gstToContactNumber.trim().toUpperCase();
       if (!cleanGst) {
@@ -1323,7 +1351,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "gst_to_contact") {
+      if (selectedService === "cin_to_pan") {
+        rawData = await apiClient.verifyCinToPan({
+          cin: cinToPanNumber.trim().toUpperCase(),
+          client_ref_num: cinToPanClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "gst_to_contact") {
         rawData = await apiClient.verifyGstToContact({
           gstin: gstToContactNumber.trim().toUpperCase(),
           client_ref_num: gstToContactClientRef.trim() || undefined,
@@ -1792,7 +1828,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "gst_to_contact"
+    selectedService === "cin_to_pan"
+      ? "/api/v1/verify/cin-to-pan"
+      : selectedService === "gst_to_contact"
       ? "/api/v1/verify/gst-to-contact"
       : selectedService === "pan_to_gst"
       ? "/api/v1/verify/pan-to-gst"
@@ -1851,7 +1889,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "gst_to_contact"
+    selectedService === "cin_to_pan"
+      ? "CIN to PAN"
+      : selectedService === "gst_to_contact"
       ? "GST to Contact Details"
       : selectedService === "pan_to_gst"
       ? "PAN to GST"
@@ -1934,7 +1974,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "gst_to_contact"
+                {selectedService === "cin_to_pan"
+                  ? "Direct live CIN to PAN gateway: retrieve corporate PAN, company identity, incorporation date, RoC jurisdiction, authorized & paid-up capital, and MCA details from a 21-character Corporate Identification Number (CIN) powered by Bharat API Cloud."
+                  : selectedService === "gst_to_contact"
                   ? "Direct live GST to Contact Details gateway: retrieve official registered contact details (mobile numbers, email addresses, authorized signatories, and principal place of business) from an Indian GSTIN powered by Bharat API Cloud."
                   : selectedService === "pan_to_gst"
                   ? "Direct live PAN to GST gateway: retrieve all Goods and Services Tax Identification Numbers (GSTIN) and registration details registered under an Indian business or individual PAN powered by Bharat API Cloud."
@@ -1987,7 +2029,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "gst_to_contact"
+                    selectedService === "cin_to_pan"
+                      ? "cin-to-pan"
+                      : selectedService === "gst_to_contact"
                       ? "gst-to-contact"
                       : selectedService === "pan_to_gst"
                       ? "pan-to-gst"
@@ -2059,6 +2103,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "cin_to_pan" && <Building className="h-4 w-4 text-blue-400" />}
                   {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
@@ -2089,6 +2134,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "cin_to_pan" && "CIN to PAN (/api/v1/verify/cin-to-pan)"}
                     {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
                     {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
                     {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
@@ -2337,7 +2383,48 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "gst_to_contact" ? (
+                  {selectedService === "cin_to_pan" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Building className="h-3.5 w-3.5 text-blue-400" /> Corporate Identification Number (CIN) *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">21-Character Alphanumeric</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={21}
+                            value={cinToPanNumber}
+                            onChange={(e) => setCinToPanNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 21))}
+                            placeholder="e.g. U72200DL2018PTC123456"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={cinToPanClientRef}
+                          onChange={(e) => setCinToPanClientRef(e.target.value)}
+                          placeholder="e.g. CIN_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time retrieval of corporate PAN, company identity, incorporation date, RoC jurisdiction, authorized & paid-up capital from a 21-character CIN.
+                      </p>
+                    </>
+                  ) : selectedService === "gst_to_contact" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -3962,7 +4049,9 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    {selectedService === "gst_to_contact" ? (
+                    {selectedService === "cin_to_pan" ? (
+                      <Building className="h-8 w-8 opacity-40 text-blue-400" />
+                    ) : selectedService === "gst_to_contact" ? (
                       <Building2 className="h-8 w-8 opacity-40 text-emerald-400" />
                     ) : selectedService === "work_email" ? (
                       <Mail className="h-8 w-8 opacity-40 text-violet-400" />
@@ -3981,7 +4070,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -3992,7 +4081,9 @@ function TestApiPage() {
                     {/* Success Verification / Dedicated Service Card */}
                     {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
                       <div className={`rounded-xl border p-5 space-y-4 ${
-                        selectedService === "gst_to_contact"
+                        selectedService === "cin_to_pan"
+                          ? "border-blue-500/30 bg-gradient-to-b from-blue-500/5 to-transparent"
+                          : selectedService === "gst_to_contact"
                           ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                           : selectedService === "pan_to_gst"
                           ? "border-primary/30 bg-gradient-to-b from-primary/5 to-transparent"
@@ -4241,6 +4332,177 @@ function TestApiPage() {
                                     </div>
                                     <p className="text-xs text-foreground/90 leading-relaxed font-medium">
                                       {fullAddr}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "cin_to_pan" ? (
+                          (() => {
+                            const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                            const cinVal = String(rawResult.cin || cinToPanNumber || "—").toUpperCase();
+                            const panVal = String(rawResult.pan || "—").toUpperCase();
+                            const companyName = String(rawResult.company_name || rawResult.legal_name || "—");
+                            const companyStatus = String(rawResult.company_status || rawResult.status || "Active");
+                            const listingStatus = String(rawResult.listing_status || (cinVal.startsWith("L") ? "Listed" : "Unlisted"));
+                            const roc = String(rawResult.roc || "—");
+                            const regNum = String(rawResult.registration_number || "—");
+                            const compCat = String(rawResult.company_category || "—");
+                            const compClass = String(rawResult.company_class || "—");
+                            const compType = String(rawResult.company_type || "—");
+                            const incorpDate = String(rawResult.incorporation_date || "—");
+                            const regAddress = String(rawResult.registered_address || rawResult.registered_office_address || "");
+                            const email = String(rawResult.email || "");
+                            const authCap = rawResult.authorized_capital ? `₹${Number(rawResult.authorized_capital).toLocaleString("en-IN")}` : "—";
+                            const paidCap = rawResult.paid_up_capital ? `₹${Number(rawResult.paid_up_capital).toLocaleString("en-IN")}` : "—";
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Company Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
+                                      <Building className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <h3 className="text-base font-bold text-foreground">
+                                          {companyName}
+                                        </h3>
+                                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                                          companyStatus.toLowerCase().includes("active")
+                                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                            : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                        }`}>
+                                          {companyStatus}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        CIN: {cinVal}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-400">
+                                      {listingStatus}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Main Highlight Cards: PAN & CIN */}
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  {/* Corporate PAN Card */}
+                                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="flex items-center gap-1.5 font-medium text-foreground">
+                                        <CreditCard className="h-3.5 w-3.5 text-primary" /> Corporate PAN
+                                      </span>
+                                      {panVal !== "—" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(panVal, "Corporate PAN")}
+                                          className="text-primary hover:underline flex items-center gap-1 text-[11px]"
+                                        >
+                                          <Copy className="h-3 w-3" /> Copy
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="font-mono text-xl font-bold tracking-wider text-primary">
+                                      {panVal}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Permanent Account Number registered with Income Tax Dept / MCA
+                                    </p>
+                                  </div>
+
+                                  {/* Corporate CIN Card */}
+                                  <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-3.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="flex items-center gap-1.5 font-medium text-foreground">
+                                        <Building className="h-3.5 w-3.5 text-blue-400" /> Corporate CIN
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(cinVal, "Corporate CIN")}
+                                        className="text-blue-400 hover:underline flex items-center gap-1 text-[11px]"
+                                      >
+                                        <Copy className="h-3 w-3" /> Copy
+                                      </button>
+                                    </div>
+                                    <div className="font-mono text-base font-bold tracking-wider text-blue-400 truncate" title={cinVal}>
+                                      {cinVal}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      21-Character RoC Corporate Identification Number
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Key Corporate Demographics Grid */}
+                                <div className="rounded-lg border border-border/80 bg-card/60 p-4 space-y-3">
+                                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <FileText className="h-3.5 w-3.5 text-primary" /> MCA Registration & Structure
+                                  </h4>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">RoC Jurisdiction</span>
+                                      <span className="font-semibold text-foreground">{roc}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">Incorporation Date</span>
+                                      <span className="font-semibold text-foreground font-mono">{incorpDate}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">Registration Number</span>
+                                      <span className="font-semibold text-foreground font-mono">{regNum}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">Company Category</span>
+                                      <span className="font-medium text-foreground">{compCat}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">Class of Company</span>
+                                      <span className="font-medium text-foreground">{compClass}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">Company Type</span>
+                                      <span className="font-medium text-foreground">{compType}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">Authorized Capital</span>
+                                      <span className="font-semibold text-foreground font-mono">{authCap}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block">Paid-up Capital</span>
+                                      <span className="font-semibold text-foreground font-mono">{paidCap}</span>
+                                    </div>
+                                    {email && (
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block">Official Email</span>
+                                        <span className="font-mono text-sky-400 truncate block text-[11px]" title={email}>{email}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Registered Office Address */}
+                                {regAddress && (
+                                  <div className="rounded-lg border border-border/80 bg-card/60 p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                                        <MapPin className="h-4 w-4 text-amber-400" /> Registered Office Address
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(regAddress, "Registered Address")}
+                                        className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                                      >
+                                        <Copy className="h-3 w-3" /> Copy Address
+                                      </button>
+                                    </div>
+                                    <p className="text-xs text-foreground/90 leading-relaxed font-medium">
+                                      {regAddress}
                                     </p>
                                   </div>
                                 )}
