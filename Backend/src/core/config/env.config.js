@@ -175,6 +175,12 @@ export const ENV = {
     API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
     TIMEOUT_MS: parseInt(process.env.CONTACT_TO_GST_TIMEOUT_MS || '25000', 10),
   },
+
+  DIN_TO_PAN: {
+    BASE_URL: (process.env.DIN_TO_PAN_BASE_URL || 'https://apisathi.in/gw/v1/din-to-pan-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.DIN_TO_PAN_TIMEOUT_MS || '25000', 10),
+  },
 };
 
 export default ENV;

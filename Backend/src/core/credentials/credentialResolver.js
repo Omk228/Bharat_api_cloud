@@ -292,6 +292,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for DIN to PAN Verification (API Saathi Gateway)
+   */
+  async getDinToPanCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('din_to_pan_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.DIN_TO_PAN.BASE_URL,
+      apiKey: cred?.apiKey || ENV.DIN_TO_PAN.API_KEY,
+      timeoutMs: ENV.DIN_TO_PAN.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

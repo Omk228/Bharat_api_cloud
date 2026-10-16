@@ -142,6 +142,12 @@ export const API_PRICING = {
   '/contact-to-gst': 5.00,
   'contact_to_gst': 5.00,
   'contact-to-gst': 5.00,
+  '/api/v1/verify/din-to-pan': 3.00,
+  '/verify/din-to-pan': 3.00,
+  '/api/v1/din-to-pan': 3.00,
+  '/din-to-pan': 3.00,
+  'din_to_pan': 3.00,
+  'din-to-pan': 3.00,
   default: 2.00,
 };
 

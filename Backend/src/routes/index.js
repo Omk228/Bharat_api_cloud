@@ -29,6 +29,7 @@ import panToGstRoutes from '../modules/verification/pan_to_gst/panToGst.routes.j
 import gstToContactRoutes from '../modules/verification/gst_to_contact/gstToContact.routes.js';
 import cinToPanRoutes from '../modules/verification/cin_to_pan/cinToPan.routes.js';
 import contactToGstRoutes from '../modules/verification/contact_to_gst/contactToGst.routes.js';
+import dinToPanRoutes from '../modules/verification/din_to_pan/dinToPan.routes.js';
 import senderRoutes from '../modules/sender/sender.routes.js';
 
 const apiRouter = Router();
@@ -90,5 +91,8 @@ apiRouter.use('/', cinToPanRoutes);
 apiRouter.use('/verify/contact-to-gst', contactToGstRoutes);
 apiRouter.use('/contact-to-gst', contactToGstRoutes);
 apiRouter.use('/', contactToGstRoutes);
+apiRouter.use('/verify/din-to-pan', dinToPanRoutes);
+apiRouter.use('/din-to-pan', dinToPanRoutes);
+apiRouter.use('/', dinToPanRoutes);
 
 export default apiRouter;

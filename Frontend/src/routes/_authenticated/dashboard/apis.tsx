@@ -394,6 +394,15 @@ function ApisPage() {
                         ⚡ Test In Console
                       </Link>
                     )}
+                    {(ep.id === "din-to-pan" || ep.id === "api_din_to_pan") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "din_to_pan" }}
+                        className="inline-flex items-center gap-1 rounded bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 font-medium text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {(ep.id === "mobile-intelligence" || ep.id === "api_mobile_intelligence") && (
                       <Link
                         to="/dashboard/test-api"
