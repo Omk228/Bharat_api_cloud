@@ -441,11 +441,11 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
-    if (serviceKey === "din_to_pan" || serviceKey === "din-to-pan") return 3.0;
-    if (serviceKey === "cin_to_pan" || serviceKey === "cin-to-pan") return 3.0;
-    if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.0;
-    if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.0;
-    if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.0;
+    if (serviceKey === "din_to_pan" || serviceKey === "din-to-pan") return 3.54;
+    if (serviceKey === "cin_to_pan" || serviceKey === "cin-to-pan") return 3.54;
+    if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.90;
+    if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.90;
+    if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.54;
     if (serviceKey === "mobile_intelligence" || serviceKey === "mobile-intelligence") return 2.0;
     if (serviceKey === "dth_advance" || serviceKey === "dth-advance" || serviceKey === "dth_operator_advance" || serviceKey === "dth-operator-advance" || serviceKey === "dth_info") return 2.5;
     if (serviceKey === "dth_operator" || serviceKey === "dth-operator" || serviceKey === "dth_check" || serviceKey === "dth-check" || serviceKey === "dth-operator-check" || serviceKey === "dth") return 2.0;
@@ -2564,7 +2564,10 @@ function TestApiPage() {
                         <span className="text-muted-foreground flex items-center gap-1.5">
                           <Wallet className="h-3.5 w-3.5 text-indigo-400" /> API Hit Cost
                         </span>
-                        <span className="font-bold text-indigo-400">₹{getServicePrice("din_to_pan").toFixed(2)} / Request</span>
+                        <div className="text-right">
+                          <span className="font-bold text-indigo-400">₹{getServicePrice("din_to_pan").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-muted-foreground">₹3.00 + 18% GST (₹0.54)</span>
+                        </div>
                       </div>
 
                       <p className="text-[11px] text-muted-foreground">
@@ -2630,7 +2633,10 @@ function TestApiPage() {
                         <span className="flex items-center gap-1.5 font-medium">
                           💰 Wallet Debit:
                         </span>
-                        <span className="font-bold text-cyan-400">₹{getServicePrice("contact_to_gst").toFixed(2)} / Request</span>
+                        <div className="text-right">
+                          <span className="font-bold text-cyan-400">₹{getServicePrice("contact_to_gst").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-cyan-300/80">₹5.00 + 18% GST (₹0.90)</span>
+                        </div>
                       </div>
 
                       <p className="text-[11px] text-muted-foreground">

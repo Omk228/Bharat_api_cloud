@@ -214,6 +214,30 @@ const ENDPOINT_CATALOG_MAP = {
   '/gst-to-contact': ['api_gst_to_contact', '/gst-to-contact', 'gst_to_contact'],
   'gst_to_contact': ['api_gst_to_contact', '/verify/gst-to-contact', '/api/v1/verify/gst-to-contact'],
   'gst-to-contact': ['api_gst_to_contact', '/verify/gst-to-contact', '/api/v1/verify/gst-to-contact'],
+
+  // Contact To GST (API Saathi Gateway)
+  '/api/v1/verify/contact-to-gst': ['api_contact_to_gst', '/verify/contact-to-gst', '/api/v1/verify/contact-to-gst', 'contact_to_gst', '/contact-to-gst'],
+  '/verify/contact-to-gst': ['api_contact_to_gst', '/verify/contact-to-gst', 'contact_to_gst'],
+  '/api/v1/contact-to-gst': ['api_contact_to_gst', '/contact-to-gst', 'contact_to_gst'],
+  '/contact-to-gst': ['api_contact_to_gst', '/contact-to-gst', 'contact_to_gst'],
+  'contact_to_gst': ['api_contact_to_gst', '/verify/contact-to-gst', '/api/v1/verify/contact-to-gst'],
+  'contact-to-gst': ['api_contact_to_gst', '/verify/contact-to-gst', '/api/v1/verify/contact-to-gst'],
+
+  // CIN to PAN (API Saathi Gateway)
+  '/api/v1/verify/cin-to-pan': ['api_cin_to_pan', '/verify/cin-to-pan', '/api/v1/verify/cin-to-pan', 'cin_to_pan', '/cin-to-pan'],
+  '/verify/cin-to-pan': ['api_cin_to_pan', '/verify/cin-to-pan', 'cin_to_pan'],
+  '/api/v1/cin-to-pan': ['api_cin_to_pan', '/cin-to-pan', 'cin_to_pan'],
+  '/cin-to-pan': ['api_cin_to_pan', '/cin-to-pan', 'cin_to_pan'],
+  'cin_to_pan': ['api_cin_to_pan', '/verify/cin-to-pan', '/api/v1/verify/cin-to-pan'],
+  'cin-to-pan': ['api_cin_to_pan', '/verify/cin-to-pan', '/api/v1/verify/cin-to-pan'],
+
+  // DIN to PAN (API Saathi Gateway)
+  '/api/v1/verify/din-to-pan': ['api_din_to_pan', '/verify/din-to-pan', '/api/v1/verify/din-to-pan', 'din_to_pan', '/din-to-pan'],
+  '/verify/din-to-pan': ['api_din_to_pan', '/verify/din-to-pan', 'din_to_pan'],
+  '/api/v1/din-to-pan': ['api_din_to_pan', '/din-to-pan', 'din_to_pan'],
+  '/din-to-pan': ['api_din_to_pan', '/din-to-pan', 'din_to_pan'],
+  'din_to_pan': ['api_din_to_pan', '/verify/din-to-pan', '/api/v1/verify/din-to-pan'],
+  'din-to-pan': ['api_din_to_pan', '/verify/din-to-pan', '/api/v1/verify/din-to-pan'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -224,6 +248,12 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   'pan-to-gst': 'api_pan_to_gst',
   gst_to_contact: 'api_gst_to_contact',
   'gst-to-contact': 'api_gst_to_contact',
+  contact_to_gst: 'api_contact_to_gst',
+  'contact-to-gst': 'api_contact_to_gst',
+  cin_to_pan: 'api_cin_to_pan',
+  'cin-to-pan': 'api_cin_to_pan',
+  din_to_pan: 'api_din_to_pan',
+  'din-to-pan': 'api_din_to_pan',
   aadhaar: 'api_aadhaar_without_otp',
   digilocker: 'api_digilocker_digital_kyc',
   bank: 'api_bank_penny_less',
