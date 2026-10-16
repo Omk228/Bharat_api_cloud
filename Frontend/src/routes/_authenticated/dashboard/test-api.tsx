@@ -50,6 +50,8 @@ import {
   Wallet,
   Hash,
   Users,
+  Search,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -524,6 +526,8 @@ function TestApiPage() {
   // Contact To GST fields
   const [contactToGstInput, setContactToGstInput] = useState("");
   const [contactToGstClientRef, setContactToGstClientRef] = useState("");
+  const [contactGstFilter, setContactGstFilter] = useState("");
+  const [contactGstStateFilter, setContactGstStateFilter] = useState("ALL");
 
   // PAN to GST fields
   const [panToGstNumber, setPanToGstNumber] = useState("");
@@ -4218,8 +4222,158 @@ function TestApiPage() {
                             const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
                             const queryVal = String(rawResult.query || contactToGstInput || "—");
                             const queryType = String(rawResult.query_type || (queryVal.includes("@") ? "EMAIL" : "MOBILE")).toUpperCase();
-                            const gstinList: any[] = Array.isArray(rawResult.gstins) ? rawResult.gstins : (Array.isArray(rawResult) ? rawResult : (rawResult.gstin ? [rawResult] : []));
-                            const totalGstins = rawResult.total_gstins ?? gstinList.length;
+
+                            // Exhaustive extraction of GSTIN items from any response format
+                            const rawList: any[] =
+                              (Array.isArray(rawResult.gstins) && rawResult.gstins.length > 0)
+                                ? rawResult.gstins
+                                : (Array.isArray(rawResult.matches) && rawResult.matches.length > 0)
+                                ? rawResult.matches
+                                : (Array.isArray(rawResult.raw_details?.matches) && rawResult.raw_details.matches.length > 0)
+                                ? rawResult.raw_details.matches
+                                : (Array.isArray(responseJson?.result?.raw_details?.matches) && responseJson.result.raw_details.matches.length > 0)
+                                ? responseJson.result.raw_details.matches
+                                : (Array.isArray(responseJson?.raw_details?.matches) && responseJson.raw_details.matches.length > 0)
+                                ? responseJson.raw_details.matches
+                                : (Array.isArray(responseJson?.data?.matches) && responseJson.data.matches.length > 0)
+                                ? responseJson.data.matches
+                                : (Array.isArray(responseJson?.matches) && responseJson.matches.length > 0)
+                                ? responseJson.matches
+                                : (Array.isArray(rawResult.records) && rawResult.records.length > 0)
+                                ? rawResult.records
+                                : (Array.isArray(rawResult) && rawResult.length > 0)
+                                ? rawResult
+                                : (rawResult.gstin ? [rawResult] : []);
+
+                            // Indian State lookup from 2-digit GST state code
+                            const getStateName = (code: string) => {
+                              const map: Record<string, string> = {
+                                "01": "Jammu & Kashmir",
+                                "02": "Himachal Pradesh",
+                                "03": "Punjab",
+                                "04": "Chandigarh",
+                                "05": "Uttarakhand",
+                                "06": "Haryana",
+                                "07": "Delhi",
+                                "08": "Rajasthan",
+                                "09": "Uttar Pradesh",
+                                "10": "Bihar",
+                                "11": "Sikkim",
+                                "12": "Arunachal Pradesh",
+                                "13": "Nagaland",
+                                "14": "Manipur",
+                                "15": "Mizoram",
+                                "16": "Tripura",
+                                "17": "Meghalaya",
+                                "18": "Assam",
+                                "19": "West Bengal",
+                                "20": "Jharkhand",
+                                "21": "Odisha",
+                                "22": "Chhattisgarh",
+                                "23": "Madhya Pradesh",
+                                "24": "Gujarat",
+                                "26": "Dadra & Nagar Haveli",
+                                "27": "Maharashtra",
+                                "28": "Andhra Pradesh (Old)",
+                                "29": "Karnataka",
+                                "30": "Goa",
+                                "31": "Lakshadweep",
+                                "32": "Kerala",
+                                "33": "Tamil Nadu",
+                                "34": "Puducherry",
+                                "35": "Andaman & Nicobar Islands",
+                                "36": "Telangana",
+                                "37": "Andhra Pradesh",
+                                "38": "Ladakh",
+                              };
+                              return map[String(code).padStart(2, "0")] || "";
+                            };
+
+                            // Dynamically normalize each item
+                            const allGstins = rawList.map((item: any) => {
+                              if (typeof item === "string") {
+                                const cleanGst = item.trim().toUpperCase();
+                                const stCode = cleanGst.length >= 2 ? cleanGst.slice(0, 2) : "";
+                                return {
+                                  gstin: cleanGst,
+                                  trade_name: "—",
+                                  legal_name: "—",
+                                  status: "Active",
+                                  state_code: stCode,
+                                  state: getStateName(stCode),
+                                  mobile: queryVal,
+                                  taxpayer_type: "",
+                                  registration_date: null,
+                                  address: null,
+                                };
+                              }
+
+                              const gstNum = String(
+                                item.gstin || item.gst_number || item.gstNumber || item.id || ""
+                              ).trim().toUpperCase();
+                              const rawStCode = String(
+                                item.state_code || item.stateCode || (gstNum.length >= 2 ? gstNum.slice(0, 2) : "")
+                              ).trim();
+                              const stName = String(
+                                item.state || item.state_name || item.stateName || getStateName(rawStCode)
+                              ).trim();
+                              const trade = String(
+                                item.trade_name || item.tradeName || item.business_name || item.legal_name || "—"
+                              ).trim();
+                              const legal = String(item.legal_name || item.legalName || "—").trim();
+                              const stat = String(item.status || item.gstin_status || "Active").trim();
+                              const mob = String(item.mobile || item.phone || "").trim();
+                              const type = String(item.taxpayer_type || item.taxpayerType || item.dty || "").trim();
+                              const regDate = item.registration_date || item.reg_date || null;
+                              const addr = item.address || null;
+
+                              return {
+                                gstin: gstNum,
+                                trade_name: trade,
+                                legal_name: legal,
+                                status: stat,
+                                state_code: rawStCode,
+                                state: stName,
+                                mobile: mob,
+                                taxpayer_type: type,
+                                registration_date: regDate,
+                                address: addr,
+                              };
+                            }).filter((item: any) => Boolean(item.gstin && item.gstin !== "—"));
+
+                            const totalGstins = allGstins.length;
+
+                            // State distribution aggregation
+                            const stateCounts: Record<string, number> = {};
+                            allGstins.forEach((g: any) => {
+                              const s = g.state || "Other";
+                              stateCounts[s] = (stateCounts[s] || 0) + 1;
+                            });
+                            const uniqueStates = Object.keys(stateCounts).sort((a, b) => stateCounts[b] - stateCounts[a]);
+
+                            // Filter GSTINs by search query and state filter
+                            const filteredGstins = allGstins.filter((item: any) => {
+                              const q = contactGstFilter.toLowerCase().trim();
+                              const matchesSearch =
+                                q === "" ||
+                                item.gstin.toLowerCase().includes(q) ||
+                                item.trade_name.toLowerCase().includes(q) ||
+                                item.legal_name.toLowerCase().includes(q) ||
+                                item.state.toLowerCase().includes(q) ||
+                                item.state_code.toLowerCase().includes(q);
+
+                              const matchesState =
+                                contactGstStateFilter === "ALL" || item.state === contactGstStateFilter;
+
+                              return matchesSearch && matchesState;
+                            });
+
+                            const handleCopyAllGstins = () => {
+                              if (allGstins.length === 0) return;
+                              const allGstNumbers = allGstins.map((i: any) => i.gstin).join("\n");
+                              navigator.clipboard.writeText(allGstNumbers);
+                              toast.success(`Copied all ${allGstins.length} GSTINs to clipboard!`);
+                            };
 
                             return (
                               <div className="space-y-4">
@@ -4244,10 +4398,24 @@ function TestApiPage() {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-400">
                                       {totalGstins} {totalGstins === 1 ? "GSTIN Found" : "GSTINs Registered"}
                                     </span>
+                                    {uniqueStates.length > 1 && (
+                                      <span className="rounded-md border border-border bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                                        {uniqueStates.length} States
+                                      </span>
+                                    )}
+                                    {totalGstins > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={handleCopyAllGstins}
+                                        className="inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-500/15 px-2.5 py-1 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/25 transition-colors"
+                                      >
+                                        <Copy className="h-3 w-3" /> Copy All GSTINs
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       onClick={() => handleCopyField(queryVal, "Query Contact")}
@@ -4258,8 +4426,8 @@ function TestApiPage() {
                                   </div>
                                 </div>
 
-                                {/* GSTINs List */}
-                                {gstinList.length === 0 ? (
+                                {/* GSTINs List & Filter Controls */}
+                                {allGstins.length === 0 ? (
                                   <div className="rounded-xl border border-dashed border-border bg-card/40 p-6 text-center text-muted-foreground">
                                     <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60" />
                                     <p className="text-sm font-semibold text-foreground">No GSTIN Records Found</p>
@@ -4269,107 +4437,186 @@ function TestApiPage() {
                                   </div>
                                 ) : (
                                   <div className="space-y-3">
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                      <span className="font-medium text-foreground flex items-center gap-1.5">
-                                        <Building2 className="h-4 w-4 text-cyan-400" /> Registered GST Entities ({gstinList.length})
-                                      </span>
-                                      <span className="text-[11px]">Click any GSTIN to copy</span>
+                                    {/* Search & State Filter Bar */}
+                                    <div className="rounded-xl border border-border bg-card/40 p-3 space-y-2.5">
+                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div className="relative flex-1">
+                                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                          <input
+                                            type="text"
+                                            value={contactGstFilter}
+                                            onChange={(e) => setContactGstFilter(e.target.value)}
+                                            placeholder="Search by GSTIN, Trade Name, Legal Name, or State..."
+                                            className="w-full rounded-lg border border-border bg-background pl-9 pr-8 py-1.5 text-xs outline-none placeholder:text-muted-foreground/60 focus:border-cyan-400"
+                                          />
+                                          {contactGstFilter && (
+                                            <button
+                                              type="button"
+                                              onClick={() => setContactGstFilter("")}
+                                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                            >
+                                              <X className="h-3.5 w-3.5" />
+                                            </button>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground font-mono shrink-0">
+                                          Showing <strong className="text-foreground">{filteredGstins.length}</strong> of <strong className="text-foreground">{totalGstins}</strong>
+                                        </div>
+                                      </div>
+
+                                      {/* State Filter Pills */}
+                                      {uniqueStates.length > 1 && (
+                                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                                          <span className="text-[11px] font-semibold text-muted-foreground shrink-0">State:</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setContactGstStateFilter("ALL")}
+                                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors shrink-0 ${
+                                              contactGstStateFilter === "ALL"
+                                                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold"
+                                                : "bg-secondary/60 text-muted-foreground hover:text-foreground border border-transparent"
+                                            }`}
+                                          >
+                                            All ({totalGstins})
+                                          </button>
+                                          {uniqueStates.map((st: string) => (
+                                            <button
+                                              key={st}
+                                              type="button"
+                                              onClick={() => setContactGstStateFilter(st)}
+                                              className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors shrink-0 ${
+                                                contactGstStateFilter === st
+                                                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold"
+                                                  : "bg-secondary/60 text-muted-foreground hover:text-foreground border border-transparent"
+                                              }`}
+                                            >
+                                              {st} ({stateCounts[st]})
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
 
-                                    <div className="grid gap-3">
-                                      {gstinList.map((gstItem: any, idx: number) => {
-                                        const gstNum = String(gstItem.gstin || gstItem.gst_number || "—").toUpperCase();
-                                        const tradeName = String(gstItem.trade_name || gstItem.tradeName || gstItem.business_name || gstItem.legal_name || "—");
-                                        const legalName = String(gstItem.legal_name || gstItem.legalName || "—");
-                                        const status = String(gstItem.status || gstItem.gstin_status || "Active");
-                                        const isActive = status.toLowerCase() === "active";
-                                        const state = gstItem.state || gstItem.state_name || "";
-                                        const stateCode = gstItem.state_code || (gstNum.length >= 2 ? gstNum.slice(0, 2) : "");
-                                        const taxpayerType = gstItem.taxpayer_type || "";
-                                        const regDate = gstItem.registration_date || gstItem.reg_date || null;
-                                        const address = gstItem.address || null;
+                                    {/* GSTIN Cards List */}
+                                    {filteredGstins.length === 0 ? (
+                                      <div className="rounded-xl border border-dashed border-border bg-card/40 p-6 text-center text-muted-foreground space-y-2">
+                                        <p className="text-xs">No GSTIN matching &quot;{contactGstFilter}&quot;</p>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setContactGstFilter("");
+                                            setContactGstStateFilter("ALL");
+                                          }}
+                                          className="text-xs text-cyan-400 underline font-medium"
+                                        >
+                                          Reset Search & Filters
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="grid gap-3 max-h-[680px] overflow-y-auto pr-1">
+                                        {filteredGstins.map((gstItem: any, idx: number) => {
+                                          const gstNum = gstItem.gstin;
+                                          const tradeName = gstItem.trade_name;
+                                          const legalName = gstItem.legal_name;
+                                          const status = gstItem.status;
+                                          const isActive = status.toLowerCase() === "active";
+                                          const state = gstItem.state;
+                                          const stateCode = gstItem.state_code;
+                                          const taxpayerType = gstItem.taxpayer_type;
+                                          const regDate = gstItem.registration_date;
+                                          const address = gstItem.address;
 
-                                        return (
-                                          <div
-                                            key={idx}
-                                            className="rounded-xl border border-border/80 bg-card/60 p-4 space-y-3 hover:border-cyan-500/40 transition-colors"
-                                          >
-                                            {/* Entity Top Header */}
-                                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
-                                              <div className="flex items-center gap-2">
-                                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/15 text-xs font-bold text-cyan-400">
-                                                  {idx + 1}
-                                                </span>
-                                                <span className="font-mono text-sm font-bold text-foreground tracking-wider">
-                                                  {gstNum}
-                                                </span>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleCopyField(gstNum, `GSTIN #${idx + 1}`)}
-                                                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                                                  title="Copy GSTIN"
-                                                >
-                                                  <Copy className="h-3 w-3" />
-                                                </button>
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className="rounded-xl border border-border/80 bg-card/60 p-4 space-y-3 hover:border-cyan-500/40 transition-colors shadow-sm"
+                                            >
+                                              {/* Entity Top Header */}
+                                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/15 text-xs font-bold text-cyan-400">
+                                                    {idx + 1}
+                                                  </span>
+                                                  <span className="font-mono text-sm font-bold text-foreground tracking-wider">
+                                                    {gstNum}
+                                                  </span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleCopyField(gstNum, `GSTIN #${idx + 1}`)}
+                                                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                                    title="Copy GSTIN"
+                                                  >
+                                                    <Copy className="h-3.5 w-3.5" />
+                                                  </button>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <span
+                                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider border ${
+                                                      isActive
+                                                        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                                        : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                                    }`}
+                                                  >
+                                                    {status}
+                                                  </span>
+                                                  {state && (
+                                                    <span className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                                      <MapPin className="h-3 w-3 text-cyan-400" />
+                                                      {state} {stateCode && `(${stateCode})`}
+                                                    </span>
+                                                  )}
+                                                </div>
                                               </div>
 
-                                              <div className="flex items-center gap-2">
-                                                <span
-                                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider border ${
-                                                    isActive
-                                                      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                                                      : "bg-rose-500/15 text-rose-400 border-rose-500/30"
-                                                  }`}
-                                                >
-                                                  {status}
-                                                </span>
-                                                {state && (
-                                                  <span className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                                    <MapPin className="h-3 w-3 text-cyan-400" />
-                                                    {state} {stateCode && `(${stateCode})`}
+                                              {/* Entity Names */}
+                                              <div className="grid gap-2 sm:grid-cols-2 text-xs">
+                                                <div>
+                                                  <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
+                                                    Trade Name
+                                                  </span>
+                                                  <span className="font-bold text-foreground block text-sm" title={tradeName}>
+                                                    {tradeName}
+                                                  </span>
+                                                </div>
+                                                <div>
+                                                  <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">
+                                                    Legal Name
+                                                  </span>
+                                                  <span className="font-medium text-foreground/90 block truncate" title={legalName}>
+                                                    {legalName}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              {/* Additional Meta Tags */}
+                                              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground border-t border-border/40">
+                                                {gstItem.mobile && (
+                                                  <span className="flex items-center gap-1 font-mono text-cyan-400">
+                                                    <Phone className="h-3 w-3" /> {gstItem.mobile}
+                                                  </span>
+                                                )}
+                                                {taxpayerType && (
+                                                  <span>
+                                                    Taxpayer Type: <strong className="text-foreground">{taxpayerType}</strong>
+                                                  </span>
+                                                )}
+                                                {regDate && (
+                                                  <span>
+                                                    · Reg Date: <strong className="font-mono text-foreground">{String(regDate)}</strong>
+                                                  </span>
+                                                )}
+                                                {address && (
+                                                  <span className="truncate max-w-full">
+                                                    · Address: <span className="text-foreground/80">{String(address)}</span>
                                                   </span>
                                                 )}
                                               </div>
                                             </div>
-
-                                            {/* Entity Names */}
-                                            <div className="grid gap-2 sm:grid-cols-2 text-xs">
-                                              <div>
-                                                <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">Trade Name</span>
-                                                <span className="font-bold text-foreground block text-sm" title={tradeName}>
-                                                  {tradeName}
-                                                </span>
-                                              </div>
-                                              <div>
-                                                <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">Legal Name</span>
-                                                <span className="font-medium text-foreground/90 block truncate" title={legalName}>
-                                                  {legalName}
-                                                </span>
-                                              </div>
-                                            </div>
-
-                                            {/* Additional Meta Tags */}
-                                            <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground border-t border-border/40">
-                                              {taxpayerType && (
-                                                <span>
-                                                  Taxpayer Type: <strong className="text-foreground">{taxpayerType}</strong>
-                                                </span>
-                                              )}
-                                              {regDate && (
-                                                <span>
-                                                  · Reg Date: <strong className="font-mono text-foreground">{String(regDate)}</strong>
-                                                </span>
-                                              )}
-                                              {address && (
-                                                <span className="truncate max-w-full">
-                                                  · Address: <span className="text-foreground/80">{String(address)}</span>
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 
@@ -4382,7 +4629,7 @@ function TestApiPage() {
                                   <div className="grid gap-2 sm:grid-cols-3 text-[11px] pt-1">
                                     <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
                                     <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || contactToGstClientRef || "—"}</span></p>
-                                    <p className="truncate">Service: <span className="text-cyan-400 font-bold">Contact To GST</span></p>
+                                    <p className="truncate">Service: <span className="text-cyan-400 font-bold">Contact To GST ({totalGstins} Records)</span></p>
                                   </div>
                                 </div>
                               </div>

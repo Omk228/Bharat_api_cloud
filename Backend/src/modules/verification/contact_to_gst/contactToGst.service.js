@@ -96,6 +96,14 @@ export class ContactToGstService {
     let candidates = [];
     if (Array.isArray(rawData)) {
       candidates = rawData;
+    } else if (rawData.matches && Array.isArray(rawData.matches)) {
+      candidates = rawData.matches;
+    } else if (rawData.data?.matches && Array.isArray(rawData.data.matches)) {
+      candidates = rawData.data.matches;
+    } else if (rawData.result?.matches && Array.isArray(rawData.result.matches)) {
+      candidates = rawData.result.matches;
+    } else if (rawData.raw_details?.matches && Array.isArray(rawData.raw_details.matches)) {
+      candidates = rawData.raw_details.matches;
     } else if (rawData.data && Array.isArray(rawData.data)) {
       candidates = rawData.data;
     } else if (rawData.gstins && Array.isArray(rawData.gstins)) {
@@ -108,6 +116,10 @@ export class ContactToGstService {
       candidates = rawData.result.gstins;
     } else if (rawData.records && Array.isArray(rawData.records)) {
       candidates = rawData.records;
+    } else if (rawData.data && Array.isArray(rawData.data.records)) {
+      candidates = rawData.data.records;
+    } else if (rawData.data && Array.isArray(rawData.data.gstins)) {
+      candidates = rawData.data.gstins;
     } else if (typeof rawData.data === 'object' && rawData.data !== null && rawData.data.gstin) {
       candidates = [rawData.data];
     } else if (typeof rawData.result === 'object' && rawData.result !== null && rawData.result.gstin) {
@@ -286,6 +298,21 @@ export class ContactToGstService {
     // 3. High-Speed Result Cache Check (<1ms)
     const cachedResult = await CacheService.getVerification('contact_to_gst', queryValue);
     if (cachedResult && (cachedResult.result || cachedResult.status_message === 'Success')) {
+      // Re-normalize if cached record has 0 gstins but raw_details has matches
+      if (
+        cachedResult.result &&
+        (!Array.isArray(cachedResult.result.gstins) || cachedResult.result.gstins.length === 0) &&
+        cachedResult.result.raw_details
+      ) {
+        const freshList = this.normalizeGstinRecords(cachedResult.result.raw_details);
+        if (freshList.length > 0) {
+          cachedResult.result.gstins = freshList;
+          cachedResult.result.total_gstins = freshList.length;
+          cachedResult.result.primary_record = freshList[0] || null;
+          CacheService.setVerification('contact_to_gst', queryValue, cachedResult, 86400).catch(() => {});
+        }
+      }
+
       const durationMs = Date.now() - startTime;
       console.log(`⚡ [CONTACT TO GST CACHE HIT] Returned from Cache in ${durationMs}ms: query=${queryValue}`);
 
