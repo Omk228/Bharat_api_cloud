@@ -169,6 +169,12 @@ export const ENV = {
     API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
     TIMEOUT_MS: parseInt(process.env.CIN_TO_PAN_TIMEOUT_MS || '25000', 10),
   },
+
+  CONTACT_TO_GST: {
+    BASE_URL: (process.env.CONTACT_TO_GST_BASE_URL || 'https://apisathi.in/gw/v1/contact-to-gst-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.CONTACT_TO_GST_TIMEOUT_MS || '25000', 10),
+  },
 };
 
 export default ENV;

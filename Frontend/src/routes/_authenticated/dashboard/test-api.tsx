@@ -224,13 +224,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "contact_to_gst" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "cin_to_pan" || search["service"] === "cin-to-pan" || search["service"] === "cin_pan" || search["service"] === "cin"
+      search["service"] === "contact_to_gst" || search["service"] === "contact-to-gst" || search["service"] === "contact_gst" || search["service"] === "mobile_to_gst" || search["service"] === "contact"
+        ? "contact_to_gst"
+        : search["service"] === "cin_to_pan" || search["service"] === "cin-to-pan" || search["service"] === "cin_pan" || search["service"] === "cin"
         ? "cin_to_pan"
         : search["service"] === "gst_to_contact" || search["service"] === "gst-to-contact" || search["service"] === "gst_contact" || search["service"] === "gstin_to_contact"
         ? "gst_to_contact"
@@ -414,6 +416,7 @@ function TestApiPage() {
       return pricingData.pricing[serviceKey];
     }
     if (serviceKey === "cin_to_pan" || serviceKey === "cin-to-pan") return 3.0;
+    if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.0;
     if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.0;
     if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.0;
     if (serviceKey === "mobile_intelligence" || serviceKey === "mobile-intelligence") return 2.0;
@@ -517,6 +520,10 @@ function TestApiPage() {
   // CIN to PAN fields
   const [cinToPanNumber, setCinToPanNumber] = useState("");
   const [cinToPanClientRef, setCinToPanClientRef] = useState("");
+
+  // Contact To GST fields
+  const [contactToGstInput, setContactToGstInput] = useState("");
+  const [contactToGstClientRef, setContactToGstClientRef] = useState("");
 
   // PAN to GST fields
   const [panToGstNumber, setPanToGstNumber] = useState("");
@@ -871,7 +878,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "cin_to_pan"
+    selectedService === "contact_to_gst"
+      ? {
+          contact: contactToGstInput.trim() || "<Mobile or Email>",
+          ...(contactToGstClientRef.trim() ? { client_ref_num: contactToGstClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "cin_to_pan"
       ? {
           cin: cinToPanNumber.trim().toUpperCase() || "<21-char CIN>",
           ...(cinToPanClientRef.trim() ? { client_ref_num: cinToPanClientRef.trim() } : {}),
@@ -1142,6 +1157,19 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "contact_to_gst") {
+      const cleanInput = contactToGstInput.trim();
+      if (!cleanInput) {
+        toast.error("Please enter a 10-digit mobile number or valid email address");
+        return;
+      }
+      const isMobile = /^[5-9][0-9]{9}$/.test(cleanInput.replace(/\D/g, "").slice(-10));
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanInput);
+      if (!isMobile && !isEmail) {
+        toast.error("Please enter a valid 10-digit Indian mobile number or valid email address");
+        return;
+      }
+    }
     if (selectedService === "cin_to_pan") {
       const cleanCin = cinToPanNumber.trim().toUpperCase();
       if (!cleanCin) {
@@ -1351,7 +1379,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "cin_to_pan") {
+      if (selectedService === "contact_to_gst") {
+        rawData = await apiClient.verifyContactToGst({
+          contact: contactToGstInput.trim(),
+          client_ref_num: contactToGstClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "cin_to_pan") {
         rawData = await apiClient.verifyCinToPan({
           cin: cinToPanNumber.trim().toUpperCase(),
           client_ref_num: cinToPanClientRef.trim() || undefined,
@@ -1828,7 +1864,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "cin_to_pan"
+    selectedService === "contact_to_gst"
+      ? "/api/v1/verify/contact-to-gst"
+      : selectedService === "cin_to_pan"
       ? "/api/v1/verify/cin-to-pan"
       : selectedService === "gst_to_contact"
       ? "/api/v1/verify/gst-to-contact"
@@ -2029,7 +2067,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "cin_to_pan"
+                    selectedService === "contact_to_gst"
+                      ? "contact-to-gst"
+                      : selectedService === "cin_to_pan"
                       ? "cin-to-pan"
                       : selectedService === "gst_to_contact"
                       ? "gst-to-contact"
@@ -2132,8 +2172,11 @@ function TestApiPage() {
                   {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
+                  {selectedService === "contact_to_gst" && <Building2 className="h-4 w-4 text-cyan-400" />}
+                  {selectedService === "cin_to_pan" && <Building className="h-4 w-4 text-blue-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "contact_to_gst" && "Contact To GST (/api/v1/verify/contact-to-gst)"}
                     {selectedService === "cin_to_pan" && "CIN to PAN (/api/v1/verify/cin-to-pan)"}
                     {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
                     {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
@@ -2383,7 +2426,73 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "cin_to_pan" ? (
+                  {selectedService === "contact_to_gst" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Phone className="h-3.5 w-3.5 text-cyan-400" /> Contact Number or Email *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-Digit Mobile or Email</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={contactToGstInput}
+                            onChange={(e) => setContactToGstInput(e.target.value.trim())}
+                            placeholder="e.g. 9876543210 or user@example.com"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-cyan-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Input Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setContactToGstInput("9876543210")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample Mobile
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setContactToGstInput("accounts@bharatcloud.in")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample Email
+                        </button>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={contactToGstClientRef}
+                          onChange={(e) => setContactToGstClientRef(e.target.value)}
+                          placeholder="e.g. CTG_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 p-2.5 text-xs text-cyan-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <span className="font-bold text-cyan-400">₹{getServicePrice("contact_to_gst").toFixed(2)} / Request</span>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Reverse contact lookup to find all registered GSTINs, legal entities, trade names, state jurisdictions, and tax registration records associated with a mobile or email.
+                      </p>
+                    </>
+                  ) : selectedService === "cin_to_pan" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -4049,7 +4158,9 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    {selectedService === "cin_to_pan" ? (
+                    {selectedService === "contact_to_gst" ? (
+                      <Building2 className="h-8 w-8 opacity-40 text-cyan-400" />
+                    ) : selectedService === "cin_to_pan" ? (
                       <Building className="h-8 w-8 opacity-40 text-blue-400" />
                     ) : selectedService === "gst_to_contact" ? (
                       <Building2 className="h-8 w-8 opacity-40 text-emerald-400" />
@@ -4070,7 +4181,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "contact_to_gst" ? "a 10-digit mobile number or email address (e.g. 9876543210 or accounts@bharatcloud.in)" : selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -4081,7 +4192,9 @@ function TestApiPage() {
                     {/* Success Verification / Dedicated Service Card */}
                     {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
                       <div className={`rounded-xl border p-5 space-y-4 ${
-                        selectedService === "cin_to_pan"
+                        selectedService === "contact_to_gst"
+                          ? "border-cyan-500/30 bg-gradient-to-b from-cyan-500/5 to-transparent"
+                          : selectedService === "cin_to_pan"
                           ? "border-blue-500/30 bg-gradient-to-b from-blue-500/5 to-transparent"
                           : selectedService === "gst_to_contact"
                           ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
@@ -4098,9 +4211,184 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 🏢 GST TO CONTACT DETAILS DEDICATED VISUAL CARD           */}
+                        {/* 🏢 CONTACT TO GST DEDICATED VISUAL CARD                   */}
                         {/* ========================================================= */}
-                        {selectedService === "gst_to_contact" ? (
+                        {selectedService === "contact_to_gst" ? (
+                          (() => {
+                            const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                            const queryVal = String(rawResult.query || contactToGstInput || "—");
+                            const queryType = String(rawResult.query_type || (queryVal.includes("@") ? "EMAIL" : "MOBILE")).toUpperCase();
+                            const gstinList: any[] = Array.isArray(rawResult.gstins) ? rawResult.gstins : (Array.isArray(rawResult) ? rawResult : (rawResult.gstin ? [rawResult] : []));
+                            const totalGstins = rawResult.total_gstins ?? gstinList.length;
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Banner Card */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-400">
+                                      {queryType === "EMAIL" ? <Mail className="h-5 w-5" /> : <Phone className="h-5 w-5" />}
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                                          Contact To GST
+                                          <span className="rounded-full bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 text-[10px] font-semibold text-cyan-400">
+                                            LIVE
+                                          </span>
+                                        </h3>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        Query ({queryType}): <span className="font-bold text-foreground">{queryVal}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-400">
+                                      {totalGstins} {totalGstins === 1 ? "GSTIN Found" : "GSTINs Registered"}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyField(queryVal, "Query Contact")}
+                                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      <Copy className="h-3 w-3" /> Copy Contact
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* GSTINs List */}
+                                {gstinList.length === 0 ? (
+                                  <div className="rounded-xl border border-dashed border-border bg-card/40 p-6 text-center text-muted-foreground">
+                                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60" />
+                                    <p className="text-sm font-semibold text-foreground">No GSTIN Records Found</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      No active GST registrations were found linked with contact <span className="font-mono text-foreground">{queryVal}</span>.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <span className="font-medium text-foreground flex items-center gap-1.5">
+                                        <Building2 className="h-4 w-4 text-cyan-400" /> Registered GST Entities ({gstinList.length})
+                                      </span>
+                                      <span className="text-[11px]">Click any GSTIN to copy</span>
+                                    </div>
+
+                                    <div className="grid gap-3">
+                                      {gstinList.map((gstItem: any, idx: number) => {
+                                        const gstNum = String(gstItem.gstin || gstItem.gst_number || "—").toUpperCase();
+                                        const tradeName = String(gstItem.trade_name || gstItem.tradeName || gstItem.business_name || gstItem.legal_name || "—");
+                                        const legalName = String(gstItem.legal_name || gstItem.legalName || "—");
+                                        const status = String(gstItem.status || gstItem.gstin_status || "Active");
+                                        const isActive = status.toLowerCase() === "active";
+                                        const state = gstItem.state || gstItem.state_name || "";
+                                        const stateCode = gstItem.state_code || (gstNum.length >= 2 ? gstNum.slice(0, 2) : "");
+                                        const taxpayerType = gstItem.taxpayer_type || "";
+                                        const regDate = gstItem.registration_date || gstItem.reg_date || null;
+                                        const address = gstItem.address || null;
+
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className="rounded-xl border border-border/80 bg-card/60 p-4 space-y-3 hover:border-cyan-500/40 transition-colors"
+                                          >
+                                            {/* Entity Top Header */}
+                                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
+                                              <div className="flex items-center gap-2">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/15 text-xs font-bold text-cyan-400">
+                                                  {idx + 1}
+                                                </span>
+                                                <span className="font-mono text-sm font-bold text-foreground tracking-wider">
+                                                  {gstNum}
+                                                </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleCopyField(gstNum, `GSTIN #${idx + 1}`)}
+                                                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                                  title="Copy GSTIN"
+                                                >
+                                                  <Copy className="h-3 w-3" />
+                                                </button>
+                                              </div>
+
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider border ${
+                                                    isActive
+                                                      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                                      : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                                  }`}
+                                                >
+                                                  {status}
+                                                </span>
+                                                {state && (
+                                                  <span className="inline-flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                                    <MapPin className="h-3 w-3 text-cyan-400" />
+                                                    {state} {stateCode && `(${stateCode})`}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Entity Names */}
+                                            <div className="grid gap-2 sm:grid-cols-2 text-xs">
+                                              <div>
+                                                <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">Trade Name</span>
+                                                <span className="font-bold text-foreground block text-sm" title={tradeName}>
+                                                  {tradeName}
+                                                </span>
+                                              </div>
+                                              <div>
+                                                <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block">Legal Name</span>
+                                                <span className="font-medium text-foreground/90 block truncate" title={legalName}>
+                                                  {legalName}
+                                                </span>
+                                              </div>
+                                            </div>
+
+                                            {/* Additional Meta Tags */}
+                                            <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground border-t border-border/40">
+                                              {taxpayerType && (
+                                                <span>
+                                                  Taxpayer Type: <strong className="text-foreground">{taxpayerType}</strong>
+                                                </span>
+                                              )}
+                                              {regDate && (
+                                                <span>
+                                                  · Reg Date: <strong className="font-mono text-foreground">{String(regDate)}</strong>
+                                                </span>
+                                              )}
+                                              {address && (
+                                                <span className="truncate max-w-full">
+                                                  · Address: <span className="text-foreground/80">{String(address)}</span>
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Verification Audit Footer */}
+                                <div className="rounded-xl border border-border bg-card p-3 text-xs font-mono space-y-1 text-muted-foreground">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Verification Audit</span>
+                                    <span className="text-cyan-400 font-semibold text-[10px]">Verified at: {new Date().toLocaleString("en-IN")}</span>
+                                  </div>
+                                  <div className="grid gap-2 sm:grid-cols-3 text-[11px] pt-1">
+                                    <p className="truncate">Request ID: <span className="text-foreground">{responseJson?.request_id || "req_" + Date.now()}</span></p>
+                                    <p className="truncate">Client Ref: <span className="text-foreground">{responseJson?.client_ref_num || contactToGstClientRef || "—"}</span></p>
+                                    <p className="truncate">Service: <span className="text-cyan-400 font-bold">Contact To GST</span></p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "gst_to_contact" ? (
                           (() => {
                             const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
                             const gstinNum = String(rawResult.gstin || gstToContactNumber || "—").toUpperCase();

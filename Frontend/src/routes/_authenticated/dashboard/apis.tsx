@@ -385,6 +385,15 @@ function ApisPage() {
                         ⚡ Test In Console
                       </Link>
                     )}
+                    {(ep.id === "contact-to-gst" || ep.id === "api_contact_to_gst") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "contact_to_gst" }}
+                        className="inline-flex items-center gap-1 rounded bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 font-medium text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {(ep.id === "mobile-intelligence" || ep.id === "api_mobile_intelligence") && (
                       <Link
                         to="/dashboard/test-api"

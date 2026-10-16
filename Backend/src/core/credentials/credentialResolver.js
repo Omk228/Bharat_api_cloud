@@ -278,6 +278,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for Contact to GST Verification (API Saathi Gateway)
+   */
+  async getContactToGstCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('contact_to_gst_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.CONTACT_TO_GST.BASE_URL,
+      apiKey: cred?.apiKey || ENV.CONTACT_TO_GST.API_KEY,
+      timeoutMs: ENV.CONTACT_TO_GST.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

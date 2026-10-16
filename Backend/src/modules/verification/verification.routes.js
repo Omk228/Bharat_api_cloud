@@ -13,6 +13,7 @@ import dthRoutes from './dth/dth.routes.js';
 import panToGstRoutes from './pan_to_gst/panToGst.routes.js';
 import gstToContactRoutes from './gst_to_contact/gstToContact.routes.js';
 import cinToPanRoutes from './cin_to_pan/cinToPan.routes.js';
+import contactToGstRoutes from './contact_to_gst/contactToGst.routes.js';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/', dthRoutes);
 router.use('/', panToGstRoutes);
 router.use('/', gstToContactRoutes);
 router.use('/', cinToPanRoutes);
+router.use('/', contactToGstRoutes);
 
 export default router;

@@ -28,6 +28,7 @@ import mobileIntelligenceRoutes from '../modules/verification/mobile_intelligenc
 import panToGstRoutes from '../modules/verification/pan_to_gst/panToGst.routes.js';
 import gstToContactRoutes from '../modules/verification/gst_to_contact/gstToContact.routes.js';
 import cinToPanRoutes from '../modules/verification/cin_to_pan/cinToPan.routes.js';
+import contactToGstRoutes from '../modules/verification/contact_to_gst/contactToGst.routes.js';
 import senderRoutes from '../modules/sender/sender.routes.js';
 
 const apiRouter = Router();
@@ -86,5 +87,8 @@ apiRouter.use('/', gstToContactRoutes);
 apiRouter.use('/verify/cin-to-pan', cinToPanRoutes);
 apiRouter.use('/cin-to-pan', cinToPanRoutes);
 apiRouter.use('/', cinToPanRoutes);
+apiRouter.use('/verify/contact-to-gst', contactToGstRoutes);
+apiRouter.use('/contact-to-gst', contactToGstRoutes);
+apiRouter.use('/', contactToGstRoutes);
 
 export default apiRouter;
