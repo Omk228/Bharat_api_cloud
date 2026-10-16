@@ -395,7 +395,6 @@ export class GstAuthenticatedAdvanceService {
 
       const upstreamPayload = {
         gstin: cleanGstin,
-        ...(clientRef ? { client_ref_num: clientRef } : {}),
       };
 
       const upstreamRes = await upstreamFetch(upstreamUrl, {
@@ -428,20 +427,22 @@ export class GstAuthenticatedAdvanceService {
           return formatUpstreamLowBalanceResponse(clientRef, requestId);
         }
 
-        if (responseJson.status === true || responseJson.status_code === 200 || responseJson.success === true) {
+        if (
+          responseJson.status === true ||
+          responseJson.status_code === 200 ||
+          responseJson.success === true ||
+          responseJson.result_code === 101 ||
+          responseJson.status_message === 'Success'
+        ) {
           isSuccess = true;
         } else {
-          const lowerMsg = errorMsg.toLowerCase();
-          if (lowerMsg.includes('no record') || lowerMsg.includes('not found') || lowerMsg.includes('invalid gstin')) {
-            statusCode = 404;
-            resultCode = 102;
-          } else {
-            statusCode = upstreamRes.status || 400;
-            resultCode = 102;
-          }
+          statusCode = responseJson.status_code || upstreamRes.status || 400;
+          resultCode = responseJson.result_code || 102;
         }
       } else {
-        throw new Error(`Upstream gateway returned HTTP status ${upstreamRes.status}`);
+        statusCode = upstreamRes.status || 502;
+        resultCode = 102;
+        upstreamData = { message: responseText || `Upstream gateway returned HTTP status ${upstreamRes.status}` };
       }
     } catch (upstreamErr) {
       console.error(`❌ [GST AUTHENTICATED ADVANCE UPSTREAM ERROR]:`, upstreamErr.message);
@@ -450,7 +451,20 @@ export class GstAuthenticatedAdvanceService {
         return formatUpstreamLowBalanceResponse(clientRef, requestId);
       }
 
-      throw ApiError.gatewayTimeout('Upstream GST verification gateway is currently taking longer than expected. Please retry.');
+      if (upstreamErr.statusCode) {
+        throw upstreamErr;
+      }
+
+      return {
+        http_response_code: 504,
+        status_code: 504,
+        status_message: 'Failed',
+        result_code: 102,
+        request_id: requestId,
+        client_ref_num: clientRef,
+        message: 'Upstream GST verification gateway is taking longer than expected. Please retry shortly.',
+        result: null,
+      };
     }
 
     const durationMs = Date.now() - startTime;
@@ -459,12 +473,16 @@ export class GstAuthenticatedAdvanceService {
     const normalizedResult = this.normalizeGstAdvanceData(upstreamData, cleanGstin);
 
     const finalResponse = {
+      http_response_code: statusCode,
       status_code: statusCode,
       status_message: isSuccess ? 'Success' : 'Failed',
       result_code: resultCode,
       request_id: requestId,
       client_ref_num: clientRef,
-      result: normalizedResult,
+      message: isSuccess
+        ? (upstreamData?.message || `GSTIN details successfully retrieved for ${cleanGstin}.`)
+        : (upstreamData?.message || upstreamData?.error || 'Unable to verify GSTIN with registry.'),
+      result: isSuccess ? normalizedResult : (normalizedResult?.legal_name ? normalizedResult : null),
     };
 
     // 6. Cache Valid Results in Redis / Memory (TTL 24 Hours)

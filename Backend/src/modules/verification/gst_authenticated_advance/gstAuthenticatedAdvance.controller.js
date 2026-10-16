@@ -21,7 +21,7 @@ export const GstAuthenticatedAdvanceController = {
       apiClient: req.apiClient,
     });
 
-    return res.status(data.status_code || 200).json(data);
+    return res.status(data.http_response_code || data.status_code || 200).json(data);
   }),
 };
 

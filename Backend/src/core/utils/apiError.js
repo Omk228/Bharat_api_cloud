@@ -40,6 +40,14 @@ export class ApiError extends Error {
   static internal(message = 'Internal Server Error', errors = []) {
     return new ApiError(500, message, errors);
   }
+
+  static badGateway(message = 'Bad Gateway', errors = []) {
+    return new ApiError(502, message, errors);
+  }
+
+  static gatewayTimeout(message = 'Gateway Timeout', errors = []) {
+    return new ApiError(504, message, errors);
+  }
 }
 
 export default ApiError;
