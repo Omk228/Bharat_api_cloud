@@ -306,6 +306,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for GST Authenticated Advance Verification (API Saathi Gateway)
+   */
+  async getGstAuthenticatedAdvanceCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('gst_authenticated_advance_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.GST_AUTHENTICATED_ADVANCE.BASE_URL,
+      apiKey: cred?.apiKey || ENV.GST_AUTHENTICATED_ADVANCE.API_KEY,
+      timeoutMs: ENV.GST_AUTHENTICATED_ADVANCE.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

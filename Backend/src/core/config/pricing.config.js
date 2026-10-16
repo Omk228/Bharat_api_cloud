@@ -148,6 +148,12 @@ export const API_PRICING = {
   '/din-to-pan': 3.00,
   'din_to_pan': 3.00,
   'din-to-pan': 3.00,
+  '/api/v1/verify/gst-authenticated-advance': 5.00,
+  '/verify/gst-authenticated-advance': 5.00,
+  '/api/v1/gst-authenticated-advance': 5.00,
+  '/gst-authenticated-advance': 5.00,
+  'gst_authenticated_advance': 5.00,
+  'gst-authenticated-advance': 5.00,
   default: 2.00,
 };
 

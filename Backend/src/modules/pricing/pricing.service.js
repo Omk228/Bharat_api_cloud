@@ -238,6 +238,14 @@ const ENDPOINT_CATALOG_MAP = {
   '/din-to-pan': ['api_din_to_pan', '/din-to-pan', 'din_to_pan'],
   'din_to_pan': ['api_din_to_pan', '/verify/din-to-pan', '/api/v1/verify/din-to-pan'],
   'din-to-pan': ['api_din_to_pan', '/verify/din-to-pan', '/api/v1/verify/din-to-pan'],
+
+  // GST Authenticated Advance (API Saathi Gateway)
+  '/api/v1/verify/gst-authenticated-advance': ['api_gst_authenticated_advance', '/verify/gst-authenticated-advance', '/api/v1/verify/gst-authenticated-advance', 'gst_authenticated_advance', '/gst-authenticated-advance'],
+  '/verify/gst-authenticated-advance': ['api_gst_authenticated_advance', '/verify/gst-authenticated-advance', 'gst_authenticated_advance'],
+  '/api/v1/gst-authenticated-advance': ['api_gst_authenticated_advance', '/gst-authenticated-advance', 'gst_authenticated_advance'],
+  '/gst-authenticated-advance': ['api_gst_authenticated_advance', '/gst-authenticated-advance', 'gst_authenticated_advance'],
+  'gst_authenticated_advance': ['api_gst_authenticated_advance', '/verify/gst-authenticated-advance', '/api/v1/verify/gst-authenticated-advance'],
+  'gst-authenticated-advance': ['api_gst_authenticated_advance', '/verify/gst-authenticated-advance', '/api/v1/verify/gst-authenticated-advance'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -254,6 +262,8 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   'cin-to-pan': 'api_cin_to_pan',
   din_to_pan: 'api_din_to_pan',
   'din-to-pan': 'api_din_to_pan',
+  gst_authenticated_advance: 'api_gst_authenticated_advance',
+  'gst-authenticated-advance': 'api_gst_authenticated_advance',
   aadhaar: 'api_aadhaar_without_otp',
   digilocker: 'api_digilocker_digital_kyc',
   bank: 'api_bank_penny_less',

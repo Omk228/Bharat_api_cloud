@@ -244,13 +244,15 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "contact_to_gst" | "din_to_pan" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "din_to_pan" || search["service"] === "din-to-pan" || search["service"] === "din" || search["service"] === "director"
+      search["service"] === "gst_authenticated_advance" || search["service"] === "gst-authenticated-advance" || search["service"] === "gst_advance" || search["service"] === "gstin_verify"
+        ? "gst_authenticated_advance"
+        : search["service"] === "din_to_pan" || search["service"] === "din-to-pan" || search["service"] === "din" || search["service"] === "director"
         ? "din_to_pan"
         : search["service"] === "contact_to_gst" || search["service"] === "contact-to-gst" || search["service"] === "contact_gst" || search["service"] === "mobile_to_gst" || search["service"] === "contact"
         ? "contact_to_gst"
@@ -329,8 +331,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "contact_to_gst" | "din_to_pan" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
-    searchParams.service === "din_to_pan"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+    searchParams.service === "gst_authenticated_advance"
+      ? "gst_authenticated_advance"
+      : searchParams.service === "din_to_pan"
       ? "din_to_pan"
       : searchParams.service === "contact_to_gst"
       ? "contact_to_gst"
@@ -441,6 +445,7 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "gst_authenticated_advance" || serviceKey === "gst-authenticated-advance" || serviceKey === "gst_advance") return 5.90;
     if (serviceKey === "din_to_pan" || serviceKey === "din-to-pan") return 3.54;
     if (serviceKey === "cin_to_pan" || serviceKey === "cin-to-pan") return 3.54;
     if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.90;
@@ -543,6 +548,10 @@ function TestApiPage() {
   const [crifFirstName, setCrifFirstName] = useState("");
   const [crifLastName, setCrifLastName] = useState("");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // GST Authenticated Advance fields
+  const [gstAuthAdvanceGstin, setGstAuthAdvanceGstin] = useState("");
+  const [gstAuthAdvanceClientRef, setGstAuthAdvanceClientRef] = useState("");
 
   // DIN to PAN fields
   const [dinToPanNumber, setDinToPanNumber] = useState("");
@@ -911,7 +920,15 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "din_to_pan"
+    selectedService === "gst_authenticated_advance"
+      ? {
+          gstin: gstAuthAdvanceGstin.trim().toUpperCase() || "<15-character GSTIN>",
+          ...(gstAuthAdvanceClientRef.trim() ? { client_ref_num: gstAuthAdvanceClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "din_to_pan"
       ? {
           din: dinToPanNumber.trim() || "<8-digit DIN>",
           ...(dinToPanClientRef.trim() ? { client_ref_num: dinToPanClientRef.trim() } : {}),
@@ -1198,6 +1215,17 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "gst_authenticated_advance") {
+      const cleanGst = gstAuthAdvanceGstin.trim().toUpperCase();
+      if (!cleanGst) {
+        toast.error("Please enter a 15-character GSTIN number (e.g. 07AAAAA0000A1Z5)");
+        return;
+      }
+      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanGst)) {
+        toast.error("Invalid GSTIN format. Must be a 15-character valid Indian GSTIN (e.g. 07AAAAA0000A1Z5)");
+        return;
+      }
+    }
     if (selectedService === "din_to_pan") {
       const cleanDin = dinToPanNumber.trim().replace(/\D/g, "");
       if (!cleanDin) {
@@ -1431,7 +1459,15 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "din_to_pan") {
+      if (selectedService === "gst_authenticated_advance") {
+        rawData = await apiClient.verifyGstAuthenticatedAdvance({
+          gstin: gstAuthAdvanceGstin.trim().toUpperCase(),
+          client_ref_num: gstAuthAdvanceClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "din_to_pan") {
         rawData = await apiClient.verifyDinToPan({
           din: dinToPanNumber.trim(),
           client_ref_num: dinToPanClientRef.trim() || undefined,
@@ -1929,7 +1965,9 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "din_to_pan"
+    selectedService === "gst_authenticated_advance"
+      ? "/api/v1/verify/gst-authenticated-advance"
+      : selectedService === "din_to_pan"
       ? "/api/v1/verify/din-to-pan"
       : selectedService === "contact_to_gst"
       ? "/api/v1/verify/contact-to-gst"
@@ -1994,7 +2032,9 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "din_to_pan"
+    selectedService === "gst_authenticated_advance"
+      ? "GST Authenticated Advance"
+      : selectedService === "din_to_pan"
       ? "DIN to PAN"
       : selectedService === "contact_to_gst"
       ? "Contact To GST"
@@ -2083,7 +2123,9 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "din_to_pan"
+                {selectedService === "gst_authenticated_advance"
+                  ? "Direct live GST Authenticated Advance gateway: official taxpayer registration status, legal entity, trade name, principal place of business, state/center jurisdiction, constitution, and filing profile from a 15-character GSTIN powered by Bharat API Cloud."
+                  : selectedService === "din_to_pan"
                   ? "Direct live DIN to PAN gateway: retrieve Director PAN, MCA DIN allotment status, and associated company directorships from an 8-digit Director Identification Number (DIN) powered by Bharat API Cloud."
                   : selectedService === "contact_to_gst"
                   ? "Direct live Contact To GST gateway: discover all registered GSTINs, taxpayer trade names, legal entities, and GST registration details from a mobile number or email address powered by Bharat API Cloud."
@@ -2142,7 +2184,9 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "din_to_pan"
+                    selectedService === "gst_authenticated_advance"
+                      ? "gst-authenticated-advance"
+                      : selectedService === "din_to_pan"
                       ? "din-to-pan"
                       : selectedService === "contact_to_gst"
                       ? "contact-to-gst"
@@ -2220,6 +2264,7 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "gst_authenticated_advance" && <Building2 className="h-4 w-4 text-teal-400" />}
                   {selectedService === "din_to_pan" && <Users className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "contact_to_gst" && <Building2 className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "cin_to_pan" && <Building className="h-4 w-4 text-blue-400" />}
@@ -2253,6 +2298,7 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "gst_authenticated_advance" && "GST Authenticated Advance (/api/v1/verify/gst-authenticated-advance)"}
                     {selectedService === "din_to_pan" && "DIN to PAN (/api/v1/verify/din-to-pan)"}
                     {selectedService === "contact_to_gst" && "Contact To GST (/api/v1/verify/contact-to-gst)"}
                     {selectedService === "cin_to_pan" && "CIN to PAN (/api/v1/verify/cin-to-pan)"}
@@ -2504,7 +2550,77 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "din_to_pan" ? (
+                  {selectedService === "gst_authenticated_advance" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-teal-400" /> GSTIN Number *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">15-Character Indian GSTIN</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={15}
+                            value={gstAuthAdvanceGstin}
+                            onChange={(e) => setGstAuthAdvanceGstin(e.target.value.toUpperCase().slice(0, 15))}
+                            placeholder="e.g. 07AAAAA0000A1Z5"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-teal-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample GSTIN Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setGstAuthAdvanceGstin("07AAAAA0000A1Z5")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample 1 (Delhi)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGstAuthAdvanceGstin("27AAACB1234A1Z5")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample 2 (MH)
+                        </button>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={gstAuthAdvanceClientRef}
+                          onChange={(e) => setGstAuthAdvanceClientRef(e.target.value)}
+                          placeholder="e.g. GST_ADV_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-teal-400"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-teal-500/10 border border-teal-500/20 p-2.5 text-xs text-teal-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-teal-400">₹{getServicePrice("gst_authenticated_advance").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-teal-300/80">₹5.00 + 18% GST (₹0.90)</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Official GST registry verification: returns taxpayer legal entity, trade name, active/cancelled status, taxpayer category, business constitution, principal address, and jurisdictions.
+                      </p>
+                    </>
+                  ) : selectedService === "din_to_pan" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -4313,7 +4429,9 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    {selectedService === "din_to_pan" ? (
+                    {selectedService === "gst_authenticated_advance" ? (
+                      <Building2 className="h-8 w-8 opacity-40 text-teal-400" />
+                    ) : selectedService === "din_to_pan" ? (
                       <Users className="h-8 w-8 opacity-40 text-indigo-400" />
                     ) : selectedService === "contact_to_gst" ? (
                       <Building2 className="h-8 w-8 opacity-40 text-cyan-400" />
@@ -4338,7 +4456,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "din_to_pan" ? "an 8-digit Director Identification Number (e.g. 00000001 or 07123456)" : selectedService === "contact_to_gst" ? "a 10-digit mobile number or email address (e.g. 9876543210 or accounts@bharatcloud.in)" : selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "gst_authenticated_advance" ? "a 15-character GSTIN (e.g. 07AAAAA0000A1Z5)" : selectedService === "din_to_pan" ? "an 8-digit Director Identification Number (e.g. 00000001 or 07123456)" : selectedService === "contact_to_gst" ? "a 10-digit mobile number or email address (e.g. 9876543210 or accounts@bharatcloud.in)" : selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -4349,7 +4467,9 @@ function TestApiPage() {
                     {/* Success Verification / Dedicated Service Card */}
                     {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
                       <div className={`rounded-xl border p-5 space-y-4 ${
-                        selectedService === "din_to_pan"
+                        selectedService === "gst_authenticated_advance"
+                          ? "border-teal-500/30 bg-gradient-to-b from-teal-500/5 to-transparent"
+                          : selectedService === "din_to_pan"
                           ? "border-indigo-500/30 bg-gradient-to-b from-indigo-500/5 to-transparent"
                           : selectedService === "contact_to_gst"
                           ? "border-cyan-500/30 bg-gradient-to-b from-cyan-500/5 to-transparent"
@@ -4370,9 +4490,258 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 👔 DIN TO PAN DEDICATED VISUAL CARD                       */}
+                        {/* 🏢 GST AUTHENTICATED ADVANCE DEDICATED VISUAL CARD        */}
                         {/* ========================================================= */}
-                        {selectedService === "din_to_pan" ? (
+                        {selectedService === "gst_authenticated_advance" ? (
+                          (() => {
+                            const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                            const gstinVal = String(rawResult.gstin || rawResult.gstin_number || gstAuthAdvanceGstin || "—");
+                            const legalName = String(rawResult.legal_name || rawResult.trade_legal_name || rawResult.name || "—");
+                            const tradeName = String(rawResult.trade_name || rawResult.business_name || "");
+                            const statusVal = String(rawResult.status || rawResult.gstin_status || "Active");
+                            const taxpayerType = String(rawResult.taxpayer_type || rawResult.dty || "Regular");
+                            const constitution = String(rawResult.constitution_of_business || rawResult.ctb || "—");
+                            const regDate = String(rawResult.registration_date || rawResult.rgdt || "—");
+                            const cancelDate = rawResult.cancellation_date || rawResult.cxdt || null;
+                            const panVal = String(rawResult.pan || (gstinVal.length === 15 ? gstinVal.substring(2, 12) : "—"));
+                            const stateCode = String(rawResult.state_code || (gstinVal.length >= 2 ? gstinVal.substring(0, 2) : "—"));
+                            const stateName = String(rawResult.state || "—");
+                            const centerJurisdiction = String(rawResult.center_jurisdiction || rawResult.ctj || "—");
+                            const stateJurisdiction = String(rawResult.state_jurisdiction || rawResult.stj || "—");
+
+                            // Principal Place of Business
+                            const ppob = rawResult.principal_place_of_business || rawResult.pradr?.addr || {};
+                            const formattedAddress = typeof ppob === "string" ? ppob : String(ppob.address || [
+                              ppob.building_number || ppob.bno,
+                              ppob.building_name || ppob.bnm,
+                              ppob.floor_number || ppob.flno,
+                              ppob.street || ppob.st,
+                              ppob.locality || ppob.loc,
+                              ppob.city || ppob.dst,
+                              ppob.district,
+                              ppob.state || ppob.stcd,
+                              ppob.pincode || ppob.pncd ? `PIN - ${ppob.pincode || ppob.pncd}` : "",
+                            ].filter(Boolean).join(", ") || "—");
+
+                            const natureOfPremises = String(ppob.nature_of_premises || ppob.ntr || "—");
+
+                            // Business activities
+                            const businessActivities: string[] = Array.isArray(rawResult.nature_of_business_activities)
+                              ? rawResult.nature_of_business_activities
+                              : Array.isArray(rawResult.nba)
+                              ? rawResult.nba
+                              : [];
+
+                            // Authorized Signatories
+                            const signatories: any[] = Array.isArray(rawResult.authorized_signatories)
+                              ? rawResult.authorized_signatories
+                              : Array.isArray(rawResult.signatories)
+                              ? rawResult.signatories
+                              : [];
+
+                            // Additional Places
+                            const additionalPlaces: any[] = Array.isArray(rawResult.additional_places_of_business)
+                              ? rawResult.additional_places_of_business
+                              : Array.isArray(rawResult.adadr)
+                              ? rawResult.adadr
+                              : [];
+
+                            const isActive = statusVal.toLowerCase() === "active";
+                            const isCancelled = statusVal.toLowerCase().includes("cancel");
+
+                            return (
+                              <div className="space-y-5">
+                                {/* Top Header / Identity Ribbon */}
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-4">
+                                  <div className="space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="inline-flex items-center gap-1 rounded-md bg-teal-500/15 border border-teal-500/30 px-2.5 py-0.5 text-xs font-semibold text-teal-400">
+                                        <Building2 className="h-3.5 w-3.5" /> GST Authenticated Registry
+                                      </span>
+                                      <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-semibold ${
+                                        isActive
+                                          ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-400"
+                                          : isCancelled
+                                          ? "bg-red-500/15 border border-red-500/30 text-red-400"
+                                          : "bg-amber-500/15 border border-amber-500/30 text-amber-400"
+                                      }`}>
+                                        <CheckCircle2 className="h-3.5 w-3.5" /> {statusVal}
+                                      </span>
+                                      {taxpayerType && taxpayerType !== "—" && (
+                                        <span className="rounded-md bg-secondary/80 border border-border px-2 py-0.5 text-[11px] font-medium text-foreground">
+                                          {taxpayerType}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                                      {legalName !== "—" ? legalName : `GSTIN: ${gstinVal}`}
+                                    </h2>
+                                    {tradeName && tradeName !== legalName && (
+                                      <p className="text-xs font-medium text-teal-400 flex items-center gap-1">
+                                        <span>Trade Name:</span>
+                                        <span className="text-foreground">{tradeName}</span>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Quick Action Badges */}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyField(gstinVal, "GSTIN")}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-xs font-mono font-bold text-teal-300 hover:bg-teal-500/20 transition-colors cursor-pointer"
+                                    >
+                                      {copiedField === "GSTIN" ? (
+                                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                      ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                      )}
+                                      {gstinVal}
+                                    </button>
+                                    {panVal && panVal !== "—" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(panVal, "PAN")}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/60 px-3 py-1.5 text-xs font-mono font-semibold text-foreground hover:bg-secondary transition-colors cursor-pointer"
+                                      >
+                                        {copiedField === "PAN" ? (
+                                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                        ) : (
+                                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                        )}
+                                        PAN: {panVal}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Core Registry Details Grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                  <div className="rounded-lg border border-border/80 bg-background/50 p-3">
+                                    <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">Constitution of Business</span>
+                                    <span className="text-xs font-semibold text-foreground">{constitution}</span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/50 p-3">
+                                    <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">Registration Date</span>
+                                    <span className="text-xs font-semibold text-foreground font-mono">{regDate}</span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/50 p-3">
+                                    <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">State & Code</span>
+                                    <span className="text-xs font-semibold text-foreground">{stateName} ({stateCode})</span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/50 p-3">
+                                    <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">Taxpayer Type</span>
+                                    <span className="text-xs font-semibold text-foreground">{taxpayerType}</span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/50 p-3 col-span-2 sm:col-span-1">
+                                    <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">Center Jurisdiction</span>
+                                    <span className="text-xs font-medium text-foreground truncate block" title={centerJurisdiction}>{centerJurisdiction}</span>
+                                  </div>
+                                  <div className="rounded-lg border border-border/80 bg-background/50 p-3 col-span-2 sm:col-span-1">
+                                    <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">State Jurisdiction</span>
+                                    <span className="text-xs font-medium text-foreground truncate block" title={stateJurisdiction}>{stateJurisdiction}</span>
+                                  </div>
+                                  {cancelDate && (
+                                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 col-span-2">
+                                      <span className="text-[11px] font-medium text-red-400 block mb-0.5">Cancellation Date</span>
+                                      <span className="text-xs font-semibold text-red-300 font-mono">{String(cancelDate)}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Principal Place of Business */}
+                                <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-4 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-teal-300 flex items-center gap-1.5">
+                                      <MapPin className="h-4 w-4 text-teal-400" /> Principal Place of Business (PPoB)
+                                    </span>
+                                    {formattedAddress !== "—" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(formattedAddress, "Address")}
+                                        className="text-[11px] text-teal-400 hover:text-teal-300 font-medium flex items-center gap-1 cursor-pointer"
+                                      >
+                                        {copiedField === "Address" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                        Copy Address
+                                      </button>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-foreground leading-relaxed font-medium">
+                                    {formattedAddress}
+                                  </p>
+                                  {natureOfPremises && natureOfPremises !== "—" && (
+                                    <div className="pt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                      <span>Premises Nature:</span>
+                                      <span className="rounded bg-background/80 px-2 py-0.5 font-medium text-foreground border border-border">
+                                        {natureOfPremises}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Nature of Business Activities */}
+                                {businessActivities.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-background/40 p-4 space-y-2.5">
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      <Briefcase className="h-4 w-4 text-teal-400" /> Nature of Business Activities ({businessActivities.length})
+                                    </span>
+                                    <div className="flex flex-wrap gap-2">
+                                      {businessActivities.map((act, i) => (
+                                        <span
+                                          key={i}
+                                          className="rounded-lg border border-border bg-secondary/50 px-2.5 py-1 text-xs font-medium text-foreground"
+                                        >
+                                          {typeof act === "string" ? act : (act as any)?.activity || JSON.stringify(act)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Authorized Signatories / Key Persons */}
+                                {signatories.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-background/40 p-4 space-y-3">
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      <Users className="h-4 w-4 text-teal-400" /> Authorized Signatories & Partners ({signatories.length})
+                                    </span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                      {signatories.map((sig, i) => {
+                                        const sigName = typeof sig === "string" ? sig : sig.name || sig.full_name || "—";
+                                        const sigDesignation = typeof sig === "object" ? sig.designation || sig.role || "Signatory" : "Signatory";
+                                        return (
+                                          <div key={i} className="rounded-lg border border-border bg-card p-2.5 space-y-0.5">
+                                            <span className="text-xs font-bold text-foreground block">{sigName}</span>
+                                            <span className="text-[11px] text-muted-foreground">{sigDesignation}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Additional Places of Business (APoB) */}
+                                {additionalPlaces.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-background/40 p-4 space-y-3">
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      <Building className="h-4 w-4 text-teal-400" /> Additional Places of Business ({additionalPlaces.length})
+                                    </span>
+                                    <div className="space-y-2">
+                                      {additionalPlaces.map((place, i) => {
+                                        const placeAddr = typeof place === "string" ? place : place.address || place.addr || JSON.stringify(place);
+                                        return (
+                                          <div key={i} className="rounded-lg border border-border bg-card p-2.5 text-xs text-foreground">
+                                            <span className="text-[11px] font-semibold text-muted-foreground block mb-0.5">Branch #{i + 1}</span>
+                                            {placeAddr}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "din_to_pan" ? (
                           (() => {
                             const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
                             const dinVal = String(rawResult.din || dinToPanNumber || "—");

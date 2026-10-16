@@ -181,6 +181,12 @@ export const ENV = {
     API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
     TIMEOUT_MS: parseInt(process.env.DIN_TO_PAN_TIMEOUT_MS || '25000', 10),
   },
+
+  GST_AUTHENTICATED_ADVANCE: {
+    BASE_URL: (process.env.GST_AUTHENTICATED_ADVANCE_BASE_URL || 'https://apisathi.in/gw/v1/gstin-verify-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.GST_AUTHENTICATED_ADVANCE_TIMEOUT_MS || '25000', 10),
+  },
 };
 
 export default ENV;
