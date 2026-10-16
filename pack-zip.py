@@ -91,8 +91,29 @@ with zipfile.ZipFile(full_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
 
 print(f"[OK] Successfully created Full Project Zip: {full_zip_path} ({os.path.getsize(full_zip_path)} bytes)")
 
+# 4. Package Banger dist into banger-hpanel.zip (for Hostinger hPanel Virtual Domain deployment)
+banger_dist_dir = os.path.join(root_dir, 'Banger', 'dist')
+banger_zip_path = os.path.join(root_dir, 'banger-hpanel.zip')
+banger_inner_zip_path = os.path.join(root_dir, 'Banger', 'banger-hpanel.zip')
+
+if os.path.exists(banger_dist_dir):
+    for zpath in [banger_zip_path, banger_inner_zip_path]:
+        if os.path.exists(zpath):
+            os.remove(zpath)
+
+    with zipfile.ZipFile(banger_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(banger_dist_dir):
+            for file in files:
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, banger_dist_dir).replace(os.sep, '/')
+                zipf.write(full_path, rel_path)
+
+    import shutil
+    shutil.copy2(banger_zip_path, banger_inner_zip_path)
+    print(f"[OK] Successfully updated {banger_zip_path} ({os.path.getsize(banger_zip_path)} bytes)")
+
 # Remove any extra temporary zip files
-for temp_zip in ['frontend_build.zip', 'backend_deploy.zip']:
+for temp_zip in ['frontend_build.zip']:
     p = os.path.join(root_dir, temp_zip)
     if os.path.exists(p):
         os.remove(p)
