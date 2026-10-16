@@ -64,9 +64,27 @@ import { generateCrifPdfFromApiResponse, normalizeCrifReportData } from "@/lib/c
 
 export function isUpstreamLowBalanceError(dataOrError: unknown): boolean {
   if (!dataOrError) return false;
+
+  // 402 is client-side user wallet payment required in Bharat API Cloud (NOT an upstream outage)
+  if (typeof dataOrError === "object" && dataOrError !== null) {
+    const obj = dataOrError as Record<string, unknown>;
+    if (
+      obj.statusCode === 402 ||
+      obj.http_response_code === 402 ||
+      (obj.status as Record<string, unknown>)?.code === 402
+    ) {
+      return false;
+    }
+  }
+
   const str = typeof dataOrError === "string"
     ? dataOrError
     : JSON.stringify(dataOrError);
+
+  if (/please\s+recharge\s+your\s+wallet/i.test(str) || /"statusCode"\s*:\s*402/.test(str)) {
+    return false;
+  }
+
   return (
     /low[\s_-]*balance/i.test(str) ||
     /insufficient[\s_-]*(wallet[\s_-]*)?(balance|fund|funds|credit|credits|quota)/i.test(str) ||
@@ -1609,12 +1627,14 @@ function TestApiPage() {
 
       const isUpstreamIssue = isUpstreamLowBalanceError(data);
 
-      const statusCode =
-        isUpstreamIssue
-          ? 503
-          : data.http_response_code ||
-            data.status?.code ||
-            200;
+      const rawStatusCode = Number(
+        (data as Record<string, unknown>).statusCode ||
+        data.http_response_code ||
+        data.status?.code ||
+        200
+      );
+
+      const statusCode = isUpstreamIssue ? 503 : rawStatusCode;
 
       setResponseStatus(statusCode);
 
@@ -1635,6 +1655,9 @@ function TestApiPage() {
         };
         setResponseJson(unexpectedPayload);
         toast.error("There is an unexpected issue. Please try again later.");
+      } else if (statusCode === 402) {
+        setResponseJson(data);
+        toast.error(data.message || "Insufficient wallet balance. Please recharge your wallet.");
       } else {
         setResponseJson(data);
 
@@ -4068,7 +4091,9 @@ function TestApiPage() {
                     <div className="flex items-center gap-2">
                       <span
                         className={`rounded px-2 py-0.5 font-mono text-xs font-bold ${
-                          isUpstreamLowBalanceError(responseJson)
+                          responseStatus === 402
+                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            : isUpstreamLowBalanceError(responseJson)
                             ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                             : selectedService === "mobile_upi"
                             ? isSuccess
@@ -4080,7 +4105,9 @@ function TestApiPage() {
                         }`}
                       >
                         HTTP {responseStatus} · {
-                          isUpstreamLowBalanceError(responseJson)
+                          responseStatus === 402
+                            ? "INSUFFICIENT WALLET BALANCE"
+                            : isUpstreamLowBalanceError(responseJson)
                             ? "UNEXPECTED ISSUE"
                             : selectedService === "mobile_upi"
                             ? isSuccess
@@ -11144,6 +11171,46 @@ function TestApiPage() {
                             </div>
                           </>
                         )}
+                      </div>
+                    ) : responseStatus === 402 || (responseJson as Record<string, unknown>)?.statusCode === 402 ? (
+                      /* Insufficient Wallet Balance Card */
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-lg bg-amber-500/20 p-2.5 text-amber-400 shrink-0">
+                            <Wallet className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground">
+                              Insufficient Wallet Balance (HTTP 402)
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {responseJson?.message || "Your wallet balance is insufficient to complete this verification request."}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg bg-background/80 border border-border/60 p-3.5 text-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Request Price:</span>
+                            <span className="font-bold text-amber-400">₹{getServicePrice(selectedService).toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Status:</span>
+                            <span className="font-mono text-red-400 font-semibold">HTTP 402 · Payment Required</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground/80 pt-2 border-t border-border/40">
+                            Please top up your Bharat API Cloud wallet balance to execute live verification gateways.
+                          </p>
+                        </div>
+
+                        <div className="pt-1">
+                          <Link
+                            to="/dashboard/wallet"
+                            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                          >
+                            <Wallet className="h-4 w-4" /> Go to Wallet & Recharge
+                          </Link>
+                        </div>
                       </div>
                     ) : isUpstreamLowBalanceError(responseJson) ? (
                       /* Unexpected Issue Card */
