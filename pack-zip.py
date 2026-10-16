@@ -19,6 +19,10 @@ if os.path.exists(dist_dir):
                 zipf.write(full_path, rel_path)
 
     print(f"[OK] Successfully updated {frontend_zip_path} ({os.path.getsize(frontend_zip_path)} bytes)")
+    frontend_hpanel_zip = os.path.join(root_dir, 'frontend-hpanel.zip')
+    import shutil
+    shutil.copy2(frontend_zip_path, frontend_hpanel_zip)
+    print(f"[OK] Successfully updated {frontend_hpanel_zip} ({os.path.getsize(frontend_hpanel_zip)} bytes)")
 
 # 1B. Package Frontend source code into frontend.zip (Full Source Code)
 frontend_dir = os.path.join(root_dir, 'Frontend')
