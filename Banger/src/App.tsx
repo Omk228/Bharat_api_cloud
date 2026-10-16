@@ -17,7 +17,6 @@ import {
   Send,
   Layers,
   User,
-  Key,
   LogOut,
   Mail,
   Lock,
@@ -1157,7 +1156,7 @@ export default function App() {
             </form>
 
             <div className="banger-login-notice">
-              🔒 <strong>Secure Auth & Gateway:</strong> Log in with your registered credentials. Your assigned API ID, API Key, and Token ID are linked automatically.
+              🔒 <strong>Secure Access:</strong> Sign in with your registered account credentials to access the console.
             </div>
           </div>
         </div>
@@ -1191,17 +1190,6 @@ export default function App() {
           <div className="header-user-badge" title={`User ID: ${session.user.id}`}>
             <User className="w-3.5 h-3.5 text-stone-600" />
             <span>{session.user.name || session.user.email}</span>
-          </div>
-
-          {/* Assigned API Credentials Badge */}
-          <div className="header-cred-badge" title={`API ID: ${session.credentials.api_id || "N/A"}`}>
-            <Key className="w-3.5 h-3.5 text-amber-700" />
-            <span>
-              {session.credentials.api_id || "APID"} :{" "}
-              {session.credentials.api_key
-                ? `${session.credentials.api_key.slice(0, 4)}••••${session.credentials.api_key.slice(-4)}`
-                : "••••"}
-            </span>
           </div>
 
           <div className="status-indicator">
