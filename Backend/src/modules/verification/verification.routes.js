@@ -10,6 +10,8 @@ import mobileToBankRoutes from './mobile_to_bank/mobileToBank.routes.js';
 import workEmailRoutes from './work_email/workEmail.routes.js';
 import operatorRoutes from './operator/operator.routes.js';
 import dthRoutes from './dth/dth.routes.js';
+import panToGstRoutes from './pan_to_gst/panToGst.routes.js';
+import gstToContactRoutes from './gst_to_contact/gstToContact.routes.js';
 
 const router = Router();
 
@@ -25,5 +27,7 @@ router.use('/', mobileToBankRoutes);
 router.use('/', workEmailRoutes);
 router.use('/', operatorRoutes);
 router.use('/', dthRoutes);
+router.use('/', panToGstRoutes);
+router.use('/', gstToContactRoutes);
 
 export default router;

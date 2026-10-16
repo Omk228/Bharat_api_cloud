@@ -358,6 +358,24 @@ function ApisPage() {
                   </span>
 
                   <div className="flex items-center gap-2">
+                    {(ep.id === "pan-to-gst" || ep.id === "api_pan_to_gst") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "pan_to_gst" }}
+                        className="inline-flex items-center gap-1 rounded bg-primary/10 border border-primary/30 px-2 py-0.5 font-medium text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {(ep.id === "gst-to-contact" || ep.id === "api_gst_to_contact") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "gst_to_contact" }}
+                        className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {(ep.id === "mobile-intelligence" || ep.id === "api_mobile_intelligence") && (
                       <Link
                         to="/dashboard/test-api"

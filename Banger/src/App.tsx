@@ -17,17 +17,32 @@ import {
   Send,
   Layers,
   User,
-  Wallet,
   Key,
   LogOut,
-  RefreshCw,
   Mail,
   Lock,
+  History,
 } from "lucide-react";
 import "./App.css";
 
 // Attack / Dispatch Mode Types
 export type AttackMode = "sms_wa" | "sms_call";
+
+export interface TargetSessionLog {
+  id: string;
+  phoneNumber: string;
+  carrierName: string;
+  carrierCircle?: string;
+  mode: AttackMode;
+  modeTitle: string;
+  targetCount: number;
+  currentIteration: number;
+  status: "active" | "completed" | "stopped";
+  startedAt: string;
+  endedAt?: string;
+  smsSent: number;
+  secondarySent: number;
+}
 
 interface ModeOption {
   id: AttackMode;
@@ -70,8 +85,8 @@ const ATTACK_MODES: ModeOption[] = [
     title: "SMS + WhatsApp",
     subTitle: "Simultaneous SMS OTPs & WhatsApp Notifications (20 iters)",
     priceTag: "₹10 / 20 iters",
-    icon: <MessageSquare className="w-4 h-4 text-emerald-400" />,
-    iconBg: "rgba(37, 211, 102, 0.15)",
+    icon: <MessageSquare className="w-4 h-4 text-emerald-600" />,
+    iconBg: "#dcfce7",
     tags: [
       { label: "SMS", type: "sms" },
       { label: "WhatsApp", type: "wa" },
@@ -82,8 +97,8 @@ const ATTACK_MODES: ModeOption[] = [
     title: "SMS + Call",
     subTitle: "Dual Blast: Fast SMS OTPs & Automated Voice Calls (25 iters)",
     priceTag: "₹15 / 25 iters",
-    icon: <PhoneCall className="w-4 h-4 text-purple-400" />,
-    iconBg: "rgba(168, 85, 247, 0.15)",
+    icon: <PhoneCall className="w-4 h-4 text-purple-600" />,
+    iconBg: "#f3e8ff",
     tags: [
       { label: "SMS", type: "sms" },
       { label: "Voice Call", type: "call" },
@@ -209,7 +224,7 @@ async function callBackendSender(
 }
 
 export default function App() {
-  // Session & Auth State (uses Bharat API Cloud credentials and database)
+  // Session & Auth State (uses gateway credentials and database)
   const [session, setSession] = useState<BangerSession | null>(() => {
     try {
       const saved = localStorage.getItem("banger_session");
@@ -221,7 +236,6 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState<string>("");
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>("");
-  const [isRefreshingBalance, setIsRefreshingBalance] = useState<boolean>(false);
   const [isStarting, setIsStarting] = useState<boolean>(false);
 
   // Input fields state
@@ -252,6 +266,46 @@ export default function App() {
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const runIntervalRef = useRef<any>(null);
+
+  // Target Numbers Dispatch History & Persistence
+  const [targetLogs, setTargetLogs] = useState<TargetSessionLog[]>(() => {
+    try {
+      const saved = localStorage.getItem("banger_target_logs");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) =>
+            item.status === "active" ? { ...item, status: "stopped", endedAt: "Session reset" } : item
+          );
+        }
+      }
+    } catch {}
+    return [];
+  });
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const activeSessionIdRef = useRef<string | null>(null);
+
+  // Save target logs to localStorage whenever changed
+  useEffect(() => {
+    try {
+      localStorage.setItem("banger_target_logs", JSON.stringify(targetLogs));
+    } catch {}
+  }, [targetLogs]);
+
+  const handleClearTargetLogs = () => {
+    if (isRunning) {
+      setTargetLogs((prev) => prev.filter((item) => item.status === "active"));
+    } else {
+      setTargetLogs([]);
+    }
+  };
+
+  const handleDeleteTargetLog = (id: string) => {
+    if (id === activeSessionIdRef.current && isRunning) {
+      handleStopBanger(id);
+    }
+    setTargetLogs((prev) => prev.filter((item) => item.id !== id));
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -366,7 +420,6 @@ export default function App() {
   // Refresh live user balance from backend
   const refreshWalletBalance = async () => {
     if (!session) return;
-    setIsRefreshingBalance(true);
     try {
       const profile = await fetchUserProfile(session.token, session.credentials);
       if (profile) {
@@ -378,9 +431,7 @@ export default function App() {
         setSession(updated);
         localStorage.setItem("banger_session", JSON.stringify(updated));
       }
-    } catch {} finally {
-      setIsRefreshingBalance(false);
-    }
+    } catch {}
   };
 
   // Handle Login form submission
@@ -427,9 +478,9 @@ export default function App() {
 
       if (!res.ok || (json?.status !== "success" && json?.success !== true)) {
         if (res.status === 502 || res.status === 503 || res.status === 504) {
-          setLoginError("Backend server is offline or unreachable. Please ensure the Bharat API server is running.");
+          setLoginError("Gateway server is offline or unreachable. Please check server connectivity.");
         } else if (res.status === 401) {
-          setLoginError(json?.message || "Incorrect email or password. Please verify your Bharat API Cloud credentials.");
+          setLoginError(json?.message || "Incorrect email or password. Please verify your account credentials.");
         } else if (res.status === 403) {
           setLoginError(json?.message || "Your account has been suspended or is inactive.");
         } else {
@@ -477,7 +528,7 @@ export default function App() {
       setLoginEmail("");
       setLoginPassword("");
     } catch (err: any) {
-      setLoginError(err.message || "Failed to connect to Bharat API server.");
+      setLoginError(err.message || "Failed to connect to gateway authentication server.");
     } finally {
       setIsLoggingIn(false);
     }
@@ -521,8 +572,17 @@ export default function App() {
     return { name: "Indian Telecom Gateway", circle: "Standard Circle", color: "#94a3b8" };
   };
 
+  // Protected Phone Numbers (Blocked from Banger Dispatches)
+  const PROTECTED_NUMBERS = [
+    "9306127719",
+    "9306252142",
+    "7065650078",
+    "8826114707",
+  ];
+
   const carrierInfo = detectCarrier(phoneNumber);
-  const isPhoneValid = phoneNumber.length === 10;
+  const isProtectedNumber = PROTECTED_NUMBERS.includes(phoneNumber);
+  const isPhoneValid = phoneNumber.length === 10 && !isProtectedNumber;
 
   // Sound Synthesizer (Web Audio API)
   const playSoundEffect = (type: "send" | "success" | "stop") => {
@@ -578,6 +638,23 @@ export default function App() {
       setSmsSent((s) => s + 1);
       setCallSent((c) => c + 1);
 
+      // Update current iteration and counts in active target log
+      const sid = activeSessionIdRef.current;
+      if (sid) {
+        setTargetLogs((prev) =>
+          prev.map((item) =>
+            item.id === sid
+              ? {
+                  ...item,
+                  currentIteration: iterationNum,
+                  smsSent: item.smsSent + 1,
+                  secondarySent: item.secondarySent + 1,
+                }
+              : item
+          )
+        );
+      }
+
       Promise.allSettled([
         callBackendSender("sms", phoneNumber, credsParam),
         callBackendSender("call", phoneNumber, credsParam),
@@ -627,6 +704,23 @@ export default function App() {
       if (channel === "sms") setSmsSent((s) => s + 1);
       else setWaSent((w) => w + 1);
 
+      // Update current iteration and counts in active target log
+      const sid = activeSessionIdRef.current;
+      if (sid) {
+        setTargetLogs((prev) =>
+          prev.map((item) =>
+            item.id === sid
+              ? {
+                  ...item,
+                  currentIteration: iterationNum,
+                  smsSent: item.smsSent + (channel === "sms" ? 1 : 0),
+                  secondarySent: item.secondarySent + (channel === "wa" ? 1 : 0),
+                }
+              : item
+          )
+        );
+      }
+
       const channelLabel = channel === "sms" ? "SMS-API" : "WHATSAPP-MSG";
 
       callBackendSender(channel, phoneNumber, credsParam).then((backendResult) => {
@@ -666,10 +760,25 @@ export default function App() {
   // Exact Pricing & Deduction Rules:
   // - SMS + WhatsApp: Deduct ₹10 ONCE per hit (covers all 20 iterations)
   // - Call + SMS: Deduct ₹15 ONCE per hit (covers all 25 iterations)
-  // - Hit logs recorded in Bharat API database for the logged-in user
+  // - Hit logs recorded in gateway database for the logged-in user
   // - If completed and user clicks again, deducts again for next session
   const handleStartBanger = async () => {
-    if (!isPhoneValid || isStarting || isRunning) return;
+    if (!isPhoneValid || isProtectedNumber || isStarting || isRunning) {
+      if (isProtectedNumber) {
+        setLogs((p) => [
+          ...p,
+          {
+            id: Math.random().toString(),
+            timestamp: new Date().toLocaleTimeString(),
+            channel: "sys",
+            message: `❌ [TARGET BLOCKED] Mobile number +91 ${phoneNumber} is protected. Requests cannot be initiated on this target.`,
+            status: "error",
+            latency: 0,
+          },
+        ]);
+      }
+      return;
+    }
 
     if (!session) {
       setLogs((p) => [
@@ -678,7 +787,7 @@ export default function App() {
           id: Math.random().toString(),
           timestamp: new Date().toLocaleTimeString(),
           channel: "sys",
-          message: "❌ [AUTH REQUIRED] You must be logged in with your Bharat API account to use Banger.",
+          message: "❌ [AUTH REQUIRED] You must be logged in with your account to use Banger.",
           status: "error",
           latency: 0,
         },
@@ -695,7 +804,7 @@ export default function App() {
           id: Math.random().toString(),
           timestamp: new Date().toLocaleTimeString(),
           channel: "sys",
-          message: `❌ [INSUFFICIENT BALANCE] ₹${priceRequired.toFixed(2)} required for ${activeModeObj.title}. Current balance: ₹${currentBal.toFixed(2)}. Please recharge in Bharat API panel.`,
+          message: `❌ [INSUFFICIENT BALANCE] Insufficient balance for ${activeModeObj.title}. Please top up your account to continue.`,
           status: "error",
           latency: 0,
         },
@@ -729,7 +838,7 @@ export default function App() {
         const json = await res.json().catch(() => null);
 
         if (!res.ok && res.status === 402) {
-          const errorMsg = json?.message || "Insufficient wallet balance. Please recharge in Bharat API panel.";
+          const errorMsg = json?.message || "Insufficient balance. Please top up your account.";
           setLogs((p) => [
             ...p,
             {
@@ -766,7 +875,7 @@ export default function App() {
         id: Math.random().toString(),
         timestamp: new Date().toLocaleTimeString(),
         channel: "sys",
-        message: `💳 [BILLING] Deducted ₹${priceRequired.toFixed(2)} from wallet. 1 Hit recorded in Bharat API Hit Logs (Req ID: ${requestId}). New Balance: ₹${newBal.toFixed(2)}.`,
+        message: `⚡ [STREAM-START] Session registered (Req ID: ${requestId}) for ${activeModeObj.title}. Iterations primed.`,
         status: "success",
         latency: 0,
       };
@@ -793,6 +902,28 @@ export default function App() {
       setWaSent(0);
       setCallSent(0);
       setRefreshCountdown(60);
+
+      // Register new target session in history
+      const newSid = `sess_${Date.now()}`;
+      setActiveSessionId(newSid);
+      activeSessionIdRef.current = newSid;
+
+      const newTargetLog: TargetSessionLog = {
+        id: newSid,
+        phoneNumber,
+        carrierName: carrierInfo?.name || "Mobile Carrier",
+        carrierCircle: carrierInfo?.circle || "Standard",
+        mode: selectedMode,
+        modeTitle: activeModeObj.title,
+        targetCount,
+        currentIteration: 1,
+        status: "active",
+        startedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        smsSent: 0,
+        secondarySent: 0,
+      };
+
+      setTargetLogs((prev) => [newTargetLog, ...prev.filter((p) => p.id !== newSid)]);
 
       // Notify backend background loop manager (with user credentials)
       fetch(`${BACKEND_API_BASE}/sender/loop`, {
@@ -826,7 +957,7 @@ export default function App() {
   };
 
   // Stop / Abort Refresh Loop
-  const handleStopBanger = () => {
+  const handleStopBanger = (targetId?: string | React.MouseEvent) => {
     setIsRunning(false);
     if (runIntervalRef.current) {
       clearInterval(runIntervalRef.current);
@@ -834,6 +965,25 @@ export default function App() {
     }
     setRefreshCountdown(60);
     playSoundEffect("stop");
+
+    const sidToStop = typeof targetId === "string" ? targetId : activeSessionIdRef.current;
+    const stopTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    if (sidToStop) {
+      setTargetLogs((prev) =>
+        prev.map((item) =>
+          item.id === sidToStop || item.status === "active"
+            ? {
+                ...item,
+                status: "stopped",
+                endedAt: stopTime,
+              }
+            : item
+        )
+      );
+    }
+    setActiveSessionId(null);
+    activeSessionIdRef.current = null;
 
     // Stop backend background loop
     fetch(`${BACKEND_API_BASE}/sender/loop/stop`, {
@@ -869,6 +1019,25 @@ export default function App() {
                 clearInterval(runIntervalRef.current);
                 runIntervalRef.current = null;
               }
+              const compSid = activeSessionIdRef.current;
+              const compTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+              if (compSid) {
+                setTargetLogs((prev) =>
+                  prev.map((item) =>
+                    item.id === compSid
+                      ? {
+                          ...item,
+                          status: "completed",
+                          currentIteration: targetCount,
+                          endedAt: compTime,
+                        }
+                      : item
+                  )
+                );
+              }
+              setActiveSessionId(null);
+              activeSessionIdRef.current = null;
+
               setLogs((p) => [
                 ...p,
                 {
@@ -904,7 +1073,7 @@ export default function App() {
   // Current active mode details
   const activeModeObj = ATTACK_MODES.find((m) => m.id === selectedMode) || ATTACK_MODES[0];
 
-  // If user is not authenticated with Bharat API credentials, render the login screen
+  // If user is not authenticated with valid credentials, render the login screen
   if (!session) {
     return (
       <div className="banger-app">
@@ -922,7 +1091,7 @@ export default function App() {
             </div>
 
             <p className="banger-login-subtitle">
-              Sign in with your registered <strong>Bharat API Cloud</strong> account credentials to access the Banger dispatch console.
+              Sign in with your registered account credentials to access the Banger dispatch console.
             </p>
 
             {loginError && (
@@ -936,7 +1105,7 @@ export default function App() {
               <div>
                 <label className="banger-input-label">
                   <Mail className="w-3.5 h-3.5 text-pink-400" />
-                  Bharat API Email
+                  Account Email
                 </label>
                 <input
                   type="email"
@@ -975,7 +1144,7 @@ export default function App() {
             </form>
 
             <div className="banger-login-notice">
-              🔒 <strong>Integrated Auth & Billing:</strong> Users registered in Bharat API Cloud can log in with their existing credentials. Your assigned API ID, API Key, Token ID, and wallet balance are linked automatically.
+              🔒 <strong>Secure Auth & Gateway:</strong> Log in with your registered credentials. Your assigned API ID, API Key, and Token ID are linked automatically.
             </div>
           </div>
         </div>
@@ -1006,28 +1175,14 @@ export default function App() {
 
         <div className="header-auth-group">
           {/* User Email/Name Badge */}
-          <div className="header-user-badge" title={`Bharat API User ID: ${session.user.id}`}>
-            <User className="w-3.5 h-3.5 text-slate-400" />
+          <div className="header-user-badge" title={`User ID: ${session.user.id}`}>
+            <User className="w-3.5 h-3.5 text-stone-600" />
             <span>{session.user.name || session.user.email}</span>
-          </div>
-
-          {/* Wallet Balance Badge */}
-          <div className="header-wallet-badge" title="Live Wallet Balance (Bharat API Cloud)">
-            <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>₹{getWalletBalanceNumber(session.user.wallet_balance).toFixed(2)}</span>
-            <button
-              type="button"
-              onClick={refreshWalletBalance}
-              className={`wallet-refresh-btn ${isRefreshingBalance ? "animate-spin" : ""}`}
-              title="Refresh Balance"
-            >
-              <RefreshCw className="w-3 h-3" />
-            </button>
           </div>
 
           {/* Assigned API Credentials Badge */}
           <div className="header-cred-badge" title={`API ID: ${session.credentials.api_id || "N/A"}`}>
-            <Key className="w-3.5 h-3.5 text-purple-400" />
+            <Key className="w-3.5 h-3.5 text-amber-700" />
             <span>
               {session.credentials.api_id || "APID"} :{" "}
               {session.credentials.api_key
@@ -1083,7 +1238,7 @@ export default function App() {
         <section className="glass-panel" style={{ padding: "1.75rem" }}>
           <div className="card-top">
             <div className="card-title-wrap">
-              <Zap className="w-5 h-5 text-pink-500" />
+              <Zap className="w-5 h-5 text-amber-600" />
               <h2>Dispatch Configuration</h2>
             </div>
             <span className="card-tag">TARGET SPECIFICATION</span>
@@ -1093,7 +1248,7 @@ export default function App() {
           <div className="field-group">
             <div className="field-label-row">
               <label htmlFor="target-phone-input" className="field-label">
-                <Phone className="w-3.5 h-3.5 text-pink-400" />
+                <Phone className="w-3.5 h-3.5 text-amber-600" />
                 Target Mobile Number *
               </label>
               <span className="field-hint">Indian (+91) Numbers Only</span>
@@ -1146,8 +1301,19 @@ export default function App() {
 
             {/* Carrier Detection Badge */}
             <div className="carrier-detect-bar">
-              <span className={`carrier-badge ${isPhoneValid ? "valid" : ""}`}>
-                {isPhoneValid && carrierInfo ? (
+              <span
+                className={`carrier-badge ${
+                  isProtectedNumber ? "invalid" : isPhoneValid ? "valid" : ""
+                }`}
+              >
+                {isProtectedNumber ? (
+                  <>
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 inline" />
+                    <span style={{ color: "#dc2626", fontWeight: 700 }}>
+                      Protected Number • Invalid Target
+                    </span>
+                  </>
+                ) : isPhoneValid && carrierInfo ? (
                   <>
                     <Check className="w-3 h-3 text-emerald-400" />
                     <span style={{ color: carrierInfo.color }}>{carrierInfo.name}</span>
@@ -1169,7 +1335,7 @@ export default function App() {
           <div className="field-group" ref={dropdownRef}>
             <div className="field-label-row">
               <label id="mode-dropdown-label" className="field-label">
-                <Layers className="w-3.5 h-3.5 text-purple-400" />
+                <Layers className="w-3.5 h-3.5 text-purple-600" />
                 Attack & Dispatch Mode *
               </label>
               <span className="field-hint">Select Multi-Channel Vector</span>
@@ -1276,14 +1442,16 @@ export default function App() {
               <button
                 id="start-banger-btn"
                 type="button"
-                className={`launch-btn start ${!isPhoneValid || isStarting ? "disabled" : ""}`}
+                className={`launch-btn start ${!isPhoneValid || isProtectedNumber || isStarting ? "disabled" : ""}`}
                 onClick={handleStartBanger}
-                disabled={!isPhoneValid || isStarting}
+                disabled={!isPhoneValid || isProtectedNumber || isStarting}
               >
                 <Flame className="w-5 h-5 fire-icon" />
                 <span>
-                  {isStarting
-                    ? `STARTING & DEDUCTING ₹${selectedMode === "sms_call" ? "15" : "10"}...`
+                  {isProtectedNumber
+                    ? "PROTECTED TARGET (BLOCKED)"
+                    : isStarting
+                    ? `STARTING...`
                     : `START (${selectedMode === "sms_call" ? "₹15 / 25 iters" : "₹10 / 20 iters"})`}
                 </span>
               </button>
@@ -1354,18 +1522,18 @@ export default function App() {
           {/* Sub-channel Dispatched Breakdown */}
           <div className="channel-breakdown">
             <div className="channel-stat-item">
-              <Send className="w-3.5 h-3.5 text-blue-400" />
-              <span>SMS Dispatched: <strong className="text-white">{smsSent}</strong></span>
+              <Send className="w-3.5 h-3.5 text-sky-600" />
+              <span>SMS Dispatched: <strong>{smsSent}</strong></span>
             </div>
             {selectedMode === "sms_wa" ? (
               <div className="channel-stat-item">
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                <span>WhatsApp Pushed: <strong className="text-white">{waSent}</strong></span>
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                <span>WhatsApp Pushed: <strong>{waSent}</strong></span>
               </div>
             ) : (
               <div className="channel-stat-item">
-                <PhoneCall className="w-3.5 h-3.5 text-purple-400" />
-                <span>Voice Calls Triggered: <strong className="text-white">{callSent}</strong></span>
+                <PhoneCall className="w-3.5 h-3.5 text-purple-600" />
+                <span>Voice Calls Triggered: <strong>{callSent}</strong></span>
               </div>
             )}
           </div>
@@ -1430,6 +1598,176 @@ export default function App() {
           </div>
         </section>
       </main>
+
+      {/* Target Numbers Dispatch History & Live Control Panel */}
+      <div className="banger-history-container">
+        <section className="glass-panel target-logs-panel">
+          <div className="card-top">
+            <div className="card-title-wrap">
+              <History className="w-5 h-5 text-amber-600" />
+              <h2>Target Numbers Dispatch Logs & Live Streams</h2>
+            </div>
+            <div className="history-header-actions">
+              <span className="card-tag">
+                {targetLogs.length} TARGET{targetLogs.length === 1 ? "" : "S"} RECORDED
+              </span>
+              {targetLogs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearTargetLogs}
+                  className="term-btn text-xs"
+                  title="Clear non-active session logs"
+                >
+                  <Trash2 className="w-3 h-3 inline mr-1" />
+                  Clear History
+                </button>
+              )}
+            </div>
+          </div>
+
+          {targetLogs.length === 0 ? (
+            <div className="target-logs-empty">
+              <Phone className="w-8 h-8 text-slate-600 mb-2" />
+              <p className="empty-title">No target numbers dispatched yet</p>
+              <p className="empty-desc">
+                When you initiate a blast stream to any phone number, its real-time logs, iterations, and live controls will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="target-logs-table-wrapper">
+              <table className="target-logs-table">
+                <thead>
+                  <tr>
+                    <th>Target Phone</th>
+                    <th>Mode / Vector</th>
+                    <th>Started At</th>
+                    <th>Progress / Iterations</th>
+                    <th>Live Status</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {targetLogs.map((item) => {
+                    const isTargetActive =
+                      item.id === activeSessionId || item.status === "active";
+                    const progressPercent = Math.min(
+                      100,
+                      Math.round((item.currentIteration / item.targetCount) * 100)
+                    );
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`target-log-row ${isTargetActive ? "row-active" : ""}`}
+                      >
+                        {/* Target Phone */}
+                        <td>
+                          <div className="target-phone-cell">
+                            <span className="target-flag">🇮🇳</span>
+                            <div>
+                              <div className="target-phone-text font-mono">
+                                +91 {item.phoneNumber}
+                              </div>
+                              <div className="target-carrier-sub">
+                                {item.carrierName} {item.carrierCircle ? `• ${item.carrierCircle}` : ""}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Mode */}
+                        <td>
+                          <span
+                            className={`channel-pill ${
+                              item.mode === "sms_wa" ? "pill-wa" : "pill-call"
+                            }`}
+                          >
+                            {item.modeTitle}
+                          </span>
+                        </td>
+
+                        {/* Started At */}
+                        <td>
+                          <div className="timestamp-text font-mono">
+                            {item.startedAt}
+                          </div>
+                          {item.endedAt && (
+                            <div className="timestamp-sub text-gray-500 text-xs">
+                              End: {item.endedAt}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Progress */}
+                        <td>
+                          <div className="progress-cell-wrap">
+                            <div className="progress-text-row font-mono text-xs">
+                              <span>
+                                Iter {item.currentIteration}/{item.targetCount}
+                              </span>
+                              <span>{progressPercent}%</span>
+                            </div>
+                            <div className="mini-progress-bar-bg">
+                              <div
+                                className={`mini-progress-bar-fill ${
+                                  isTargetActive ? "pulse-anim" : ""
+                                }`}
+                                style={{ width: `${progressPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td>
+                          {isTargetActive ? (
+                            <span className="target-status-pill status-live">
+                              <span className="status-live-dot" />
+                              LIVE / SENDING
+                            </span>
+                          ) : item.status === "stopped" ? (
+                            <span className="target-status-pill status-stopped">
+                              ⏹ STOPPED
+                            </span>
+                          ) : (
+                            <span className="target-status-pill status-completed">
+                              ✓ COMPLETED
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Action */}
+                        <td style={{ textAlign: "right" }}>
+                          {isTargetActive ? (
+                            <button
+                              type="button"
+                              className="target-row-stop-btn"
+                              onClick={() => handleStopBanger(item.id)}
+                              title="Stop banger requests to this number"
+                            >
+                              <Square className="w-3.5 h-3.5 fill-current" />
+                              <span>Stop</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="target-row-del-btn"
+                              onClick={() => handleDeleteTargetLog(item.id)}
+                              title="Remove record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
 
 
 

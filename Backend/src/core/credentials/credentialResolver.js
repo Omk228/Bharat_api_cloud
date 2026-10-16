@@ -236,6 +236,34 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for PAN to GST Verification (API Saathi Gateway)
+   */
+  async getPanToGstCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('pan_to_gst_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.PAN_TO_GST.BASE_URL,
+      apiKey: cred?.apiKey || ENV.PAN_TO_GST.API_KEY,
+      timeoutMs: ENV.PAN_TO_GST.TIMEOUT_MS,
+    };
+  }
+
+  /**
+   * Get upstream credentials for GST to Contact Details (API Saathi Gateway)
+   */
+  async getGstToContactCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('gst_to_contact_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.GST_TO_CONTACT.BASE_URL,
+      apiKey: cred?.apiKey || ENV.GST_TO_CONTACT.API_KEY,
+      timeoutMs: ENV.GST_TO_CONTACT.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

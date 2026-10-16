@@ -43,6 +43,14 @@ export const Route = createFileRoute("/_authenticated/dashboard/logs")({
 });
 
 const SERVICE_NAME_MAP: Record<string, string> = {
+  "/api/v1/verify/pan-to-gst": "PAN to GST",
+  "/verify/pan-to-gst": "PAN to GST",
+  "/api/v1/pan-to-gst": "PAN to GST",
+  "/pan-to-gst": "PAN to GST",
+  "/api/v1/verify/gst-to-contact": "GST to Contact Details",
+  "/verify/gst-to-contact": "GST to Contact Details",
+  "/api/v1/gst-to-contact": "GST to Contact Details",
+  "/gst-to-contact": "GST to Contact Details",
   "/srv2/validation/pan": "Verify PAN",
   "/verify/pan": "Verify PAN",
   "/pan": "Verify PAN",

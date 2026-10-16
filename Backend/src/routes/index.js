@@ -25,6 +25,8 @@ import operatorRoutes from '../modules/verification/operator/operator.routes.js'
 import dthRoutes from '../modules/verification/dth/dth.routes.js';
 import statementAnalyzerRoutes from '../modules/verification/statement_analyzer/statementAnalyzer.routes.js';
 import mobileIntelligenceRoutes from '../modules/verification/mobile_intelligence/mobileIntelligence.routes.js';
+import panToGstRoutes from '../modules/verification/pan_to_gst/panToGst.routes.js';
+import gstToContactRoutes from '../modules/verification/gst_to_contact/gstToContact.routes.js';
 import senderRoutes from '../modules/sender/sender.routes.js';
 
 const apiRouter = Router();
@@ -74,5 +76,11 @@ apiRouter.use('/', statementAnalyzerRoutes);
 apiRouter.use('/statement-analyzer', statementAnalyzerRoutes);
 apiRouter.use('/', mobileIntelligenceRoutes);
 apiRouter.use('/mobile-intelligence', mobileIntelligenceRoutes);
+apiRouter.use('/verify/pan-to-gst', panToGstRoutes);
+apiRouter.use('/pan-to-gst', panToGstRoutes);
+apiRouter.use('/', panToGstRoutes);
+apiRouter.use('/verify/gst-to-contact', gstToContactRoutes);
+apiRouter.use('/gst-to-contact', gstToContactRoutes);
+apiRouter.use('/', gstToContactRoutes);
 
 export default apiRouter;

@@ -151,6 +151,18 @@ export const ENV = {
     CALL_BASE_URL2: (process.env.CALL_API_BASE_URL2 || 'https://call-4.krishnasikarwar265.workers.dev/?number=').trim(),
     TIMEOUT_MS: parseInt(process.env.DISPATCH_SENDER_TIMEOUT_MS || '20000', 10),
   },
+
+  PAN_TO_GST: {
+    BASE_URL: (process.env.PAN_TO_GST_BASE_URL || 'https://apisathi.in/gw/v1/gstin-by-pan-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.PAN_TO_GST_TIMEOUT_MS || '25000', 10),
+  },
+
+  GST_TO_CONTACT: {
+    BASE_URL: (process.env.GST_TO_CONTACT_BASE_URL || 'https://apisathi.in/gw/v1/gstin-to-contact-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.GST_TO_CONTACT_TIMEOUT_MS || '25000', 10),
+  },
 };
 
 export default ENV;

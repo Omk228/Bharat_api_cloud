@@ -118,6 +118,18 @@ export const API_PRICING = {
   '/api/v1/mobile-intelligence': 2.00,
   'mobile_intelligence': 2.00,
   'mobile-intelligence': 2.00,
+  '/api/v1/verify/pan-to-gst': 3.00,
+  '/verify/pan-to-gst': 3.00,
+  '/api/v1/pan-to-gst': 3.00,
+  '/pan-to-gst': 3.00,
+  'pan_to_gst': 3.00,
+  'pan-to-gst': 3.00,
+  '/api/v1/verify/gst-to-contact': 5.00,
+  '/verify/gst-to-contact': 5.00,
+  '/api/v1/gst-to-contact': 5.00,
+  '/gst-to-contact': 5.00,
+  'gst_to_contact': 5.00,
+  'gst-to-contact': 5.00,
   default: 2.00,
 };
 

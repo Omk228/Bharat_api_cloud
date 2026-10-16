@@ -49,6 +49,7 @@ import {
   Tv,
   Wallet,
   Hash,
+  Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -223,13 +224,17 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
   validateSearch: (search: Record<string, unknown>): TestApiSearch => ({
     service:
-      search["service"] === "mobile_intelligence" || search["service"] === "mobile-intelligence" || search["service"] === "caller_intelligence"
+      search["service"] === "gst_to_contact" || search["service"] === "gst-to-contact" || search["service"] === "gst_contact" || search["service"] === "gstin_to_contact"
+        ? "gst_to_contact"
+        : search["service"] === "pan_to_gst" || search["service"] === "pan-to-gst" || search["service"] === "pan_gst" || search["service"] === "gstin_by_pan"
+        ? "pan_to_gst"
+        : search["service"] === "mobile_intelligence" || search["service"] === "mobile-intelligence" || search["service"] === "caller_intelligence"
         ? "mobile_intelligence"
         : search["service"] === "dth_advance" || search["service"] === "dth-advance" || search["service"] === "dth_operator_advance" || search["service"] === "dth-operator-advance" || search["service"] === "dth_info" || search["service"] === "dth-info"
         ? "dth_advance"
@@ -298,8 +303,12 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
-    searchParams.service === "mobile_intelligence"
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+    searchParams.service === "gst_to_contact"
+      ? "gst_to_contact"
+      : searchParams.service === "pan_to_gst"
+      ? "pan_to_gst"
+      : searchParams.service === "mobile_intelligence"
       ? "mobile_intelligence"
       : searchParams.service === "dth_advance"
       ? "dth_advance"
@@ -400,6 +409,8 @@ function TestApiPage() {
     if (pricingData?.pricing && typeof pricingData.pricing[serviceKey] === "number") {
       return pricingData.pricing[serviceKey];
     }
+    if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.0;
+    if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.0;
     if (serviceKey === "mobile_intelligence" || serviceKey === "mobile-intelligence") return 2.0;
     if (serviceKey === "dth_advance" || serviceKey === "dth-advance" || serviceKey === "dth_operator_advance" || serviceKey === "dth-operator-advance" || serviceKey === "dth_info") return 2.5;
     if (serviceKey === "dth_operator" || serviceKey === "dth-operator" || serviceKey === "dth_check" || serviceKey === "dth-check" || serviceKey === "dth-operator-check" || serviceKey === "dth") return 2.0;
@@ -497,6 +508,14 @@ function TestApiPage() {
   const [crifFirstName, setCrifFirstName] = useState("");
   const [crifLastName, setCrifLastName] = useState("");
   const [crifNameLookup, setCrifNameLookup] = useState<number>(0);
+
+  // PAN to GST fields
+  const [panToGstNumber, setPanToGstNumber] = useState("");
+  const [panToGstClientRef, setPanToGstClientRef] = useState("");
+
+  // GST to Contact Details fields
+  const [gstToContactNumber, setGstToContactNumber] = useState("");
+  const [gstToContactClientRef, setGstToContactClientRef] = useState("");
 
   // Mobile Intelligence fields
   const [mobileIntelligencePhone, setMobileIntelligencePhone] = useState("");
@@ -843,7 +862,23 @@ function TestApiPage() {
 
   // JSON preview object for request panel
   const requestPayload: Record<string, unknown> =
-    selectedService === "mobile_intelligence"
+    selectedService === "gst_to_contact"
+      ? {
+          gstin: gstToContactNumber.trim().toUpperCase() || "<15-char GSTIN>",
+          ...(gstToContactClientRef.trim() ? { client_ref_num: gstToContactClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "pan_to_gst"
+      ? {
+          pan: panToGstNumber.trim().toUpperCase() || "<10-char PAN>",
+          ...(panToGstClientRef.trim() ? { client_ref_num: panToGstClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "mobile_intelligence"
       ? {
           phone: mobileIntelligencePhone.trim() || "<10-digit Phone>",
           ...(mobileIntelligenceClientRef.trim() ? { client_ref_num: mobileIntelligenceClientRef.trim() } : {}),
@@ -1090,6 +1125,28 @@ function TestApiPage() {
       toast.error("Access to this API endpoint has been revoked by your administrator.");
       return;
     }
+    if (selectedService === "gst_to_contact") {
+      const cleanGst = gstToContactNumber.trim().toUpperCase();
+      if (!cleanGst) {
+        toast.error("Please enter a 15-character GSTIN (e.g. 07AAAAA0000A1Z5)");
+        return;
+      }
+      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanGst)) {
+        toast.error("Invalid GSTIN format. GSTIN must be 15 characters (e.g. 07AAAAA0000A1Z5)");
+        return;
+      }
+    }
+    if (selectedService === "pan_to_gst") {
+      const cleanPan = panToGstNumber.trim().toUpperCase();
+      if (!cleanPan) {
+        toast.error("Please enter a 10-character PAN number (e.g. ABCDE1234F)");
+        return;
+      }
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+        toast.error("Invalid PAN format. PAN must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)");
+        return;
+      }
+    }
     if (selectedService === "mobile_intelligence") {
       const cleanMob = mobileIntelligencePhone.trim().replace(/\D/g, "");
       if (!cleanMob || (cleanMob.length !== 10 && cleanMob.length !== 12)) {
@@ -1266,7 +1323,23 @@ function TestApiPage() {
     try {
       let rawData: Record<string, unknown>;
 
-      if (selectedService === "mobile_intelligence") {
+      if (selectedService === "gst_to_contact") {
+        rawData = await apiClient.verifyGstToContact({
+          gstin: gstToContactNumber.trim().toUpperCase(),
+          client_ref_num: gstToContactClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "pan_to_gst") {
+        rawData = await apiClient.verifyPanToGst({
+          pan: panToGstNumber.trim().toUpperCase(),
+          client_ref_num: panToGstClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "mobile_intelligence") {
         rawData = await apiClient.searchMobileIntelligence({
           phone: mobileIntelligencePhone.trim().replace(/\D/g, ""),
           client_ref_num: mobileIntelligenceClientRef.trim() || undefined,
@@ -1719,7 +1792,11 @@ function TestApiPage() {
   })();
 
   const currentEndpoint =
-    selectedService === "mobile_intelligence"
+    selectedService === "gst_to_contact"
+      ? "/api/v1/verify/gst-to-contact"
+      : selectedService === "pan_to_gst"
+      ? "/api/v1/verify/pan-to-gst"
+      : selectedService === "mobile_intelligence"
       ? "/api/v1/verify/mobile-intelligence"
       : selectedService === "dth_advance"
       ? "/api/v1/verify/dth-advance"
@@ -1774,7 +1851,11 @@ function TestApiPage() {
       : "/srv4/credit-report/prefill";
 
   const currentServiceName =
-    selectedService === "mobile_intelligence"
+    selectedService === "gst_to_contact"
+      ? "GST to Contact Details"
+      : selectedService === "pan_to_gst"
+      ? "PAN to GST"
+      : selectedService === "mobile_intelligence"
       ? "Mobile Intelligence"
       : selectedService === "dth_advance"
       ? "DTH operator advance"
@@ -1853,7 +1934,11 @@ function TestApiPage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {selectedService === "mobile_intelligence"
+                {selectedService === "gst_to_contact"
+                  ? "Direct live GST to Contact Details gateway: retrieve official registered contact details (mobile numbers, email addresses, authorized signatories, and principal place of business) from an Indian GSTIN powered by Bharat API Cloud."
+                  : selectedService === "pan_to_gst"
+                  ? "Direct live PAN to GST gateway: retrieve all Goods and Services Tax Identification Numbers (GSTIN) and registration details registered under an Indian business or individual PAN powered by Bharat API Cloud."
+                  : selectedService === "mobile_intelligence"
                   ? "Direct live Mobile Intelligence & Caller ID search gateway: comprehensive identity signals, alternate numbers, address history, telecom details, and multi-field confidence matching scores powered by Bharat API Cloud."
                   : selectedService === "dth_advance"
                   ? "Direct live DTH Operator Advance gateway: comprehensive subscriber intelligence including customer name, registered mobile, account balance, monthly plan, recharge timelines, and installation address powered by Bharat API Cloud."
@@ -1902,7 +1987,11 @@ function TestApiPage() {
                 to="/docs"
                 search={{
                   endpoint:
-                    selectedService === "mobile_intelligence"
+                    selectedService === "gst_to_contact"
+                      ? "gst-to-contact"
+                      : selectedService === "pan_to_gst"
+                      ? "pan-to-gst"
+                      : selectedService === "mobile_intelligence"
                       ? "mobile-intelligence"
                       : selectedService === "dth_advance"
                       ? "dth-operator-advance"
@@ -1970,6 +2059,8 @@ function TestApiPage() {
                   Active Service:
                 </span>
                 <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                  {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
+                  {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
                   {selectedService === "dth_advance" && <Tv className="h-4 w-4 text-amber-400" />}
                   {selectedService === "dth_operator" && <Tv className="h-4 w-4 text-amber-400" />}
@@ -1998,6 +2089,8 @@ function TestApiPage() {
                   {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
                   <span>
+                    {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
+                    {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
                     {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
                     {selectedService === "dth_advance" && "DTH operator advance (/api/v1/verify/dth-advance)"}
                     {selectedService === "dth_operator" && "DTH operator check (/api/v1/verify/dth-operator)"}
@@ -2244,7 +2337,89 @@ function TestApiPage() {
 
                 {/* Verification Fields - Service Specific */}
                 <div className="border-t border-border pt-3 space-y-3">
-                  {selectedService === "mobile_intelligence" ? (
+                  {selectedService === "gst_to_contact" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-emerald-400" /> Goods and Services Tax ID (GSTIN) *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">15-Character Alphanumeric</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={15}
+                            value={gstToContactNumber}
+                            onChange={(e) => setGstToContactNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15))}
+                            placeholder="e.g. 07AAACB1234A1Z1"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={gstToContactClientRef}
+                          onChange={(e) => setGstToContactClientRef(e.target.value)}
+                          placeholder="e.g. GCTC_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time retrieval of official registered business & authorized contact details (phone, email, signatory details) from a GSTIN.
+                      </p>
+                    </>
+                  ) : selectedService === "pan_to_gst" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <CreditCard className="h-3.5 w-3.5 text-primary" /> Permanent Account Number (PAN) *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-Digit Alphanumeric</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={10}
+                            value={panToGstNumber}
+                            onChange={(e) => setPanToGstNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+                            placeholder="e.g. AAACB1234A"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-primary"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={panToGstClientRef}
+                          onChange={(e) => setPanToGstClientRef(e.target.value)}
+                          placeholder="e.g. PGST_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time retrieval of all Goods and Services Tax Identification Numbers (GSTIN) registered under the specified business or individual PAN.
+                      </p>
+                    </>
+                  ) : selectedService === "mobile_intelligence" ? (
                     <>
                       <div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -3787,12 +3962,14 @@ function TestApiPage() {
                 {/* Empty State */}
                 {!loading && !responseJson && (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-muted-foreground">
-                    {selectedService === "work_email" ? (
+                    {selectedService === "gst_to_contact" ? (
+                      <Building2 className="h-8 w-8 opacity-40 text-emerald-400" />
+                    ) : selectedService === "work_email" ? (
                       <Mail className="h-8 w-8 opacity-40 text-violet-400" />
                     ) : selectedService === "domain_age" ? (
                       <Globe className="h-8 w-8 opacity-40 text-indigo-400" />
-                    ) : selectedService === "pan" || selectedService === "pan_plus" ? (
-                      <CreditCard className="h-8 w-8 opacity-40 text-sky-400" />
+                    ) : selectedService === "pan" || selectedService === "pan_plus" || selectedService === "pan_to_gst" ? (
+                      <CreditCard className="h-8 w-8 opacity-40 text-primary" />
                     ) : selectedService === "aadhaar" ? (
                       <Fingerprint className="h-8 w-8 opacity-40 text-primary" />
                     ) : selectedService === "bank" ? (
@@ -3804,7 +3981,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -3815,7 +3992,11 @@ function TestApiPage() {
                     {/* Success Verification / Dedicated Service Card */}
                     {isSuccess || (selectedService === "mobile_upi" && (responseJson?.result_code === 101 || responseJson?.result_code === 103)) ? (
                       <div className={`rounded-xl border p-5 space-y-4 ${
-                        selectedService === "mobile_intelligence"
+                        selectedService === "gst_to_contact"
+                          ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
+                          : selectedService === "pan_to_gst"
+                          ? "border-primary/30 bg-gradient-to-b from-primary/5 to-transparent"
+                          : selectedService === "mobile_intelligence"
                           ? "border-purple-500/30 bg-gradient-to-b from-purple-500/5 to-transparent"
                           : selectedService === "work_email_plus"
                           ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
@@ -3826,9 +4007,392 @@ function TestApiPage() {
                           : "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                       }`}>
                         {/* ========================================================= */}
-                        {/* 📱 MOBILE INTELLIGENCE DEDICATED VISUAL CARD               */}
+                        {/* 🏢 GST TO CONTACT DETAILS DEDICATED VISUAL CARD           */}
                         {/* ========================================================= */}
-                        {selectedService === "mobile_intelligence" ? (
+                        {selectedService === "gst_to_contact" ? (
+                          (() => {
+                            const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                            const gstinNum = String(rawResult.gstin || gstToContactNumber || "—").toUpperCase();
+                            const legalName = String(rawResult.legal_name || "—");
+                            const tradeName = String(rawResult.trade_name || rawResult.legal_name || "—");
+                            const status = String(rawResult.status || "Active");
+                            const isActive = status.toLowerCase() === "active";
+                            const taxpayerType = rawResult.taxpayer_type || "";
+                            const regDate = rawResult.registration_date || "";
+                            
+                            const primaryMobile = rawResult.primary_mobile || (Array.isArray(rawResult.mobiles) ? rawResult.mobiles[0] : "");
+                            const primaryEmail = rawResult.primary_email || (Array.isArray(rawResult.emails) ? rawResult.emails[0] : "");
+                            const allMobiles: string[] = Array.isArray(rawResult.mobiles) ? rawResult.mobiles : (primaryMobile ? [primaryMobile] : []);
+                            const allEmails: string[] = Array.isArray(rawResult.emails) ? rawResult.emails : (primaryEmail ? [primaryEmail] : []);
+                            const signatories: any[] = Array.isArray(rawResult.authorized_signatories) ? rawResult.authorized_signatories : [];
+                            const addr: any = rawResult.address || {};
+                            const fullAddr = addr?.full_address || [addr?.building_name, addr?.street, addr?.location, addr?.city, addr?.state, addr?.pincode].filter(Boolean).join(", ");
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Header Card */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+                                      <Building2 className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                                        GST to Contact Details
+                                        <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                                          LIVE
+                                        </span>
+                                      </h3>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        GSTIN: <span className="font-bold text-foreground">{gstinNum}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider border ${
+                                        isActive
+                                          ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                          : "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                      }`}
+                                    >
+                                      {status}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyField(gstinNum, "GSTIN")}
+                                      className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      <Copy className="h-3 w-3" /> Copy GSTIN
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Business Entity Summary */}
+                                <div className="rounded-lg border border-border/80 bg-card/60 p-4 space-y-3">
+                                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                                    <Building2 className="h-4 w-4 text-emerald-400" /> Business Identity
+                                  </div>
+                                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block font-medium">Trade Name</span>
+                                      <span className="font-bold text-foreground block text-sm" title={tradeName}>
+                                        {tradeName}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] text-muted-foreground block font-medium">Legal Name</span>
+                                      <span className="font-medium text-foreground block truncate" title={legalName}>
+                                        {legalName}
+                                      </span>
+                                    </div>
+                                    {taxpayerType && (
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block font-medium">Taxpayer Type</span>
+                                        <span className="text-foreground block">{taxpayerType}</span>
+                                      </div>
+                                    )}
+                                    {regDate && (
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block font-medium">Registration Date</span>
+                                        <span className="text-foreground block font-mono">{String(regDate)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Direct Contact Channels */}
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                                        <Phone className="h-4 w-4" /> Primary Mobile
+                                      </span>
+                                      {primaryMobile && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(primaryMobile, "Primary Mobile")}
+                                          className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
+                                        >
+                                          <Copy className="h-3 w-3" /> Copy
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="font-mono text-base font-bold text-foreground">
+                                      {primaryMobile || "Not Disclosed / Masked"}
+                                    </p>
+                                    {allMobiles.length > 1 && (
+                                      <div className="pt-2 border-t border-emerald-500/20 space-y-1">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">All Phone Numbers ({allMobiles.length}):</span>
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                          {allMobiles.map((mob, mIdx) => (
+                                            <span
+                                              key={mIdx}
+                                              onClick={() => handleCopyField(mob, `Mobile #${mIdx + 1}`)}
+                                              className="inline-flex items-center gap-1 rounded bg-background/80 border border-emerald-500/30 px-2 py-0.5 text-xs font-mono font-medium text-emerald-300 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+                                              title="Click to copy"
+                                            >
+                                              {mob}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="flex items-center gap-1.5 text-xs font-semibold text-sky-400">
+                                        <Mail className="h-4 w-4" /> Primary Email
+                                      </span>
+                                      {primaryEmail && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(primaryEmail, "Primary Email")}
+                                          className="text-[11px] text-sky-400 hover:underline flex items-center gap-1"
+                                        >
+                                          <Copy className="h-3 w-3" /> Copy
+                                        </button>
+                                      )}
+                                    </div>
+                                    <p className="font-mono text-base font-bold text-foreground truncate" title={primaryEmail}>
+                                      {primaryEmail || "Not Disclosed / Masked"}
+                                    </p>
+                                    {allEmails.length > 1 && (
+                                      <div className="pt-2 border-t border-sky-500/20 space-y-1">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">All Email Addresses ({allEmails.length}):</span>
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                          {allEmails.map((em, eIdx) => (
+                                            <span
+                                              key={eIdx}
+                                              onClick={() => handleCopyField(em, `Email #${eIdx + 1}`)}
+                                              className="inline-flex items-center gap-1 rounded bg-background/80 border border-sky-500/30 px-2 py-0.5 text-xs font-mono font-medium text-sky-300 cursor-pointer hover:bg-sky-500/20 transition-colors"
+                                              title="Click to copy"
+                                            >
+                                              {em}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Authorized Signatories / Promoters */}
+                                {signatories.length > 0 && (
+                                  <div className="rounded-lg border border-border/80 bg-card/60 p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                                        <Users className="h-4 w-4 text-primary" /> Authorized Signatories & Promoters ({signatories.length})
+                                      </span>
+                                    </div>
+                                    <div className="grid gap-2.5 sm:grid-cols-2">
+                                      {signatories.map((sig: any, sIdx: number) => (
+                                        <div key={sIdx} className="rounded-lg border border-border bg-background/60 p-3 text-xs space-y-1.5">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-bold text-foreground truncate">{sig.name || `Signatory #${sIdx + 1}`}</span>
+                                            {sig.designation && (
+                                              <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                                {sig.designation}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {sig.mobile && (
+                                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                              <span className="flex items-center gap-1 font-mono text-emerald-400">
+                                                <Phone className="h-3 w-3" /> {sig.mobile}
+                                              </span>
+                                              <button type="button" onClick={() => handleCopyField(sig.mobile, "Signatory Mobile")} className="hover:text-foreground">
+                                                <Copy className="h-3 w-3" />
+                                              </button>
+                                            </div>
+                                          )}
+                                          {sig.email && (
+                                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                              <span className="flex items-center gap-1 font-mono text-sky-400 truncate">
+                                                <Mail className="h-3 w-3" /> {sig.email}
+                                              </span>
+                                              <button type="button" onClick={() => handleCopyField(sig.email, "Signatory Email")} className="hover:text-foreground">
+                                                <Copy className="h-3 w-3" />
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Registered Address */}
+                                {fullAddr && (
+                                  <div className="rounded-lg border border-border/80 bg-card/60 p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                                        <MapPin className="h-4 w-4 text-amber-400" /> Principal Place of Business Address
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyField(fullAddr, "Address")}
+                                        className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                                      >
+                                        <Copy className="h-3 w-3" /> Copy Address
+                                      </button>
+                                    </div>
+                                    <p className="text-xs text-foreground/90 leading-relaxed font-medium">
+                                      {fullAddr}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "pan_to_gst" ? (
+                          (() => {
+                            const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                            const panNum = String(rawResult.pan || panToGstNumber || "—").toUpperCase();
+                            const gstins: any[] = Array.isArray(rawResult.gstins) ? rawResult.gstins : [];
+                            const totalCount = Number(rawResult.total_gstins ?? gstins.length);
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Header Card */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                                      <CreditCard className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                                        PAN to GST Verification
+                                        <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                                          LIVE
+                                        </span>
+                                      </h3>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        PAN: {panNum} · {totalCount} GSTIN{totalCount === 1 ? "" : "s"} Found
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                                      Total GSTINs: {totalCount}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* GSTIN List / Cards */}
+                                {gstins.length > 0 ? (
+                                  <div className="space-y-3">
+                                    {gstins.map((item: any, idx: number) => {
+                                      const gstinStr = String(item.gstin || item || "");
+                                      const legalName = String(item.legal_name || "—");
+                                      const tradeName = String(item.trade_name || legalName || "—");
+                                      const statusStr = String(item.status || "Active");
+                                      const stateName = String(item.state || "");
+                                      const stateCode = String(item.state_code || (gstinStr.length >= 2 ? gstinStr.slice(0, 2) : ""));
+                                      const regDate = item.registration_date ? String(item.registration_date) : null;
+                                      const taxpayerType = item.taxpayer_type ? String(item.taxpayer_type) : null;
+                                      const centreJurisdiction = item.centre_jurisdiction ? String(item.centre_jurisdiction) : null;
+
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="rounded-xl border border-border/80 bg-background/60 p-4 space-y-3 hover:border-primary/40 transition-colors shadow-xs"
+                                        >
+                                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2.5">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className="font-mono text-sm font-bold text-foreground select-all tracking-wider">
+                                                {gstinStr}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleCopyField(gstinStr, `GSTIN #${idx + 1}`)}
+                                                className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                                                title="Copy GSTIN"
+                                              >
+                                                {copiedField === `GSTIN #${idx + 1}` ? (
+                                                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                                ) : (
+                                                  <Copy className="h-3.5 w-3.5" />
+                                                )}
+                                              </button>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                              <span
+                                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                                                  statusStr.toLowerCase() === "active"
+                                                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                                    : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                                }`}
+                                              >
+                                                {statusStr}
+                                              </span>
+                                              {stateCode && (
+                                                <span className="rounded bg-secondary/80 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                                                  State Code: {stateCode}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          <div className="grid gap-2.5 sm:grid-cols-2 text-xs">
+                                            <div>
+                                              <span className="text-[11px] text-muted-foreground block font-medium">Trade Name</span>
+                                              <span className="font-semibold text-foreground block truncate" title={tradeName}>
+                                                {tradeName}
+                                              </span>
+                                            </div>
+
+                                            <div>
+                                              <span className="text-[11px] text-muted-foreground block font-medium">Legal Name</span>
+                                              <span className="font-medium text-foreground block truncate" title={legalName}>
+                                                {legalName}
+                                              </span>
+                                            </div>
+
+                                            {stateName && (
+                                              <div>
+                                                <span className="text-[11px] text-muted-foreground block font-medium">State / Jurisdiction</span>
+                                                <span className="text-foreground block">
+                                                  {stateName} {centreJurisdiction ? `· ${centreJurisdiction}` : ""}
+                                                </span>
+                                              </div>
+                                            )}
+
+                                            {regDate && (
+                                              <div>
+                                                <span className="text-[11px] text-muted-foreground block font-medium">Registration Date</span>
+                                                <span className="font-mono text-foreground block">
+                                                  {regDate}
+                                                </span>
+                                              </div>
+                                            )}
+
+                                            {taxpayerType && (
+                                              <div>
+                                                <span className="text-[11px] text-muted-foreground block font-medium">Taxpayer Type</span>
+                                                <span className="text-foreground block">
+                                                  {taxpayerType}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="rounded-xl border border-dashed border-border/80 bg-background/30 p-6 text-center text-xs text-muted-foreground">
+                                    <p className="font-semibold text-foreground">No GSTINs Registered</p>
+                                    <p className="mt-1 text-[11px]">No active GST identification numbers found for PAN {panNum}.</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "mobile_intelligence" ? (
                           (() => {
                             const mData: any = (responseJson?.data || responseJson?.result || responseJson) || {};
                             const rawResult: any = mData?.primary_result || (Array.isArray(mData?.results) && mData.results[0]) || mData;

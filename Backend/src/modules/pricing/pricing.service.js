@@ -198,12 +198,32 @@ const ENDPOINT_CATALOG_MAP = {
   'dth_advance': ['api_dth_operator_advance', '/verify/dth-advance'],
   'dth_operator_advance': ['api_dth_operator_advance', '/verify/dth-advance'],
   'dth_info': ['api_dth_operator_advance', '/verify/dth-advance'],
+
+  // PAN to GST (API Saathi Gateway)
+  '/api/v1/verify/pan-to-gst': ['api_pan_to_gst', '/verify/pan-to-gst', '/api/v1/verify/pan-to-gst', 'pan_to_gst', '/pan-to-gst'],
+  '/verify/pan-to-gst': ['api_pan_to_gst', '/verify/pan-to-gst', 'pan_to_gst'],
+  '/api/v1/pan-to-gst': ['api_pan_to_gst', '/pan-to-gst', 'pan_to_gst'],
+  '/pan-to-gst': ['api_pan_to_gst', '/pan-to-gst', 'pan_to_gst'],
+  'pan_to_gst': ['api_pan_to_gst', '/verify/pan-to-gst', '/api/v1/verify/pan-to-gst'],
+  'pan-to-gst': ['api_pan_to_gst', '/verify/pan-to-gst', '/api/v1/verify/pan-to-gst'],
+
+  // GST to Contact Details (API Saathi Gateway)
+  '/api/v1/verify/gst-to-contact': ['api_gst_to_contact', '/verify/gst-to-contact', '/api/v1/verify/gst-to-contact', 'gst_to_contact', '/gst-to-contact'],
+  '/verify/gst-to-contact': ['api_gst_to_contact', '/verify/gst-to-contact', 'gst_to_contact'],
+  '/api/v1/gst-to-contact': ['api_gst_to_contact', '/gst-to-contact', 'gst_to_contact'],
+  '/gst-to-contact': ['api_gst_to_contact', '/gst-to-contact', 'gst_to_contact'],
+  'gst_to_contact': ['api_gst_to_contact', '/verify/gst-to-contact', '/api/v1/verify/gst-to-contact'],
+  'gst-to-contact': ['api_gst_to_contact', '/verify/gst-to-contact', '/api/v1/verify/gst-to-contact'],
 };
 
 // UI Service Keys to Catalog IDs
 export const SERVICE_KEY_TO_CATALOG_ID = {
   pan: 'api_cat_03',
   pan_plus: 'api_verify_pan_plus',
+  pan_to_gst: 'api_pan_to_gst',
+  'pan-to-gst': 'api_pan_to_gst',
+  gst_to_contact: 'api_gst_to_contact',
+  'gst-to-contact': 'api_gst_to_contact',
   aadhaar: 'api_aadhaar_without_otp',
   digilocker: 'api_digilocker_digital_kyc',
   bank: 'api_bank_penny_less',
