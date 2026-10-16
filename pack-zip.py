@@ -69,6 +69,10 @@ with zipfile.ZipFile(backend_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(root_dump, 'bharat_api_dump.sql')
 
 print(f"[OK] Successfully updated {backend_zip_path} ({os.path.getsize(backend_zip_path)} bytes)")
+backend_deploy_zip = os.path.join(root_dir, 'backend-deploy.zip')
+import shutil
+shutil.copy2(backend_zip_path, backend_deploy_zip)
+print(f"[OK] Successfully updated {backend_deploy_zip} ({os.path.getsize(backend_deploy_zip)} bytes)")
 
 # 3. Package Complete Source Code into Bharat_api_cloud_updated.zip
 full_zip_path = os.path.join(root_dir, 'Bharat_api_cloud_updated.zip')

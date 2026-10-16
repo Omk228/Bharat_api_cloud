@@ -124,7 +124,13 @@ export const getWalletBalanceNumber = (bal: any): number => {
 const DEPLOYED_HOST_URL = "https://brown-goldfish-546701.hostingersite.com";
 const BACKEND_API_BASE =
   (import.meta as any).env?.VITE_BACKEND_URL ||
-  (typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost:5173")
+  (typeof window !== "undefined" &&
+  window.location.origin &&
+  (window.location.origin.includes("147.93.104.5") ||
+    window.location.origin.includes("8080") ||
+    window.location.origin.includes("localhost"))
+    ? `${DEPLOYED_HOST_URL}/api/v1`
+    : typeof window !== "undefined" && window.location.origin
     ? `${window.location.origin}/api/v1`
     : `${DEPLOYED_HOST_URL}/api/v1`);
 
