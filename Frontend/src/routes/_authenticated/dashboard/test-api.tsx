@@ -56,6 +56,7 @@ import {
   Gauge,
   Shield,
   Fuel,
+  Vote,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -248,7 +249,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -272,6 +273,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "tan_to_company"
         : search["service"] === "vehicle_rc" || search["service"] === "vehicle-rc" || search["service"] === "rc" || search["service"] === "vehicle" || search["service"] === "rc_verification" || search["service"] === "rc-verification"
         ? "vehicle_rc"
+        : search["service"] === "voter_id" || search["service"] === "voter-id" || search["service"] === "epic" || search["service"] === "voter"
+        ? "voter_id"
         : search["service"] === "gst_to_contact" || search["service"] === "gst-to-contact" || search["service"] === "gst_contact" || search["service"] === "gstin_to_contact"
         ? "gst_to_contact"
         : search["service"] === "pan_to_gst" || search["service"] === "pan-to-gst" || search["service"] === "pan_gst" || search["service"] === "gstin_by_pan"
@@ -345,7 +348,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
     searchParams.service === "gst_authenticated_advance"
       ? "gst_authenticated_advance"
       : searchParams.service === "din_to_pan"
@@ -364,6 +367,8 @@ function TestApiPage() {
       ? "tan_to_company"
       : searchParams.service === "vehicle_rc"
       ? "vehicle_rc"
+      : searchParams.service === "voter_id"
+      ? "voter_id"
       : searchParams.service === "gst_to_contact"
       ? "gst_to_contact"
       : searchParams.service === "pan_to_gst"
@@ -477,6 +482,7 @@ function TestApiPage() {
     if (serviceKey === "tan_lookup" || serviceKey === "tan-lookup" || serviceKey === "api_tan_lookup") return 2.36;
     if (serviceKey === "tan_to_company" || serviceKey === "tan-to-company" || serviceKey === "api_tan_to_company") return 2.36;
     if (serviceKey === "vehicle_rc" || serviceKey === "vehicle-rc" || serviceKey === "api_vehicle_rc") return 2.36;
+    if (serviceKey === "voter_id" || serviceKey === "voter-id" || serviceKey === "api_voter_id") return 2.36;
     if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.90;
     if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.90;
     if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.54;
@@ -609,6 +615,10 @@ function TestApiPage() {
   // Vehicle RC fields
   const [vehicleRcNumber, setVehicleRcNumber] = useState("");
   const [vehicleRcClientRef, setVehicleRcClientRef] = useState("");
+
+  // Voter ID fields
+  const [voterIdEpicNumber, setVoterIdEpicNumber] = useState("");
+  const [voterIdClientRef, setVoterIdClientRef] = useState("");
 
   // Contact To GST fields
   const [contactToGstInput, setContactToGstInput] = useState("");
@@ -1041,6 +1051,14 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "voter_id"
+      ? {
+          epic_no: voterIdEpicNumber.trim().toUpperCase() || "<Voter EPIC Number e.g. ABC1234567>",
+          ...(voterIdClientRef.trim() ? { client_ref_num: voterIdClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
       : selectedService === "gst_to_contact"
       ? {
           gstin: gstToContactNumber.trim().toUpperCase() || "<15-char GSTIN>",
@@ -1401,6 +1419,17 @@ function TestApiPage() {
         return;
       }
     }
+    if (selectedService === "voter_id") {
+      const cleanEpic = voterIdEpicNumber.trim().toUpperCase().replace(/[\s-]/g, "");
+      if (!cleanEpic) {
+        toast.error("Please enter a Voter ID / EPIC number (e.g. ABC1234567)");
+        return;
+      }
+      if (cleanEpic.length < 5 || cleanEpic.length > 20) {
+        toast.error("Invalid Voter ID format. Must be a valid Indian EPIC number (e.g. ABC1234567)");
+        return;
+      }
+    }
     if (selectedService === "gst_to_contact") {
       const cleanGst = gstToContactNumber.trim().toUpperCase();
       if (!cleanGst) {
@@ -1667,6 +1696,14 @@ function TestApiPage() {
         rawData = await apiClient.verifyVehicleRc({
           vehicle_number: vehicleRcNumber.trim().toUpperCase(),
           client_ref_num: vehicleRcClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "voter_id") {
+        rawData = await apiClient.verifyVoterId({
+          epic_no: voterIdEpicNumber.trim().toUpperCase(),
+          client_ref_num: voterIdClientRef.trim() || undefined,
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -2090,10 +2127,14 @@ function TestApiPage() {
       Boolean(resData.pan && resData.pan_status !== "Invalid") ||
       Boolean(resData.aadhaar && resData.aadhaar_status !== "Invalid") ||
       Boolean(resData.creditorAccountId && resData.account_status !== "INVALID") ||
-      Boolean(selectedService === "vehicle_rc" && ((responseJson as any)?.success === true || (responseJson as any)?.status === "success" || responseJson?.result_code === 101 || Boolean((responseJson?.result as any)?.owner_name) || Boolean((responseJson?.data as any)?.owner_name)))
+      Boolean(selectedService === "vehicle_rc" && ((responseJson as any)?.success === true || (responseJson as any)?.status === "success" || responseJson?.result_code === 101 || Boolean((responseJson?.result as any)?.owner_name) || Boolean((responseJson?.data as any)?.owner_name))) ||
+      Boolean(selectedService === "voter_id" && ((responseJson as any)?.verified === true || (responseJson?.data as any)?.verified === true || (responseJson?.result as any)?.verified === true || responseJson?.result_code === 101 || Boolean((responseJson?.data as any)?.name) || Boolean((responseJson?.result as any)?.name) || Boolean((responseJson as any)?.name)))
     ) &&
     !(
       (responseJson?.result_code === 102 || responseJson?.result_code === 103) &&
+      !(responseJson as any)?.epic_no &&
+      !(responseJson?.data as any)?.epic_no &&
+      !(responseJson?.result as any)?.epic_no &&
       !(responseJson as any)?.email &&
       !(responseJson?.data as any)?.email &&
       !resData.vpa &&
@@ -2164,6 +2205,8 @@ function TestApiPage() {
       ? "/api/v1/verify/tan-to-company"
       : selectedService === "vehicle_rc"
       ? "/api/v1/verify/vehicle-rc"
+      : selectedService === "voter_id"
+      ? "/api/v1/verify/voter-id"
       : selectedService === "gst_to_contact"
       ? "/api/v1/verify/gst-to-contact"
       : selectedService === "pan_to_gst"
@@ -2241,6 +2284,8 @@ function TestApiPage() {
       ? "TAN to Company"
       : selectedService === "vehicle_rc"
       ? "Vehicle RC"
+      : selectedService === "voter_id"
+      ? "Voter ID"
       : selectedService === "gst_to_contact"
       ? "GST to Contact Details"
       : selectedService === "pan_to_gst"
@@ -2380,6 +2425,8 @@ function TestApiPage() {
                   ? "Direct 12-digit UAN EPFO Employment History & Establishment Verification powered by Bharat API Cloud."
                   : selectedService === "vehicle_rc"
                   ? "Direct live Vehicle RC gateway: verify vehicle registration number, owner name, maker & model, vehicle class, fuel type, fitness, insurance, PUC, road tax, and financer/hypothecation powered by Bharat API Cloud."
+                  : selectedService === "voter_id"
+                  ? "Direct live Voter ID (EPIC) gateway: verify voter identity, relative name, relation type, gender, age, DOB, state, district, assembly & parliamentary constituency, and polling station powered by Bharat API Cloud."
                   : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (₹${getServicePrice(selectedService).toFixed(2)}) & refunds.`}
               </p>
             </div>
@@ -2407,6 +2454,8 @@ function TestApiPage() {
                       ? "tan-to-company"
                       : selectedService === "vehicle_rc"
                       ? "vehicle-rc"
+                      : selectedService === "voter_id"
+                      ? "voter-id"
                       : selectedService === "gst_to_contact"
                       ? "gst-to-contact"
                       : selectedService === "pan_to_gst"
@@ -2488,6 +2537,7 @@ function TestApiPage() {
                   {selectedService === "tan_lookup" && <Search className="h-4 w-4 text-amber-400" />}
                   {selectedService === "tan_to_company" && <Building2 className="h-4 w-4 text-orange-400" />}
                   {selectedService === "vehicle_rc" && <Car className="h-4 w-4 text-sky-400" />}
+                  {selectedService === "voter_id" && <Vote className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
@@ -2527,6 +2577,7 @@ function TestApiPage() {
                     {selectedService === "tan_lookup" && "TAN Lookup (/api/v1/verify/tan-lookup)"}
                     {selectedService === "tan_to_company" && "TAN to Company (/api/v1/verify/tan-to-company)"}
                     {selectedService === "vehicle_rc" && "Vehicle RC (/api/v1/verify/vehicle-rc)"}
+                    {selectedService === "voter_id" && "Voter ID (/api/v1/verify/voter-id)"}
                     {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
                     {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
                     {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
@@ -3326,6 +3377,69 @@ function TestApiPage() {
 
                       <p className="text-[11px] text-muted-foreground">
                         👉 Real-time Vehicle Registration Certificate (RC) verification: owner name, maker & model, vehicle class, fuel type, fitness, insurance policy & validity, PUC, road tax, and financer/hypothecation.
+                      </p>
+                    </>
+                  ) : selectedService === "voter_id" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Vote className="h-3.5 w-3.5 text-indigo-400" /> Voter ID (EPIC Number) *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">e.g. ABC1234567</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={20}
+                            value={voterIdEpicNumber}
+                            onChange={(e) => setVoterIdEpicNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20))}
+                            placeholder="e.g. ABC1234567"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Input Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setVoterIdEpicNumber("ABC1234567")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample EPIC
+                        </button>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={voterIdClientRef}
+                          onChange={(e) => setVoterIdClientRef(e.target.value)}
+                          placeholder="e.g. VOTER_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-indigo-500"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-2.5 text-xs text-indigo-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-indigo-400">₹{getServicePrice("voter_id").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-indigo-300/80">₹2.00 + 18% GST (₹0.36)</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time Voter ID (Electoral Photo Identity Card) verification: official elector name, relation name, relation type, gender, age, DOB, state, district, assembly & parliamentary constituency, polling station, and electoral part/serial number.
                       </p>
                     </>
                   ) : selectedService === "gst_to_contact" ? (
@@ -4971,6 +5085,8 @@ function TestApiPage() {
                       <Building2 className="h-8 w-8 opacity-40 text-emerald-400" />
                     ) : selectedService === "vehicle_rc" ? (
                       <Car className="h-8 w-8 opacity-40 text-sky-400" />
+                    ) : selectedService === "voter_id" ? (
+                      <Vote className="h-8 w-8 opacity-40 text-indigo-400" />
                     ) : selectedService === "work_email" ? (
                       <Mail className="h-8 w-8 opacity-40 text-violet-400" />
                     ) : selectedService === "domain_age" ? (
@@ -4988,7 +5104,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "gst_authenticated_advance" ? "a 15-character GSTIN (e.g. 07AAAAA0000A1Z5)" : selectedService === "din_to_pan" ? "an 8-digit Director Identification Number (e.g. 00000001 or 07123456)" : selectedService === "contact_to_gst" ? "a 10-digit mobile number or email address (e.g. 9876543210 or accounts@bharatcloud.in)" : selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "pan_to_cin" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "vehicle_rc" ? "a vehicle registration number (e.g. DL01AB1234)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "gst_authenticated_advance" ? "a 15-character GSTIN (e.g. 07AAAAA0000A1Z5)" : selectedService === "din_to_pan" ? "an 8-digit Director Identification Number (e.g. 00000001 or 07123456)" : selectedService === "contact_to_gst" ? "a 10-digit mobile number or email address (e.g. 9876543210 or accounts@bharatcloud.in)" : selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "pan_to_cin" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "vehicle_rc" ? "a vehicle registration number (e.g. DL01AB1234)" : selectedService === "voter_id" ? "a Voter ID / EPIC number (e.g. ABC1234567)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -5011,6 +5127,8 @@ function TestApiPage() {
                           ? "border-violet-500/30 bg-gradient-to-b from-violet-500/5 to-transparent"
                           : selectedService === "vehicle_rc"
                           ? "border-sky-500/30 bg-gradient-to-b from-sky-500/5 to-transparent"
+                          : selectedService === "voter_id"
+                          ? "border-indigo-500/30 bg-gradient-to-b from-indigo-500/5 to-transparent"
                           : selectedService === "gst_to_contact"
                           ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                           : selectedService === "pan_to_gst"
@@ -7711,6 +7829,660 @@ function TestApiPage() {
                                       </h4>
                                       <p className="text-xs text-muted-foreground max-w-md mx-auto">
                                         No vehicle registration certificate records were found matching RC number {rcNumber} in the national Parivahan registry.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()
+                          ) : selectedService === "voter_id" ? (
+                            (() => {
+                              const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                              const rawData: any = rawResult?.raw_data || responseJson?.raw_data || rawResult;
+
+                              // Deeply search nested API Saathi structures where raw data resides
+                              const searchLayers: any[] = [
+                                rawResult?.raw_data?.raw?.result,
+                                rawResult?.raw_data?.details,
+                                rawResult?.raw?.result,
+                                rawResult?.details,
+                                rawResult?.raw_data?.result,
+                                rawResult?.raw_data,
+                                rawData?.raw?.result,
+                                rawData?.details,
+                                rawData?.result,
+                                rawData?.raw,
+                                (responseJson as any)?.data?.raw_data?.raw?.result,
+                                (responseJson as any)?.data?.raw_data?.details,
+                                (responseJson as any)?.result?.raw_data?.raw?.result,
+                                (responseJson as any)?.result?.raw_data?.details,
+                                (responseJson as any)?.data?.raw_data,
+                                (responseJson as any)?.result?.raw_data,
+                                rawResult,
+                                rawData,
+                                (responseJson as any)?.data,
+                                (responseJson as any)?.result,
+                                responseJson,
+                              ];
+
+                              const getVal = (...keys: string[]): string => {
+                                for (const obj of searchLayers) {
+                                  if (!obj || typeof obj !== "object") continue;
+                                  for (const k of keys) {
+                                    const v = obj[k];
+                                    if (v !== undefined && v !== null) {
+                                      const s = String(v).trim();
+                                      if (s !== "" && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined") {
+                                        return s;
+                                      }
+                                    }
+                                  }
+                                }
+                                return "";
+                              };
+
+                              const getRlnType = (): string => {
+                                for (const obj of searchLayers) {
+                                  if (!obj || typeof obj !== "object") continue;
+                                  for (const k of ["rln_type", "relation_type", "relationType"]) {
+                                    const v = obj[k];
+                                    if (v !== undefined && v !== null) {
+                                      const s = String(v).trim().toUpperCase();
+                                      if (s !== "" && s !== "NULL" && s !== "UNDEFINED" && s !== "RELATION") {
+                                        return s;
+                                      }
+                                    }
+                                  }
+                                }
+                                const fallback = getVal("rln_type", "relation_type", "relationType").toUpperCase();
+                                return fallback !== "RELATION" ? fallback : "";
+                              };
+
+                              const epicNumber = (
+                                getVal("epic_no", "epic_number", "epicNo") ||
+                                voterIdEpicNumber ||
+                                "—"
+                              ).toUpperCase();
+
+                              const voterName = getVal("name", "name_fn", "voter_name", "full_name", "applicant_name");
+                              const voterNameV1 = getVal("name_v1", "name_fn_v1", "voter_name_v1");
+
+                              const relationName = getVal(
+                                "rln_name",
+                                "relation_name",
+                                "relative_name",
+                                "father_name",
+                                "husband_name",
+                                "care_of"
+                              );
+                              const relationNameV1 = getVal("rln_name_v1", "relation_name_v1");
+
+                              const rawRlnType = getRlnType();
+                              const relationTypeLabel =
+                                rawRlnType === "H" || rawRlnType === "HUSBAND"
+                                  ? "Husband (पति)"
+                                  : rawRlnType === "F" || rawRlnType === "FATHER"
+                                  ? "Father (पिता)"
+                                  : rawRlnType === "M" || rawRlnType === "MOTHER"
+                                  ? "Mother (माता)"
+                                  : rawRlnType === "W" || rawRlnType === "WIFE"
+                                  ? "Wife (पत्नी)"
+                                  : rawRlnType === "O" || rawRlnType === "OTHER"
+                                  ? "Other (अन्य)"
+                                  : rawRlnType || "—";
+
+                              const rawGender = getVal("gender", "sex").toUpperCase();
+                              const genderLabel =
+                                rawGender === "F" || rawGender === "FEMALE"
+                                  ? "Female (महिला)"
+                                  : rawGender === "M" || rawGender === "MALE"
+                                  ? "Male (पुरुष)"
+                                  : rawGender === "T" || rawGender === "TRANSGENDER"
+                                  ? "Transgender (तृतीय लिंग)"
+                                  : rawGender || "—";
+
+                              const genderV1 = getVal("gender_v1");
+                              const age = getVal("age");
+                              const dob = getVal("dob", "date_of_birth", "birthYear") || "—";
+
+                              const stateName = getVal("st_name", "state", "state_name") || "—";
+                              const stateNameV1 = getVal("state_v1", "st_name_v1");
+                              const stateCode = getVal("st_code", "state_code");
+
+                              const distName = getVal("dist_name", "district", "district_name") || "—";
+                              const distNameV1 = getVal("dist_name_v1", "district_name_v1");
+                              const distNo = getVal("dist_no", "district_no");
+
+                              const assemblyName = getVal("ac_name", "assembly_constituency", "assemblyConstituency") || "—";
+                              const assemblyNameV1 = getVal("ac_name_v1", "assembly_constituency_v1");
+                              const assemblyNo = getVal("ac_no", "assembly_constituency_number", "ac_number");
+
+                              const parliamentaryName = getVal("pc_name", "parliamentary_constituency", "parliamentaryConstituency") || "—";
+                              const parliamentaryNameV1 = getVal("pc_name_v1");
+                              const parliamentaryNo = getVal("pc_no", "parliamentary_constituency_number", "pc_number");
+
+                              const pollingStationName = getVal("ps_name", "polling_station", "pollingStation") || "—";
+                              const pollingStationNameV1 = getVal("ps_name_v1");
+                              const pollingStationNo = getVal("ps_no", "polling_station_no");
+
+                              const partName = getVal("part_name", "partName") || "—";
+                              const partNameV1 = getVal("part_name_v1");
+                              const partNo = getVal("part_no", "part_number", "partNumber") || "—";
+
+                              const serialNumber = getVal("slno_inpart", "serial_number", "serialNumber") || "—";
+                              const sectionNumber = getVal("section_no", "section_number", "sectionNumber") || "—";
+
+                              // Specific details from API Saathi
+                              const psbuildingName = getVal("psbuildingName", "ps_building_name", "building_name");
+                              const psBuildingNameL1 = getVal("psBuildingNameL1", "psbuilding_name_l1");
+                              const buildingAddress = getVal("buildingAddress", "building_address");
+                              const lastUpdate = getVal("last_update", "lastUpdate");
+                              const createdDttm = getVal("createdDttm", "created_dttm");
+                              const eciRecordId = getVal("id", "eci_id");
+
+                              const statusVal = (getVal("status") || (responseJson?.verified ? "VALID" : "UNVERIFIED")).toUpperCase();
+                              const isVerified = Boolean(
+                                responseJson?.verified === true ||
+                                responseJson?.result_code === 101 ||
+                                voterName ||
+                                epicNumber !== "—"
+                              );
+
+                              return (
+                                <div className="space-y-4 max-w-full overflow-hidden">
+                                  {/* Top Header Card */}
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 shadow-sm">
+                                        <Vote className="h-5 w-5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <h3 className="text-base font-bold text-foreground">
+                                            Voter ID (EPIC) Verification
+                                          </h3>
+                                          <span
+                                            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                              isVerified
+                                                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                                : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                            }`}
+                                          >
+                                            {isVerified ? "ECI VERIFIED" : "UNVERIFIED"}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium truncate">
+                                          <ShieldCheck className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                                          Election Commission of India · National Electoral Registry
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Copy & Status */}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-mono font-bold text-foreground shadow-xs">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-sans">EPIC:</span>
+                                        <span className="tracking-wider select-all text-indigo-400">{epicNumber}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(epicNumber, "EPIC Number")}
+                                          className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                          title="Copy EPIC Number"
+                                        >
+                                          <Copy className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Authentic Electoral Photo Identity Card (EPIC) */}
+                                  <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-b from-indigo-500/10 via-background/90 to-background p-4 sm:p-5 relative overflow-hidden shadow-sm space-y-4">
+                                    {/* Subtle Tricolor Top Accent */}
+                                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-white/80 to-emerald-500" />
+
+                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-border/50 pb-4">
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                          <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 truncate">
+                                            भारत निर्वाचन आयोग · ELECTION COMMISSION OF INDIA
+                                          </span>
+                                          {eciRecordId && (
+                                            <span className="rounded bg-indigo-500/10 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-indigo-300 border border-indigo-500/20 truncate" title={eciRecordId}>
+                                              ID: {eciRecordId}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <h4 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex flex-wrap items-center gap-2">
+                                          <span>{voterName || "Elector Name Unavailable"}</span>
+                                          {voterNameV1 && (
+                                            <span className="text-base sm:text-lg font-bold text-indigo-300 font-sans">
+                                              ({voterNameV1})
+                                            </span>
+                                          )}
+                                          {isVerified && <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />}
+                                        </h4>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
+                                          <span className="truncate">
+                                            ELECTORAL PHOTO IDENTITY CARD / मतदाता फोटो पहचान पत्र
+                                          </span>
+                                          {lastUpdate && (
+                                            <span className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground/80">
+                                              <Clock className="h-3 w-3 text-indigo-400 shrink-0" /> Updated: {lastUpdate}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-col sm:items-end gap-1 shrink-0">
+                                        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Elector Status</span>
+                                        <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                                          {statusVal || "VALID ELECTOR"}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Voter Key Demographics Grid */}
+                                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                                      {/* 1. Relative / Guardian */}
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1.5 min-w-0 overflow-hidden flex flex-col justify-between">
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground flex items-center gap-1 truncate">
+                                            <User className="h-3 w-3 text-indigo-400 shrink-0" /> Relative / Guardian
+                                          </span>
+                                          <div className="pt-1 min-w-0">
+                                            <span className="font-semibold text-foreground text-sm block truncate" title={relationName || "—"}>
+                                              {relationName || "—"}
+                                            </span>
+                                            {relationNameV1 && (
+                                              <span className="text-xs font-semibold text-indigo-300 block truncate" title={relationNameV1}>
+                                                {relationNameV1}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground pt-1 min-w-0 border-t border-border/40">
+                                          <span className="shrink-0 text-muted-foreground">Relation:</span>
+                                          <span className="font-semibold text-foreground truncate max-w-[120px]" title={relationTypeLabel || "—"}>
+                                            {relationTypeLabel || "—"}
+                                          </span>
+                                          {rawRlnType && rawRlnType !== "RELATION" && rawRlnType !== relationTypeLabel && (
+                                            <span className="font-mono text-[9px] rounded bg-muted/70 px-1 py-0.5 font-bold text-muted-foreground shrink-0">
+                                              [{rawRlnType}]
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* 2. Gender & Age */}
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1.5 min-w-0 overflow-hidden flex flex-col justify-between">
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground flex items-center gap-1 truncate">
+                                            <Users className="h-3 w-3 text-sky-400 shrink-0" /> Gender & Age
+                                          </span>
+                                          <div className="pt-1 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-1 font-semibold text-foreground text-sm min-w-0">
+                                              <span className="truncate">{genderLabel !== "—" ? genderLabel : "—"}</span>
+                                              {rawGender && rawGender !== "—" && rawGender !== genderLabel && (
+                                                <span className="font-mono text-[9px] rounded bg-muted/70 px-1 py-0.5 font-bold text-muted-foreground shrink-0">
+                                                  [{rawGender}]
+                                                </span>
+                                              )}
+                                            </div>
+                                            {genderV1 && (
+                                              <span className="text-xs text-sky-300 block truncate">
+                                                {genderV1}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="text-[11px] text-muted-foreground pt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 border-t border-border/40">
+                                          {age ? <span>Age: <strong className="text-foreground">{age} Yrs</strong></span> : null}
+                                          {dob && dob !== "—" ? <span>DOB: <strong className="text-foreground">{dob}</strong></span> : null}
+                                          {!age && (!dob || dob === "—") && <span>Age: —</span>}
+                                        </div>
+                                      </div>
+
+                                      {/* 3. State & District */}
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1.5 min-w-0 overflow-hidden flex flex-col justify-between">
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground flex items-center gap-1 truncate">
+                                            <MapPin className="h-3 w-3 text-emerald-400 shrink-0" /> State & District
+                                          </span>
+                                          <div className="pt-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-1 min-w-0">
+                                              <span className="font-semibold text-foreground text-sm truncate" title={stateName}>
+                                                {stateName}
+                                              </span>
+                                              {stateCode && (
+                                                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-emerald-400 border border-emerald-500/20 shrink-0">
+                                                  {stateCode}
+                                                </span>
+                                              )}
+                                            </div>
+                                            {stateNameV1 && (
+                                              <span className="text-xs text-emerald-300/90 block truncate" title={stateNameV1}>
+                                                {stateNameV1}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-1 text-[11px] text-muted-foreground pt-1 min-w-0 border-t border-border/40">
+                                          <span className="truncate" title={distName}>
+                                            Dist: <strong className="text-foreground">{distName}</strong>
+                                            {distNameV1 && <span className="text-muted-foreground/80 font-normal"> ({distNameV1})</span>}
+                                          </span>
+                                          {distNo && (
+                                            <span className="rounded bg-sky-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-sky-400 border border-sky-500/20 shrink-0">
+                                              #{distNo}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* 4. EPIC Number */}
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1.5 min-w-0 overflow-hidden flex flex-col justify-between">
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground flex items-center gap-1 truncate">
+                                            <Vote className="h-3 w-3 text-amber-400 shrink-0" /> EPIC Number
+                                          </span>
+                                          <div className="pt-1 min-w-0">
+                                            <span className="font-mono font-bold text-foreground text-sm block select-all text-indigo-400 truncate" title={epicNumber}>
+                                              {epicNumber}
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground block truncate">
+                                              Electoral Roll Identifier
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="pt-1 border-t border-border/40 min-w-0">
+                                          <span className="text-[10px] text-emerald-400 block font-medium truncate">
+                                            ✓ Active ECI Record
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Electoral Constituencies Grid */}
+                                  <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs min-w-0 overflow-hidden">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 truncate">
+                                      <Building2 className="h-3.5 w-3.5 text-indigo-400 shrink-0" /> Electoral Constituencies (संसदीय एवं विधान सभा क्षेत्र)
+                                    </h4>
+
+                                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1.5 min-w-0 overflow-hidden">
+                                        <div className="flex items-center justify-between gap-1">
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground truncate">
+                                            Assembly Constituency (Vidhan Sabha)
+                                          </span>
+                                          {assemblyNo && (
+                                            <span className="rounded bg-indigo-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-400 border border-indigo-500/20 shrink-0">
+                                              ac_no: {assemblyNo}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                                          <p className="font-bold text-foreground text-sm truncate" title={assemblyName}>
+                                            {assemblyName}
+                                          </p>
+                                          {assemblyNameV1 && (
+                                            <span className="text-xs text-indigo-300 font-semibold truncate" title={assemblyNameV1}>
+                                              ({assemblyNameV1})
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground truncate">
+                                          Legislative Assembly Jurisdiction (विधान सभा)
+                                        </p>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1.5 min-w-0 overflow-hidden">
+                                        <div className="flex items-center justify-between gap-1">
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground truncate">
+                                            Parliamentary Constituency (Lok Sabha)
+                                          </span>
+                                          {parliamentaryNo && (
+                                            <span className="rounded bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-sky-400 border border-sky-500/20 shrink-0">
+                                              pc_no: {parliamentaryNo}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+                                          <p className="font-bold text-foreground text-sm truncate" title={parliamentaryName}>
+                                            {parliamentaryName}
+                                          </p>
+                                          {parliamentaryNameV1 && (
+                                            <span className="text-xs text-sky-300 font-semibold truncate" title={parliamentaryNameV1}>
+                                              ({parliamentaryNameV1})
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground truncate">
+                                          House of the People Jurisdiction (लोक सभा)
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Polling Station, Booth & Building Details */}
+                                  <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-xs min-w-0 overflow-hidden">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 truncate">
+                                      <MapPin className="h-3.5 w-3.5 text-emerald-400 shrink-0" /> Polling Station, Building & Location Details (मतदान केंद्र एवं भवन)
+                                    </h4>
+
+                                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+                                      {/* Polling Station Name */}
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1 min-w-0 overflow-hidden">
+                                        <div className="flex items-center justify-between gap-1">
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground block truncate">
+                                            Designated Polling Station (मतदान केंद्र)
+                                          </span>
+                                          {pollingStationNo && (
+                                            <span className="rounded bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400 border border-emerald-500/20 shrink-0">
+                                              ps_no: {pollingStationNo}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="font-semibold text-foreground text-sm leading-relaxed truncate" title={pollingStationName}>
+                                          {pollingStationName !== "—" ? pollingStationName : "Polling Station details not specified in record"}
+                                        </p>
+                                        {pollingStationNameV1 && (
+                                          <p className="text-xs font-semibold text-emerald-300 truncate" title={pollingStationNameV1}>
+                                            {pollingStationNameV1}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Polling Building & Address */}
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-3 space-y-1 min-w-0 overflow-hidden">
+                                        <div className="flex items-center justify-between gap-1">
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground block truncate">
+                                            Polling Building & Address (मतदान भवन व पता)
+                                          </span>
+                                          {buildingAddress && (
+                                            <span className="rounded bg-indigo-500/10 px-2 py-0.5 font-mono text-[9px] font-semibold text-indigo-300 border border-indigo-500/20 shrink-0 truncate max-w-[140px]" title={buildingAddress}>
+                                              {buildingAddress}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="font-semibold text-foreground text-xs leading-relaxed truncate" title={psbuildingName || "Building name not specified"}>
+                                          {psbuildingName || "Building name not specified in record"}
+                                        </p>
+                                        {psBuildingNameL1 && (
+                                          <p className="text-xs font-semibold text-indigo-300 truncate" title={psBuildingNameL1}>
+                                            {psBuildingNameL1}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* 4 Roll index parameters */}
+                                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 pt-1">
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block truncate">part_no (Part Number)</span>
+                                        <span className="font-mono font-bold text-foreground text-sm block pt-0.5 truncate">{partNo}</span>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block truncate">part_name (Part Name)</span>
+                                        <span className="font-semibold text-foreground text-xs block pt-0.5 truncate" title={partName}>{partName}</span>
+                                        {partNameV1 && <span className="text-[10px] text-indigo-300 block truncate" title={partNameV1}>{partNameV1}</span>}
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block truncate">slno_inpart (Serial No)</span>
+                                        <span className="font-mono font-bold text-foreground text-sm block pt-0.5 truncate">{serialNumber}</span>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block truncate">section_no (Section Number)</span>
+                                        <span className="font-mono font-bold text-foreground text-sm block pt-0.5 truncate">{sectionNumber}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Detailed ECI Registry Raw Parameter Breakdown */}
+                                  <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 space-y-3 min-w-0 overflow-hidden">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                      <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5 truncate">
+                                        <FileCheck className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                                        Verified ECI Registry Data Fields (निर्वाचन आयोग रिकॉर्ड)
+                                      </h4>
+                                      <span className="text-[10px] font-mono text-muted-foreground shrink-0">API Saathi v1 Gateway</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-xs">
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">rln_name</span>
+                                        <span className="font-semibold text-foreground truncate block" title={relationName || "—"}>{relationName || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">rln_name_v1 (Hindi)</span>
+                                        <span className="font-semibold text-indigo-300 truncate block" title={relationNameV1 || "—"}>{relationNameV1 || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">rln_type</span>
+                                        <span className="font-semibold text-foreground truncate block" title={rawRlnType || "—"}>
+                                          {rawRlnType || "—"} {relationTypeLabel !== "—" && <span className="text-[10px] text-muted-foreground">({relationTypeLabel})</span>}
+                                        </span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">gender</span>
+                                        <span className="font-semibold text-foreground truncate block" title={rawGender || "—"}>
+                                          {rawGender || "—"} {genderLabel !== "—" && <span className="text-[10px] text-muted-foreground">({genderLabel})</span>}
+                                        </span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">st_code</span>
+                                        <span className="font-mono font-bold text-emerald-400 truncate block">{stateCode || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">st_name</span>
+                                        <span className="font-semibold text-foreground truncate block" title={stateName}>{stateName}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">state_v1 (Hindi)</span>
+                                        <span className="font-semibold text-emerald-300 truncate block" title={stateNameV1 || "—"}>{stateNameV1 || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">dist_no</span>
+                                        <span className="font-mono font-bold text-sky-400 truncate block">{distNo || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">dist_name</span>
+                                        <span className="font-semibold text-foreground truncate block" title={distName}>{distName}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">dist_name_v1 (Hindi)</span>
+                                        <span className="font-semibold text-sky-300 truncate block" title={distNameV1 || "—"}>{distNameV1 || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">ac_no</span>
+                                        <span className="font-mono font-bold text-indigo-400 truncate block">{assemblyNo || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">ac_name</span>
+                                        <span className="font-semibold text-foreground truncate block" title={assemblyName}>{assemblyName}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">ac_name_v1 (Hindi)</span>
+                                        <span className="font-semibold text-indigo-300 truncate block" title={assemblyNameV1 || "—"}>{assemblyNameV1 || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">pc_no</span>
+                                        <span className="font-mono font-bold text-sky-400 truncate block">{parliamentaryNo || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">pc_name</span>
+                                        <span className="font-semibold text-foreground truncate block" title={parliamentaryName}>{parliamentaryName}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">ps_no</span>
+                                        <span className="font-mono font-bold text-emerald-400 truncate block">{pollingStationNo || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">ps_name</span>
+                                        <span className="font-semibold text-foreground truncate block" title={pollingStationName}>{pollingStationName}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">ps_name_v1 (Hindi)</span>
+                                        <span className="font-semibold text-emerald-300 truncate block" title={pollingStationNameV1 || "—"}>{pollingStationNameV1 || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">part_no</span>
+                                        <span className="font-mono font-bold text-foreground truncate block">{partNo || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">part_name</span>
+                                        <span className="font-semibold text-foreground truncate block" title={partName}>{partName}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">part_name_v1 (Hindi)</span>
+                                        <span className="font-semibold text-indigo-300 truncate block" title={partNameV1 || "—"}>{partNameV1 || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">slno_inpart</span>
+                                        <span className="font-mono font-bold text-foreground truncate block">{serialNumber || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">section_no</span>
+                                        <span className="font-mono font-bold text-foreground truncate block">{sectionNumber || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">psbuildingName</span>
+                                        <span className="font-semibold text-foreground truncate block" title={psbuildingName || "—"}>{psbuildingName || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">buildingAddress</span>
+                                        <span className="font-semibold text-foreground truncate block" title={buildingAddress || "—"}>{buildingAddress || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">last_update</span>
+                                        <span className="font-mono font-bold text-foreground truncate block">{lastUpdate || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">createdDttm</span>
+                                        <span className="font-mono text-muted-foreground truncate block" title={createdDttm || "—"}>{createdDttm || "—"}</span>
+                                      </div>
+                                      <div className="rounded-md border border-border/60 bg-background/80 p-2 space-y-0.5 min-w-0 overflow-hidden">
+                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">ECI Record ID</span>
+                                        <span className="font-mono text-indigo-400 font-bold truncate block" title={eciRecordId || "—"}>{eciRecordId || "—"}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Empty state if not found */}
+                                  {!isVerified && (
+                                    <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-6 text-center space-y-2">
+                                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                                        <AlertCircle className="h-5 w-5" />
+                                      </div>
+                                      <h4 className="text-sm font-semibold text-foreground">
+                                        No Voter ID Record Found
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                                        No elector records were found matching EPIC number {epicNumber} in the national Electoral Photo Identity Card registry.
                                       </p>
                                     </div>
                                   )}
@@ -13904,6 +14676,8 @@ function TestApiPage() {
                             Target:{" "}
                             {selectedService === "vehicle_rc"
                               ? `Vehicle RC: ${vehicleRcNumber || "N/A"}`
+                              : selectedService === "voter_id"
+                              ? `Voter ID (EPIC): ${voterIdEpicNumber || "N/A"}`
                               : selectedService === "pan"
                               ? `PAN: ${pan}`
                               : selectedService === "aadhaar"

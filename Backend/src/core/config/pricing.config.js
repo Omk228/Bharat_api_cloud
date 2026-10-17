@@ -184,6 +184,12 @@ export const API_PRICING = {
   '/vehicle-rc': 2.00,
   'vehicle_rc': 2.00,
   'vehicle-rc': 2.00,
+  '/api/v1/verify/voter-id': 2.00,
+  '/verify/voter-id': 2.00,
+  '/api/v1/voter-id': 2.00,
+  '/voter-id': 2.00,
+  'voter_id': 2.00,
+  'voter-id': 2.00,
   default: 2.00,
 };
 

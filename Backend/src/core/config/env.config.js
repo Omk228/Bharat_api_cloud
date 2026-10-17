@@ -217,6 +217,12 @@ export const ENV = {
     API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
     TIMEOUT_MS: parseInt(process.env.VEHICLE_RC_TIMEOUT_MS || '25000', 10),
   },
+
+  VOTER_ID: {
+    BASE_URL: (process.env.VOTER_ID_BASE_URL || 'https://apisathi.in/gw/v1/voter-id-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.VOTER_ID_TIMEOUT_MS || '25000', 10),
+  },
 };
 
 export default ENV;

@@ -286,6 +286,14 @@ const ENDPOINT_CATALOG_MAP = {
   '/vehicle-rc': ['api_vehicle_rc', '/vehicle-rc', 'vehicle_rc'],
   'vehicle_rc': ['api_vehicle_rc', '/verify/vehicle-rc', '/api/v1/verify/vehicle-rc'],
   'vehicle-rc': ['api_vehicle_rc', '/verify/vehicle-rc', '/api/v1/verify/vehicle-rc'],
+
+  // Voter ID (API Saathi Gateway)
+  '/api/v1/verify/voter-id': ['api_voter_id', '/verify/voter-id', '/api/v1/verify/voter-id', 'voter_id', '/voter-id'],
+  '/verify/voter-id': ['api_voter_id', '/verify/voter-id', 'voter_id'],
+  '/api/v1/voter-id': ['api_voter_id', '/voter-id', 'voter_id'],
+  '/voter-id': ['api_voter_id', '/voter-id', 'voter_id'],
+  'voter_id': ['api_voter_id', '/verify/voter-id', '/api/v1/verify/voter-id'],
+  'voter-id': ['api_voter_id', '/verify/voter-id', '/api/v1/verify/voter-id'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -304,6 +312,8 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   'tan-to-company': 'api_tan_to_company',
   vehicle_rc: 'api_vehicle_rc',
   'vehicle-rc': 'api_vehicle_rc',
+  voter_id: 'api_voter_id',
+  'voter-id': 'api_voter_id',
   gst_to_contact: 'api_gst_to_contact',
   'gst-to-contact': 'api_gst_to_contact',
   contact_to_gst: 'api_contact_to_gst',

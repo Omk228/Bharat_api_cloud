@@ -6,7 +6,7 @@ import { startAuditWorker, stopAuditWorker } from './core/queue/audit.worker.js'
 
 const PORT = ENV.PORT || 5002;
 
-const server = app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, async () => {
   console.log('====================================================');
   console.log(`🚀 Bharat API Cloud Backend Server (Modular Monolith)`);
   console.log(`📡 Environment: ${ENV.NODE_ENV}`);

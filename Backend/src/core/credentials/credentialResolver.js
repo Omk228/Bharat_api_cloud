@@ -390,6 +390,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for Voter ID (API Saathi Gateway)
+   */
+  async getVoterIdCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('voter_id_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.VOTER_ID.BASE_URL,
+      apiKey: cred?.apiKey || ENV.VOTER_ID.API_KEY,
+      timeoutMs: ENV.VOTER_ID.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

@@ -36,6 +36,7 @@ import itrCheckRoutes from '../modules/verification/itr_check/itrCheck.routes.js
 import tanLookupRoutes from '../modules/verification/tan_lookup/tanLookup.routes.js';
 import tanToCompanyRoutes from '../modules/verification/tan_to_company/tanToCompany.routes.js';
 import vehicleRcRoutes from '../modules/verification/vehicle_rc/vehicleRc.routes.js';
+import voterIdRoutes from '../modules/verification/voter_id/voterId.routes.js';
 import senderRoutes from '../modules/sender/sender.routes.js';
 
 const apiRouter = Router();
@@ -118,5 +119,8 @@ apiRouter.use('/', tanToCompanyRoutes);
 apiRouter.use('/verify/vehicle-rc', vehicleRcRoutes);
 apiRouter.use('/vehicle-rc', vehicleRcRoutes);
 apiRouter.use('/', vehicleRcRoutes);
+apiRouter.use('/verify/voter-id', voterIdRoutes);
+apiRouter.use('/voter-id', voterIdRoutes);
+apiRouter.use('/', voterIdRoutes);
 
 export default apiRouter;

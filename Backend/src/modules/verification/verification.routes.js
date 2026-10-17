@@ -19,6 +19,7 @@ import itrCheckRoutes from './itr_check/itrCheck.routes.js';
 import tanLookupRoutes from './tan_lookup/tanLookup.routes.js';
 import tanToCompanyRoutes from './tan_to_company/tanToCompany.routes.js';
 import vehicleRcRoutes from './vehicle_rc/vehicleRc.routes.js';
+import voterIdRoutes from './voter_id/voterId.routes.js';
 
 const router = Router();
 
@@ -43,5 +44,6 @@ router.use('/', itrCheckRoutes);
 router.use('/', tanLookupRoutes);
 router.use('/', tanToCompanyRoutes);
 router.use('/', vehicleRcRoutes);
+router.use('/', voterIdRoutes);
 
 export default router;
