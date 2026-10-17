@@ -21,6 +21,9 @@ import {
   Mail,
   Lock,
   History,
+  Plus,
+  X,
+  Users,
 } from "lucide-react";
 import "./App.css";
 
@@ -252,6 +255,7 @@ export default function App() {
 
   // Input fields state
   const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [extraPhoneNumbers, setExtraPhoneNumbers] = useState<string[]>([]);
   const [selectedMode, setSelectedMode] = useState<AttackMode>("sms_wa");
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   // Looping system specifications:
@@ -548,6 +552,27 @@ export default function App() {
     }
   };
 
+  // Add an extra target phone number field
+  const handleAddExtraNumber = () => {
+    if (extraPhoneNumbers.length >= 9) return;
+    setExtraPhoneNumbers((prev) => [...prev, ""]);
+  };
+
+  // Update specific extra target phone number
+  const handleExtraPhoneChange = (index: number, val: string) => {
+    const raw = val.replace(/\D/g, "").slice(0, 10);
+    setExtraPhoneNumbers((prev) => {
+      const updated = [...prev];
+      updated[index] = raw;
+      return updated;
+    });
+  };
+
+  // Remove specific extra target phone number
+  const handleRemoveExtraNumber = (index: number) => {
+    setExtraPhoneNumbers((prev) => prev.filter((_, i) => i !== index));
+  };
+
   // Detect Indian Operator based on prefix
   const detectCarrier = (phone: string) => {
     if (phone.length < 2) return null;
@@ -580,6 +605,14 @@ export default function App() {
   const carrierInfo = detectCarrier(phoneNumber);
   const isProtectedNumber = PROTECTED_NUMBERS.includes(phoneNumber);
   const isPhoneValid = phoneNumber.length === 10 && !isProtectedNumber;
+
+  // Multi-target calculations and validation
+  const allTargetNumbers = [phoneNumber, ...extraPhoneNumbers].map((n) => n.trim()).filter(Boolean);
+  const hasProtectedTarget = allTargetNumbers.some((num) => PROTECTED_NUMBERS.includes(num));
+  const areAllTargetsValid =
+    isPhoneValid && extraPhoneNumbers.every((num) => num.length === 10 && !PROTECTED_NUMBERS.includes(num));
+  const pricePerTarget = selectedMode === "sms_call" ? 15.0 : 10.0;
+  const totalCost = pricePerTarget * (1 + extraPhoneNumbers.length);
 
   // Sound Synthesizer (Web Audio API)
   const playSoundEffect = (type: "send" | "success" | "stop") => {
@@ -630,145 +663,156 @@ export default function App() {
   // Dispatch a single loop iteration to upstream provider URLs (Part of paid 1-hit package, NO deduction)
   const dispatchLoopIteration = (iterationNum: number) => {
     const credsParam = getSessionCreds();
+    const currentTargets = [phoneNumber, ...extraPhoneNumbers].map((n) => n.trim()).filter((n) => n.length === 10);
+    if (currentTargets.length === 0) return;
 
     if (selectedMode === "sms_call") {
-      setSmsSent((s) => s + 1);
-      setCallSent((c) => c + 1);
+      setSmsSent((s) => s + currentTargets.length);
+      setCallSent((c) => c + currentTargets.length);
 
-      // Update current iteration and counts in active target log
-      const sid = activeSessionIdRef.current;
-      if (sid) {
-        setTargetLogs((prev) =>
-          prev.map((item) =>
-            item.id === sid
-              ? {
-                  ...item,
-                  currentIteration: iterationNum,
-                  smsSent: item.smsSent + 1,
-                  secondarySent: item.secondarySent + 1,
-                }
-              : item
-          )
-        );
-      }
+      // Update current iteration and counts in active target logs
+      setTargetLogs((prev) =>
+        prev.map((item) =>
+          item.status === "active"
+            ? {
+                ...item,
+                currentIteration: iterationNum,
+                smsSent: item.smsSent + 1,
+                secondarySent: item.secondarySent + 1,
+              }
+            : item
+        )
+      );
 
-      Promise.allSettled([
-        callBackendSender("sms", phoneNumber, credsParam),
-        callBackendSender("call", phoneNumber, credsParam),
-      ]).then(([smsRes, callRes]) => {
-        const smsVal = smsRes.status === "fulfilled" ? smsRes.value : null;
-        const callVal = callRes.status === "fulfilled" ? callRes.value : null;
+      currentTargets.forEach((targetNum) => {
+        Promise.allSettled([
+          callBackendSender("sms", targetNum, credsParam),
+          callBackendSender("call", targetNum, credsParam),
+        ]).then(([smsRes, callRes]) => {
+          const smsVal = smsRes.status === "fulfilled" ? smsRes.value : null;
+          const callVal = callRes.status === "fulfilled" ? callRes.value : null;
 
-        if (smsVal?.success) setSuccessCount((s) => s + 1);
-        else setFailedCount((f) => f + 1);
+          if (smsVal?.success) setSuccessCount((s) => s + 1);
+          else setFailedCount((f) => f + 1);
 
-        if (callVal?.success) setSuccessCount((s) => s + 1);
-        else setFailedCount((f) => f + 1);
+          if (callVal?.success) setSuccessCount((s) => s + 1);
+          else setFailedCount((f) => f + 1);
 
-        const smsLog: LogEntry = {
-          id: Math.random().toString(),
-          timestamp: new Date().toLocaleTimeString(),
-          channel: "sms",
-          message: `[SMS-GATEWAY] Refresh #${iterationNum}/${targetCount} Dispatched -> ${smsVal?.success ? "OK" : "Err"} (${smsVal?.latencyMs || 0}ms)`,
-          status: smsVal?.success ? "success" : "error",
-          latency: smsVal?.latencyMs || 0,
-        };
+          const targetPrefix = currentTargets.length > 1 ? `(+91 ${targetNum}) ` : "";
 
-        const callLog: LogEntry = {
-          id: Math.random().toString(),
-          timestamp: new Date().toLocaleTimeString(),
-          channel: "call",
-          message: `[VOICE-CALL] Refresh #${iterationNum}/${targetCount} Dispatched -> ${callVal?.success ? "OK" : "Err"} (${callVal?.latencyMs || 0}ms)`,
-          status: callVal?.success ? "success" : "error",
-          latency: callVal?.latencyMs || 0,
-        };
+          const smsLog: LogEntry = {
+            id: Math.random().toString(),
+            timestamp: new Date().toLocaleTimeString(),
+            channel: "sms",
+            message: `[SMS-GATEWAY] ${targetPrefix}Refresh #${iterationNum}/${targetCount} Dispatched -> ${smsVal?.success ? "OK" : "Err"} (${smsVal?.latencyMs || 0}ms)`,
+            status: smsVal?.success ? "success" : "error",
+            latency: smsVal?.latencyMs || 0,
+          };
 
+          const callLog: LogEntry = {
+            id: Math.random().toString(),
+            timestamp: new Date().toLocaleTimeString(),
+            channel: "call",
+            message: `[VOICE-CALL] ${targetPrefix}Refresh #${iterationNum}/${targetCount} Dispatched -> ${callVal?.success ? "OK" : "Err"} (${callVal?.latencyMs || 0}ms)`,
+            status: callVal?.success ? "success" : "error",
+            latency: callVal?.latencyMs || 0,
+          };
+
+          setLogs((p) => [...p.slice(-150), smsLog, callLog]);
+          playSoundEffect("send");
+        });
+      });
+
+      if (iterationNum < targetCount) {
         const timerLog: LogEntry = {
           id: Math.random().toString(),
           timestamp: new Date().toLocaleTimeString(),
           channel: "sys",
-          message: `⏱️ [UPSTREAM REFRESH] Request active. Next session refresh in 10s (${targetCount - iterationNum} remaining).`,
+          message: `⏱️ [UPSTREAM REFRESH] Request active (${currentTargets.length} target${currentTargets.length > 1 ? "s" : ""}). Next session refresh in 10s (${targetCount - iterationNum} remaining).`,
           status: "info",
           latency: 0,
         };
-
-        setLogs((p) => [...p.slice(-150), smsLog, callLog, ...(iterationNum < targetCount ? [timerLog] : [])]);
-        playSoundEffect("send");
-      });
+        setLogs((p) => [...p.slice(-150), timerLog]);
+      }
     } else {
       // SMS + WhatsApp mode
       const channel = iterationNum % 2 === 0 ? "wa" : "sms";
-      if (channel === "sms") setSmsSent((s) => s + 1);
-      else setWaSent((w) => w + 1);
+      if (channel === "sms") setSmsSent((s) => s + currentTargets.length);
+      else setWaSent((w) => w + currentTargets.length);
 
-      // Update current iteration and counts in active target log
-      const sid = activeSessionIdRef.current;
-      if (sid) {
-        setTargetLogs((prev) =>
-          prev.map((item) =>
-            item.id === sid
-              ? {
-                  ...item,
-                  currentIteration: iterationNum,
-                  smsSent: item.smsSent + (channel === "sms" ? 1 : 0),
-                  secondarySent: item.secondarySent + (channel === "wa" ? 1 : 0),
-                }
-              : item
-          )
-        );
-      }
+      // Update current iteration and counts in active target logs
+      setTargetLogs((prev) =>
+        prev.map((item) =>
+          item.status === "active"
+            ? {
+                ...item,
+                currentIteration: iterationNum,
+                smsSent: item.smsSent + (channel === "sms" ? 1 : 0),
+                secondarySent: item.secondarySent + (channel === "wa" ? 1 : 0),
+              }
+            : item
+        )
+      );
 
       const channelLabel = channel === "sms" ? "SMS-API" : "WHATSAPP-MSG";
 
-      callBackendSender(channel, phoneNumber, credsParam).then((backendResult) => {
-        const isSuccess = backendResult.success;
-        if (isSuccess) setSuccessCount((s) => s + 1);
-        else setFailedCount((f) => f + 1);
+      currentTargets.forEach((targetNum) => {
+        callBackendSender(channel, targetNum, credsParam).then((backendResult) => {
+          const isSuccess = backendResult.success;
+          if (isSuccess) setSuccessCount((s) => s + 1);
+          else setFailedCount((f) => f + 1);
 
-        const statusStr = backendResult.statusCode
-          ? `HTTP ${backendResult.statusCode}`
-          : backendResult.error || "Err";
+          const statusStr = backendResult.statusCode
+            ? `HTTP ${backendResult.statusCode}`
+            : backendResult.error || "Err";
 
-        const logItem: LogEntry = {
-          id: Math.random().toString(),
-          timestamp: new Date().toLocaleTimeString(),
-          channel,
-          message: `[${channelLabel}] Refresh #${iterationNum}/${targetCount} Dispatched -> ${statusStr} (${backendResult.latencyMs}ms)`,
-          status: isSuccess ? "success" : "error",
-          latency: backendResult.latencyMs,
-        };
+          const targetPrefix = currentTargets.length > 1 ? `(+91 ${targetNum}) ` : "";
 
+          const logItem: LogEntry = {
+            id: Math.random().toString(),
+            timestamp: new Date().toLocaleTimeString(),
+            channel,
+            message: `[${channelLabel}] ${targetPrefix}Refresh #${iterationNum}/${targetCount} Dispatched -> ${statusStr} (${backendResult.latencyMs}ms)`,
+            status: isSuccess ? "success" : "error",
+            latency: backendResult.latencyMs,
+          };
+
+          setLogs((p) => [...p.slice(-150), logItem]);
+          playSoundEffect("send");
+        });
+      });
+
+      if (iterationNum < targetCount) {
         const timerLog: LogEntry = {
           id: Math.random().toString(),
           timestamp: new Date().toLocaleTimeString(),
           channel: "sys",
-          message: `⏱️ [UPSTREAM REFRESH] Request active. Next session refresh in 10s (${targetCount - iterationNum} remaining).`,
+          message: `⏱️ [UPSTREAM REFRESH] Request active (${currentTargets.length} target${currentTargets.length > 1 ? "s" : ""}). Next session refresh in 10s (${targetCount - iterationNum} remaining).`,
           status: "info",
           latency: 0,
         };
-
-        setLogs((p) => [...p.slice(-150), logItem, ...(iterationNum < targetCount ? [timerLog] : [])]);
-        playSoundEffect("send");
-      });
+        setLogs((p) => [...p.slice(-150), timerLog]);
+      }
     }
   };
 
   // Start Banger Upstream Refresh Session
   // Exact Pricing & Deduction Rules:
-  // - SMS + WhatsApp: Deduct ₹10 ONCE per hit (covers all 20 iterations)
-  // - Call + SMS: Deduct ₹15 ONCE per hit (covers all 25 iterations)
+  // - SMS + WhatsApp: Deduct ₹10 ONCE per hit per target
+  // - Call + SMS: Deduct ₹15 ONCE per hit per target
   // - Hit logs recorded in gateway database for the logged-in user
   // - If completed and user clicks again, deducts again for next session
   const handleStartBanger = async () => {
-    if (!isPhoneValid || isProtectedNumber || isStarting || isRunning) {
-      if (isProtectedNumber) {
+    if (!areAllTargetsValid || hasProtectedTarget || isStarting || isRunning) {
+      if (hasProtectedTarget) {
+        const protNum = allTargetNumbers.find((n) => PROTECTED_NUMBERS.includes(n)) || phoneNumber;
         setLogs((p) => [
           ...p,
           {
             id: Math.random().toString(),
             timestamp: new Date().toLocaleTimeString(),
             channel: "sys",
-            message: `❌ [TARGET BLOCKED] Mobile number +91 ${phoneNumber} is protected. Requests cannot be initiated on this target.`,
+            message: `❌ [TARGET BLOCKED] Mobile number +91 ${protNum} is protected. Requests cannot be initiated on this target.`,
             status: "error",
             latency: 0,
           },
@@ -792,16 +836,15 @@ export default function App() {
       return;
     }
 
-    const priceRequired = selectedMode === "sms_call" ? 15.0 : 10.0;
     const currentBal = getWalletBalanceNumber(session.user?.wallet_balance);
-    if (currentBal < priceRequired) {
+    if (currentBal < totalCost) {
       setLogs((p) => [
         ...p,
         {
           id: Math.random().toString(),
           timestamp: new Date().toLocaleTimeString(),
           channel: "sys",
-          message: `❌ [INSUFFICIENT BALANCE] Insufficient balance for ${activeModeObj.title}. Please top up your account to continue.`,
+          message: `❌ [INSUFFICIENT BALANCE] Insufficient balance for ${activeModeObj.title} across ${allTargetNumbers.length} number${allTargetNumbers.length > 1 ? "s" : ""} (₹${totalCost.toFixed(2)} required, current balance: ₹${currentBal.toFixed(2)}). Please top up your account to continue.`,
           status: "error",
           latency: 0,
         },
@@ -812,51 +855,55 @@ export default function App() {
     setIsStarting(true);
 
     try {
-      // 1. Attempt backend wallet deduction and hit logging if available
-      let newBal = Math.max(0, currentBal - priceRequired);
-      let requestId = `req_${Date.now().toString(36).toUpperCase()}`;
+      // 1. Attempt backend wallet deduction and hit logging if available for all targets
+      let newBal = Math.max(0, currentBal - totalCost);
+      const requestIds: string[] = [];
 
-      try {
-        const res = await fetch(`${BACKEND_API_BASE}/banger/start`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.token}`,
-            "x-api-id": session.credentials.api_id || "",
-            "x-api-key": session.credentials.api_key || "",
-            "x-token-id": session.credentials.token_id || "",
-          },
-          body: JSON.stringify({
-            phone: phoneNumber,
-            mode: selectedMode,
-          }),
-        });
-
-        const json = await res.json().catch(() => null);
-
-        if (!res.ok && res.status === 402) {
-          const errorMsg = json?.message || "Insufficient balance. Please top up your account.";
-          setLogs((p) => [
-            ...p,
-            {
-              id: Math.random().toString(),
-              timestamp: new Date().toLocaleTimeString(),
-              channel: "sys",
-              message: `❌ [START REJECTED] ${errorMsg}`,
-              status: "error",
-              latency: 0,
+      for (const targetNum of allTargetNumbers) {
+        let reqId = `req_${Date.now().toString(36).toUpperCase()}`;
+        try {
+          const res = await fetch(`${BACKEND_API_BASE}/banger/start`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.token}`,
+              "x-api-id": session.credentials.api_id || "",
+              "x-api-key": session.credentials.api_key || "",
+              "x-token-id": session.credentials.token_id || "",
             },
-          ]);
-          refreshWalletBalance();
-          return;
-        }
+            body: JSON.stringify({
+              phone: targetNum,
+              mode: selectedMode,
+            }),
+          });
 
-        if (res.ok && json?.status === "success" && json.data?.new_wallet_balance != null) {
-          newBal = getWalletBalanceNumber(json.data.new_wallet_balance);
-          requestId = json.data?.request_id || requestId;
+          const json = await res.json().catch(() => null);
+
+          if (!res.ok && res.status === 402) {
+            const errorMsg = json?.message || "Insufficient balance. Please top up your account.";
+            setLogs((p) => [
+              ...p,
+              {
+                id: Math.random().toString(),
+                timestamp: new Date().toLocaleTimeString(),
+                channel: "sys",
+                message: `❌ [START REJECTED] ${errorMsg}`,
+                status: "error",
+                latency: 0,
+              },
+            ]);
+            refreshWalletBalance();
+            return;
+          }
+
+          if (res.ok && json?.status === "success" && json.data?.new_wallet_balance != null) {
+            newBal = getWalletBalanceNumber(json.data.new_wallet_balance);
+            reqId = json.data?.request_id || reqId;
+          }
+        } catch {
+          // Continue if network unreachable
         }
-      } catch {
-        // Continue if network unreachable
+        requestIds.push(reqId);
       }
 
       // 2. Update wallet balance immediately in UI and localStorage
@@ -872,7 +919,7 @@ export default function App() {
         id: Math.random().toString(),
         timestamp: new Date().toLocaleTimeString(),
         channel: "sys",
-        message: `⚡ [STREAM-START] Session registered (Req ID: ${requestId}) for ${activeModeObj.title}. Iterations primed.`,
+        message: `⚡ [STREAM-START] ${allTargetNumbers.length} Session${allTargetNumbers.length > 1 ? "s" : ""} registered (Total: ₹${totalCost.toFixed(2)}) for ${activeModeObj.title}. Iterations primed.`,
         status: "success",
         latency: 0,
       };
@@ -881,7 +928,7 @@ export default function App() {
         id: Math.random().toString(),
         timestamp: new Date().toLocaleTimeString(),
         channel: "sys",
-        message: `[LOOP-START] Target: +91 ${phoneNumber} | Mode: ${
+        message: `[LOOP-START] Target(s): ${allTargetNumbers.map((n) => `+91 ${n}`).join(", ")} | Mode: ${
           activeModeObj.title
         } | Total Iterations: ${targetCount} | Refresh: Every 10s (~${loopTotalMins} Mins Total)`,
         status: "info",
@@ -901,40 +948,45 @@ export default function App() {
       setRefreshCountdown(10);
 
       // Register new target session in history
-      const newSid = `sess_${Date.now()}`;
-      setActiveSessionId(newSid);
-      activeSessionIdRef.current = newSid;
+      const newTargetLogs: TargetSessionLog[] = allTargetNumbers.map((num, i) => {
+        const carrier = detectCarrier(num);
+        return {
+          id: `sess_${Date.now()}_${i}_${num.slice(-4)}`,
+          phoneNumber: num,
+          carrierName: carrier?.name || "Mobile Carrier",
+          carrierCircle: carrier?.circle || "Standard",
+          mode: selectedMode,
+          modeTitle: activeModeObj.title,
+          targetCount,
+          currentIteration: 1,
+          status: "active" as const,
+          startedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          smsSent: 0,
+          secondarySent: 0,
+        };
+      });
 
-      const newTargetLog: TargetSessionLog = {
-        id: newSid,
-        phoneNumber,
-        carrierName: carrierInfo?.name || "Mobile Carrier",
-        carrierCircle: carrierInfo?.circle || "Standard",
-        mode: selectedMode,
-        modeTitle: activeModeObj.title,
-        targetCount,
-        currentIteration: 1,
-        status: "active",
-        startedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        smsSent: 0,
-        secondarySent: 0,
-      };
+      const primarySid = newTargetLogs[0]?.id || `sess_${Date.now()}`;
+      setActiveSessionId(primarySid);
+      activeSessionIdRef.current = primarySid;
 
-      setTargetLogs((prev) => [newTargetLog, ...prev.filter((p) => p.id !== newSid)]);
+      setTargetLogs((prev) => [...newTargetLogs, ...prev.filter((p) => p.status !== "active")]);
 
-      // Notify backend background loop manager (with user credentials)
-      fetch(`${BACKEND_API_BASE}/sender/loop`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.token}`,
-          "x-api-id": session.credentials.api_id || "",
-          "x-api-key": session.credentials.api_key || "",
-        },
-        body: JSON.stringify({ phone: phoneNumber, mode: selectedMode, maxIterations: targetCount, intervalMs: 10000 }),
-      }).catch(() => null);
+      // Notify backend background loop manager for all targets
+      allTargetNumbers.forEach((targetNum) => {
+        fetch(`${BACKEND_API_BASE}/sender/loop`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.token}`,
+            "x-api-id": session.credentials.api_id || "",
+            "x-api-key": session.credentials.api_key || "",
+          },
+          body: JSON.stringify({ phone: targetNum, mode: selectedMode, maxIterations: targetCount, intervalMs: 10000 }),
+        }).catch(() => null);
+      });
 
-      // Dispatch Iteration 1 immediately (Part of the 1 paid hit, NO further money deduction)
+      // Dispatch Iteration 1 immediately (Part of the paid hit, NO further money deduction)
       dispatchLoopIteration(1);
     } catch (err: any) {
       setLogs((p) => [
@@ -966,28 +1018,28 @@ export default function App() {
     const sidToStop = typeof targetId === "string" ? targetId : activeSessionIdRef.current;
     const stopTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-    if (sidToStop) {
-      setTargetLogs((prev) =>
-        prev.map((item) =>
-          item.id === sidToStop || item.status === "active"
-            ? {
-                ...item,
-                status: "stopped",
-                endedAt: stopTime,
-              }
-            : item
-        )
-      );
-    }
+    setTargetLogs((prev) =>
+      prev.map((item) =>
+        item.id === sidToStop || item.status === "active"
+          ? {
+              ...item,
+              status: "stopped",
+              endedAt: stopTime,
+            }
+          : item
+      )
+    );
     setActiveSessionId(null);
     activeSessionIdRef.current = null;
 
-    // Stop backend background loop
-    fetch(`${BACKEND_API_BASE}/sender/loop/stop`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: phoneNumber }),
-    }).catch(() => null);
+    // Stop backend background loop for all targets
+    allTargetNumbers.forEach((targetNum) => {
+      fetch(`${BACKEND_API_BASE}/sender/loop/stop`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: targetNum }),
+      }).catch(() => null);
+    });
 
     const abortLog: LogEntry = {
       id: Math.random().toString(),
@@ -1016,32 +1068,30 @@ export default function App() {
                 clearInterval(runIntervalRef.current);
                 runIntervalRef.current = null;
               }
-              const compSid = activeSessionIdRef.current;
               const compTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-              if (compSid) {
-                setTargetLogs((prev) =>
-                  prev.map((item) =>
-                    item.id === compSid
-                      ? {
-                          ...item,
-                          status: "completed",
-                          currentIteration: targetCount,
-                          endedAt: compTime,
-                        }
-                      : item
-                  )
-                );
-              }
+              setTargetLogs((prev) =>
+                prev.map((item) =>
+                  item.status === "active"
+                    ? {
+                        ...item,
+                        status: "completed",
+                        currentIteration: targetCount,
+                        endedAt: compTime,
+                      }
+                    : item
+                )
+              );
               setActiveSessionId(null);
               activeSessionIdRef.current = null;
 
+              const targetsStr = allTargetNumbers.map((n) => `+91 ${n}`).join(", ");
               setLogs((p) => [
                 ...p,
                 {
                   id: Math.random().toString(),
                   timestamp: new Date().toLocaleTimeString(),
                   channel: "sys",
-                  message: `🎉 [SESSION COMPLETE] Successfully delivered all ${targetCount}/${targetCount} upstream refreshes over ${loopTotalMins} minutes for +91 ${phoneNumber}.`,
+                  message: `🎉 [SESSION COMPLETE] Successfully delivered all ${targetCount}/${targetCount} upstream refreshes over ${loopTotalMins} minutes for ${targetsStr}.`,
                   status: "info",
                   latency: 0,
                 },
@@ -1065,7 +1115,7 @@ export default function App() {
         runIntervalRef.current = null;
       }
     };
-  }, [isRunning, targetCount, loopTotalMins, selectedMode, phoneNumber]);
+  }, [isRunning, targetCount, loopTotalMins, selectedMode, phoneNumber, extraPhoneNumbers]);
 
   // Current active mode details
   const activeModeObj = ATTACK_MODES.find((m) => m.id === selectedMode) || ATTACK_MODES[0];
@@ -1274,8 +1324,15 @@ export default function App() {
                   onClick={async () => {
                     try {
                       const text = await navigator.clipboard.readText();
-                      const digits = text.replace(/\D/g, "").slice(-10);
-                      if (digits.length === 10) setPhoneNumber(digits);
+                      const matches = text.match(/\b\d{10}\b/g);
+                      if (matches && matches.length > 1) {
+                        const unique = Array.from(new Set(matches)).slice(0, 10);
+                        setPhoneNumber(unique[0]);
+                        setExtraPhoneNumbers(unique.slice(1));
+                      } else {
+                        const digits = text.replace(/\D/g, "").slice(-10);
+                        if (digits.length === 10) setPhoneNumber(digits);
+                      }
                     } catch {}
                   }}
                   disabled={isRunning}
@@ -1316,6 +1373,140 @@ export default function App() {
               </span>
             </div>
           </div>
+
+          {/* Additional Target Phone Numbers */}
+          {extraPhoneNumbers.map((extraNum, idx) => {
+            const extraCarrier = detectCarrier(extraNum);
+            const isExtraProtected = PROTECTED_NUMBERS.includes(extraNum);
+            const isExtraValid = extraNum.length === 10 && !isExtraProtected;
+
+            return (
+              <div key={idx} className="field-group extra-phone-group" style={{ marginTop: "1rem" }}>
+                <div className="field-label-row">
+                  <label className="field-label" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <Phone className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Target Number #{idx + 2} *</span>
+                    <span className="target-num-badge">Target #{idx + 2}</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="remove-phone-btn"
+                    onClick={() => !isRunning && handleRemoveExtraNumber(idx)}
+                    disabled={isRunning}
+                    title="Remove this number"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Remove</span>
+                  </button>
+                </div>
+
+                <div className="phone-input-wrapper">
+                  <div className="country-flag-box">
+                    <span>🇮🇳</span>
+                    <span>+91</span>
+                  </div>
+                  <input
+                    type="tel"
+                    value={extraNum}
+                    onChange={(e) => handleExtraPhoneChange(idx, e.target.value)}
+                    placeholder="Enter 10-digit mobile number"
+                    className="phone-native-input"
+                    disabled={isRunning}
+                    autoComplete="off"
+                  />
+                  <div className="input-actions">
+                    {extraNum && (
+                      <button
+                        type="button"
+                        className="mini-action-btn"
+                        onClick={() => !isRunning && handleExtraPhoneChange(idx, "")}
+                        disabled={isRunning}
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="mini-action-btn"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText();
+                          const digits = text.replace(/\D/g, "").slice(-10);
+                          if (digits.length === 10) handleExtraPhoneChange(idx, digits);
+                        } catch {}
+                      }}
+                      disabled={isRunning}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      className="mini-action-btn delete-action"
+                      onClick={() => !isRunning && handleRemoveExtraNumber(idx)}
+                      disabled={isRunning}
+                      title="Remove Target"
+                    >
+                      <Trash2 className="w-3 h-3 text-rose-500" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Carrier Detection Badge for Extra Number */}
+                <div className="carrier-detect-bar">
+                  <span
+                    className={`carrier-badge ${
+                      isExtraProtected ? "invalid" : isExtraValid ? "valid" : ""
+                    }`}
+                  >
+                    {isExtraProtected ? (
+                      <>
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600 inline" />
+                        <span style={{ color: "#dc2626", fontWeight: 700 }}>
+                          Protected Number • Invalid Target
+                        </span>
+                      </>
+                    ) : isExtraValid && extraCarrier ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span style={{ color: extraCarrier.color }}>{extraCarrier.name}</span>
+                        <span className="text-gray-500">· {extraCarrier.circle}</span>
+                      </>
+                    ) : extraNum.length > 0 ? (
+                      <span>Enter {10 - extraNum.length} more digits</span>
+                    ) : (
+                      <span>Waiting for target phone input...</span>
+                    )}
+                  </span>
+                  <span className="text-[11px] font-mono text-gray-500">
+                    {extraNum.length}/10 Digits
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Add Target Number Trigger Button */}
+          {!isRunning && (
+            <div className="add-target-bar" style={{ marginTop: "0.85rem", marginBottom: "0.85rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                id="add-extra-phone-btn"
+                className="add-target-number-btn"
+                onClick={handleAddExtraNumber}
+                disabled={extraPhoneNumbers.length >= 9}
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add Another Target Number</span>
+              </button>
+
+              {extraPhoneNumbers.length > 0 && (
+                <div className="multi-targets-counter-badge">
+                  <Users className="w-3.5 h-3.5 text-amber-600" />
+                  <span><strong>{1 + extraPhoneNumbers.length}</strong> Numbers Configured</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 2. Attack Mode Dropdown (SMS + WhatsApp, SMS + WhatsApp or Call, SMS Only) */}
           <div className="field-group" ref={dropdownRef}>
@@ -1428,16 +1619,18 @@ export default function App() {
               <button
                 id="start-banger-btn"
                 type="button"
-                className={`launch-btn start ${!isPhoneValid || isProtectedNumber || isStarting ? "disabled" : ""}`}
+                className={`launch-btn start ${!areAllTargetsValid || hasProtectedTarget || isStarting ? "disabled" : ""}`}
                 onClick={handleStartBanger}
-                disabled={!isPhoneValid || isProtectedNumber || isStarting}
+                disabled={!areAllTargetsValid || hasProtectedTarget || isStarting}
               >
                 <Flame className="w-5 h-5 fire-icon" />
                 <span>
-                  {isProtectedNumber
+                  {hasProtectedTarget
                     ? "PROTECTED TARGET (BLOCKED)"
                     : isStarting
                     ? `STARTING...`
+                    : allTargetNumbers.length > 1
+                    ? `START ${allTargetNumbers.length} TARGETS (${selectedMode === "sms_call" ? `₹${totalCost} / 150 iters (25m)` : `₹${totalCost} / 120 iters (20m)`})`
                     : `START (${selectedMode === "sms_call" ? "₹15 / 150 iters (25m)" : "₹10 / 120 iters (20m)"})`}
                 </span>
               </button>
