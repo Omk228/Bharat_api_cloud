@@ -52,6 +52,10 @@ import {
   Users,
   Search,
   X,
+  Car,
+  Gauge,
+  Shield,
+  Fuel,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -244,7 +248,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -266,6 +270,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "tan_lookup"
         : search["service"] === "tan_to_company" || search["service"] === "tan-to-company" || search["service"] === "tan" || search["service"] === "tan_company" || search["service"] === "tan_deductor"
         ? "tan_to_company"
+        : search["service"] === "vehicle_rc" || search["service"] === "vehicle-rc" || search["service"] === "rc" || search["service"] === "vehicle" || search["service"] === "rc_verification" || search["service"] === "rc-verification"
+        ? "vehicle_rc"
         : search["service"] === "gst_to_contact" || search["service"] === "gst-to-contact" || search["service"] === "gst_contact" || search["service"] === "gstin_to_contact"
         ? "gst_to_contact"
         : search["service"] === "pan_to_gst" || search["service"] === "pan-to-gst" || search["service"] === "pan_gst" || search["service"] === "gstin_by_pan"
@@ -339,7 +345,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
     searchParams.service === "gst_authenticated_advance"
       ? "gst_authenticated_advance"
       : searchParams.service === "din_to_pan"
@@ -356,6 +362,8 @@ function TestApiPage() {
       ? "tan_lookup"
       : searchParams.service === "tan_to_company"
       ? "tan_to_company"
+      : searchParams.service === "vehicle_rc"
+      ? "vehicle_rc"
       : searchParams.service === "gst_to_contact"
       ? "gst_to_contact"
       : searchParams.service === "pan_to_gst"
@@ -468,6 +476,7 @@ function TestApiPage() {
     if (serviceKey === "itr_check" || serviceKey === "itr-check" || serviceKey === "api_itr_check") return 5.90;
     if (serviceKey === "tan_lookup" || serviceKey === "tan-lookup" || serviceKey === "api_tan_lookup") return 2.36;
     if (serviceKey === "tan_to_company" || serviceKey === "tan-to-company" || serviceKey === "api_tan_to_company") return 2.36;
+    if (serviceKey === "vehicle_rc" || serviceKey === "vehicle-rc" || serviceKey === "api_vehicle_rc") return 2.36;
     if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.90;
     if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.90;
     if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.54;
@@ -596,6 +605,10 @@ function TestApiPage() {
   // TAN to Company fields
   const [tanToCompanyTan, setTanToCompanyTan] = useState("");
   const [tanToCompanyClientRef, setTanToCompanyClientRef] = useState("");
+
+  // Vehicle RC fields
+  const [vehicleRcNumber, setVehicleRcNumber] = useState("");
+  const [vehicleRcClientRef, setVehicleRcClientRef] = useState("");
 
   // Contact To GST fields
   const [contactToGstInput, setContactToGstInput] = useState("");
@@ -1020,6 +1033,14 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "vehicle_rc"
+      ? {
+          vehicle_number: vehicleRcNumber.trim().toUpperCase() || "<Vehicle Reg Number e.g. DL01AB1234>",
+          ...(vehicleRcClientRef.trim() ? { client_ref_num: vehicleRcClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
       : selectedService === "gst_to_contact"
       ? {
           gstin: gstToContactNumber.trim().toUpperCase() || "<15-char GSTIN>",
@@ -1369,6 +1390,17 @@ function TestApiPage() {
         return;
       }
     }
+    if (selectedService === "vehicle_rc") {
+      const cleanRc = vehicleRcNumber.trim().toUpperCase().replace(/[\s-]/g, "");
+      if (!cleanRc) {
+        toast.error("Please enter a vehicle registration / RC number (e.g. DL01AB1234)");
+        return;
+      }
+      if (cleanRc.length < 5 || cleanRc.length > 15) {
+        toast.error("Invalid Vehicle RC format. Must be a valid Indian registration number (e.g. DL01AB1234)");
+        return;
+      }
+    }
     if (selectedService === "gst_to_contact") {
       const cleanGst = gstToContactNumber.trim().toUpperCase();
       if (!cleanGst) {
@@ -1627,6 +1659,14 @@ function TestApiPage() {
         rawData = await apiClient.verifyTanToCompany({
           tan: tanToCompanyTan.trim().toUpperCase(),
           client_ref_num: tanToCompanyClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "vehicle_rc") {
+        rawData = await apiClient.verifyVehicleRc({
+          vehicle_number: vehicleRcNumber.trim().toUpperCase(),
+          client_ref_num: vehicleRcClientRef.trim() || undefined,
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -2049,7 +2089,8 @@ function TestApiPage() {
       Boolean(resData.full_name) ||
       Boolean(resData.pan && resData.pan_status !== "Invalid") ||
       Boolean(resData.aadhaar && resData.aadhaar_status !== "Invalid") ||
-      Boolean(resData.creditorAccountId && resData.account_status !== "INVALID")
+      Boolean(resData.creditorAccountId && resData.account_status !== "INVALID") ||
+      Boolean(selectedService === "vehicle_rc" && ((responseJson as any)?.success === true || (responseJson as any)?.status === "success" || responseJson?.result_code === 101 || Boolean((responseJson?.result as any)?.owner_name) || Boolean((responseJson?.data as any)?.owner_name)))
     ) &&
     !(
       (responseJson?.result_code === 102 || responseJson?.result_code === 103) &&
@@ -2121,6 +2162,8 @@ function TestApiPage() {
       ? "/api/v1/verify/tan-lookup"
       : selectedService === "tan_to_company"
       ? "/api/v1/verify/tan-to-company"
+      : selectedService === "vehicle_rc"
+      ? "/api/v1/verify/vehicle-rc"
       : selectedService === "gst_to_contact"
       ? "/api/v1/verify/gst-to-contact"
       : selectedService === "pan_to_gst"
@@ -2196,6 +2239,8 @@ function TestApiPage() {
       ? "TAN Lookup"
       : selectedService === "tan_to_company"
       ? "TAN to Company"
+      : selectedService === "vehicle_rc"
+      ? "Vehicle RC"
       : selectedService === "gst_to_contact"
       ? "GST to Contact Details"
       : selectedService === "pan_to_gst"
@@ -2333,6 +2378,8 @@ function TestApiPage() {
                   ? "Direct Mobile to Universal Account Number (UAN) & EPFO Employment Verification powered by Bharat API Cloud."
                   : selectedService === "uan_direct"
                   ? "Direct 12-digit UAN EPFO Employment History & Establishment Verification powered by Bharat API Cloud."
+                  : selectedService === "vehicle_rc"
+                  ? "Direct live Vehicle RC gateway: verify vehicle registration number, owner name, maker & model, vehicle class, fuel type, fitness, insurance, PUC, road tax, and financer/hypothecation powered by Bharat API Cloud."
                   : `Direct live verification gateway powered by Bharat API Cloud with automatic wallet debit (₹${getServicePrice(selectedService).toFixed(2)}) & refunds.`}
               </p>
             </div>
@@ -2358,6 +2405,8 @@ function TestApiPage() {
                       ? "tan-lookup"
                       : selectedService === "tan_to_company"
                       ? "tan-to-company"
+                      : selectedService === "vehicle_rc"
+                      ? "vehicle-rc"
                       : selectedService === "gst_to_contact"
                       ? "gst-to-contact"
                       : selectedService === "pan_to_gst"
@@ -2438,6 +2487,7 @@ function TestApiPage() {
                   {selectedService === "itr_check" && <FileCheck className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "tan_lookup" && <Search className="h-4 w-4 text-amber-400" />}
                   {selectedService === "tan_to_company" && <Building2 className="h-4 w-4 text-orange-400" />}
+                  {selectedService === "vehicle_rc" && <Car className="h-4 w-4 text-sky-400" />}
                   {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
@@ -2476,6 +2526,7 @@ function TestApiPage() {
                     {selectedService === "itr_check" && "ITR filling verification (/api/v1/verify/itr-check)"}
                     {selectedService === "tan_lookup" && "TAN Lookup (/api/v1/verify/tan-lookup)"}
                     {selectedService === "tan_to_company" && "TAN to Company (/api/v1/verify/tan-to-company)"}
+                    {selectedService === "vehicle_rc" && "Vehicle RC (/api/v1/verify/vehicle-rc)"}
                     {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
                     {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
                     {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
@@ -3212,6 +3263,69 @@ function TestApiPage() {
 
                       <p className="text-[11px] text-muted-foreground">
                         👉 Real-time retrieval of deductor legal entity identity, company name, deductor category, linked PAN, registered address, and Assessing Officer (AO) jurisdiction from an Indian TAN number.
+                      </p>
+                    </>
+                  ) : selectedService === "vehicle_rc" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Car className="h-3.5 w-3.5 text-sky-400" /> Vehicle Registration / RC Number *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">e.g. DL01AB1234</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={15}
+                            value={vehicleRcNumber}
+                            onChange={(e) => setVehicleRcNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15))}
+                            placeholder="e.g. DL01AB1234"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-sky-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Input Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setVehicleRcNumber("DL01AB1234")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample RC
+                        </button>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={vehicleRcClientRef}
+                          onChange={(e) => setVehicleRcClientRef(e.target.value)}
+                          placeholder="e.g. RC_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-sky-500"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-sky-500/10 border border-sky-500/20 p-2.5 text-xs text-sky-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-sky-400">₹{getServicePrice("vehicle_rc").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-sky-300/80">₹2.00 + 18% GST (₹0.36)</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time Vehicle Registration Certificate (RC) verification: owner name, maker & model, vehicle class, fuel type, fitness, insurance policy & validity, PUC, road tax, and financer/hypothecation.
                       </p>
                     </>
                   ) : selectedService === "gst_to_contact" ? (
@@ -4855,6 +4969,8 @@ function TestApiPage() {
                       <Building className="h-8 w-8 opacity-40 text-violet-400" />
                     ) : selectedService === "gst_to_contact" ? (
                       <Building2 className="h-8 w-8 opacity-40 text-emerald-400" />
+                    ) : selectedService === "vehicle_rc" ? (
+                      <Car className="h-8 w-8 opacity-40 text-sky-400" />
                     ) : selectedService === "work_email" ? (
                       <Mail className="h-8 w-8 opacity-40 text-violet-400" />
                     ) : selectedService === "domain_age" ? (
@@ -4872,7 +4988,7 @@ function TestApiPage() {
                     )}
                     <p className="text-sm font-medium">No verification request sent yet</p>
                     <p className="text-xs">
-                      Enter {selectedService === "gst_authenticated_advance" ? "a 15-character GSTIN (e.g. 07AAAAA0000A1Z5)" : selectedService === "din_to_pan" ? "an 8-digit Director Identification Number (e.g. 00000001 or 07123456)" : selectedService === "contact_to_gst" ? "a 10-digit mobile number or email address (e.g. 9876543210 or accounts@bharatcloud.in)" : selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "pan_to_cin" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
+                      Enter {selectedService === "gst_authenticated_advance" ? "a 15-character GSTIN (e.g. 07AAAAA0000A1Z5)" : selectedService === "din_to_pan" ? "an 8-digit Director Identification Number (e.g. 00000001 or 07123456)" : selectedService === "contact_to_gst" ? "a 10-digit mobile number or email address (e.g. 9876543210 or accounts@bharatcloud.in)" : selectedService === "cin_to_pan" ? "a 21-character CIN (e.g. U72200DL2018PTC123456)" : selectedService === "pan_to_cin" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "gst_to_contact" ? "a 15-character GSTIN (e.g. 07AAACB1234A1Z1)" : selectedService === "vehicle_rc" ? "a vehicle registration number (e.g. DL01AB1234)" : selectedService === "pan_to_gst" ? "a 10-character PAN number (e.g. AAACB1234A)" : selectedService === "mobile_intelligence" ? "a 10-digit mobile number (e.g. 9876543210)" : selectedService === "work_email" ? "a corporate email address (e.g. support@acmecorp.com)" : selectedService === "mobile_upi" ? "a 10-digit mobile number (e.g. 8527475512)" : selectedService === "domain_age" ? "a target domain name (e.g. bharatapicloud.io or google.com)" : selectedService === "pan" || selectedService === "pan_plus" ? "a 10-digit PAN number" : selectedService === "aadhaar" ? "an Aadhaar number" : selectedService === "bank" ? "Bank Account Number & IFSC" : selectedService === "name_finder" ? "a 10-digit mobile number" : "Mobile Number & Name"} on the left and click &quot;Send Request&quot; to fetch live verified details.
                     </p>
                   </div>
                 )}
@@ -4893,6 +5009,8 @@ function TestApiPage() {
                           ? "border-blue-500/30 bg-gradient-to-b from-blue-500/5 to-transparent"
                           : selectedService === "pan_to_cin"
                           ? "border-violet-500/30 bg-gradient-to-b from-violet-500/5 to-transparent"
+                          : selectedService === "vehicle_rc"
+                          ? "border-sky-500/30 bg-gradient-to-b from-sky-500/5 to-transparent"
                           : selectedService === "gst_to_contact"
                           ? "border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent"
                           : selectedService === "pan_to_gst"
@@ -7169,6 +7287,430 @@ function TestApiPage() {
                                       </h4>
                                       <p className="text-xs text-muted-foreground max-w-md mx-auto">
                                         No registered deductor entity or company details were found for TAN {tanVal}.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()
+                          ) : selectedService === "vehicle_rc" ? (
+                            (() => {
+                              const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                              const rcNumber = String(
+                                rawResult.vehicle_number ||
+                                rawResult.rc_number ||
+                                rawResult.reg_no ||
+                                rawResult.registration_number ||
+                                vehicleRcNumber ||
+                                "—"
+                              ).trim().toUpperCase();
+
+                              const ownerName = String(
+                                rawResult.owner_name ||
+                                rawResult.ownerName ||
+                                rawResult.owner ||
+                                rawResult.registered_owner ||
+                                rawResult.name ||
+                                ""
+                              ).trim();
+
+                              const makerModel = String(
+                                rawResult.maker_model ||
+                                rawResult.makerModel ||
+                                rawResult.model ||
+                                rawResult.vehicle_model ||
+                                rawResult.maker ||
+                                rawResult.manufacturer ||
+                                "—"
+                              ).trim();
+
+                              const vehicleClass = String(
+                                rawResult.vehicle_class ||
+                                rawResult.vehicleClass ||
+                                rawResult.class ||
+                                rawResult.vehicle_category ||
+                                "—"
+                              ).trim();
+
+                              const fuelType = String(
+                                rawResult.fuel_type ||
+                                rawResult.fuelType ||
+                                rawResult.fuel_descr ||
+                                rawResult.fuel ||
+                                "—"
+                              ).trim().toUpperCase();
+
+                              const regDate = String(
+                                rawResult.registration_date ||
+                                rawResult.registrationDate ||
+                                rawResult.reg_date ||
+                                "—"
+                              ).trim();
+
+                              const fitnessUpto = String(
+                                rawResult.fitness_upto ||
+                                rawResult.fitnessUpto ||
+                                rawResult.fitness_validity ||
+                                "—"
+                              ).trim();
+
+                              const insuranceUpto = String(
+                                rawResult.insurance_upto ||
+                                rawResult.insuranceUpto ||
+                                rawResult.insurance_validity ||
+                                "—"
+                              ).trim();
+
+                              const insuranceCompany = String(
+                                rawResult.insurance_company ||
+                                rawResult.insuranceCompany ||
+                                rawResult.insurer ||
+                                "—"
+                              ).trim();
+
+                              const policyNumber = String(
+                                rawResult.policy_number ||
+                                rawResult.policyNumber ||
+                                rawResult.insurance_policy_no ||
+                                ""
+                              ).trim();
+
+                              const pucUpto = String(
+                                rawResult.pollution_upto ||
+                                rawResult.pollutionUpto ||
+                                rawResult.pucc_upto ||
+                                rawResult.puc_validity ||
+                                "—"
+                              ).trim();
+
+                              const roadTaxUpto = String(
+                                rawResult.road_tax_upto ||
+                                rawResult.roadTaxUpto ||
+                                rawResult.tax_upto ||
+                                "—"
+                              ).trim();
+
+                              const financer = String(
+                                rawResult.financer ||
+                                rawResult.financer_name ||
+                                rawResult.hypothecation ||
+                                "None / Not Hypothecated"
+                              ).trim();
+
+                              const rtoName = String(
+                                rawResult.rto_name ||
+                                rawResult.rtoName ||
+                                rawResult.registered_at ||
+                                rawResult.rto ||
+                                "—"
+                              ).trim();
+
+                              const stateName = String(
+                                rawResult.state ||
+                                rawResult.state_name ||
+                                "—"
+                              ).trim();
+
+                              const statusVal = String(
+                                rawResult.status ||
+                                rawResult.rc_status ||
+                                (ownerName || (makerModel && makerModel !== "—") ? "Active" : "Unknown")
+                              ).trim();
+
+                              const colorVal = String(rawResult.color || rawResult.vehicle_color || "—").trim();
+                              const cubicCapacity = String(rawResult.cubic_capacity || rawResult.cc || "—").trim();
+                              const seatingCapacity = String(rawResult.seating_capacity || rawResult.seats || "—").trim();
+                              const chassisNumber = String(rawResult.chassis_number || rawResult.chassis_no || "—").trim();
+                              const engineNumber = String(rawResult.engine_number || rawResult.engine_no || "—").trim();
+                              const norms = String(rawResult.norms || rawResult.emission_norms || "—").trim();
+
+                              const isVerified = Boolean(
+                                rawResult.verified ||
+                                ownerName ||
+                                (makerModel && makerModel !== "—")
+                              );
+
+                              return (
+                                <div className="space-y-4">
+                                  {/* Top Header Card */}
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
+                                        <Car className="h-5 w-5" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h3 className="text-base font-bold text-foreground">
+                                            {ownerName || rcNumber}
+                                          </h3>
+                                          <span
+                                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                                              isVerified && statusVal.toLowerCase().includes("active")
+                                                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                                : isVerified
+                                                ? "bg-sky-500/15 border-sky-500/30 text-sky-400"
+                                                : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                            }`}
+                                          >
+                                            {isVerified ? `RC ${statusVal}` : "Unverified RC"}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                          <MapPin className="h-3.5 w-3.5 text-sky-400" />
+                                          {rtoName !== "—" ? `${rtoName}, ${stateName}` : stateName !== "—" ? stateName : "Parivahan Vahan Registry"}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      {/* Authentic Indian License Plate Styling */}
+                                      <div className="inline-flex items-center rounded-md border-2 border-slate-900 bg-white shadow-sm overflow-hidden text-slate-950 font-bold font-mono">
+                                        <div className="bg-blue-700 text-white px-1.5 py-1 text-[9px] flex flex-col items-center justify-center leading-none">
+                                          <span>IND</span>
+                                        </div>
+                                        <div className="px-3 py-1 text-sm sm:text-base tracking-wider select-all">
+                                          {rcNumber}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(rcNumber, "Vehicle RC Number")}
+                                          className="p-1 hover:bg-slate-100 text-slate-700 transition-colors"
+                                          title="Copy Registration Number"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Hero Vehicle Overview Card */}
+                                  <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-5 relative overflow-hidden">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                      <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-[10px] uppercase font-bold tracking-wider text-sky-400">
+                                            Registered Owner
+                                          </span>
+                                          {ownerName && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.2">
+                                              <CheckCircle2 className="h-3 w-3" /> Identity Verified
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-lg sm:text-xl font-bold text-foreground">
+                                          <span>{ownerName || "Name Not Disclosed in Registry"}</span>
+                                          {ownerName && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleCopyField(ownerName, "Owner Name")}
+                                              className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                                              title="Copy Owner Name"
+                                            >
+                                              <Copy className="h-4 w-4" />
+                                            </button>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          <strong className="text-foreground">{makerModel}</strong> · {vehicleClass}
+                                        </p>
+                                      </div>
+
+                                      <div className="flex flex-wrap sm:flex-col items-start sm:items-end gap-2 text-xs">
+                                        <span className={`rounded-lg px-3 py-1 font-semibold uppercase tracking-wider border ${
+                                          fuelType.includes("ELECTRIC") || fuelType.includes("EV")
+                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                            : fuelType.includes("CNG")
+                                            ? "bg-teal-500/15 border-teal-500/30 text-teal-400"
+                                            : fuelType.includes("DIESEL")
+                                            ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                            : "bg-sky-500/15 border-sky-500/30 text-sky-400"
+                                        }`}>
+                                          <Fuel className="h-3 w-3 inline mr-1" />
+                                          {fuelType}
+                                        </span>
+                                        {regDate !== "—" && (
+                                          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                            <Calendar className="h-3 w-3 text-sky-400" /> Reg: {regDate}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Compliance & Validity Grid */}
+                                  <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+                                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Compliance & Validity Overview
+                                      </h4>
+                                      <span className="text-[11px] text-muted-foreground">Parivahan Live Records</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                      {/* Insurance Validity */}
+                                      <div className="rounded-lg border border-border/80 bg-background/60 p-3 space-y-1">
+                                        <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground">
+                                          <span>Insurance Upto</span>
+                                          <Shield className="h-3 w-3 text-emerald-400" />
+                                        </div>
+                                        <div className="text-sm font-bold text-foreground font-mono">
+                                          {insuranceUpto}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground truncate" title={insuranceCompany}>
+                                          {insuranceCompany !== "—" ? insuranceCompany : "Insurer Record Available"}
+                                        </p>
+                                        {policyNumber && (
+                                          <p className="text-[10px] font-mono text-muted-foreground truncate" title={policyNumber}>
+                                            Pol: {policyNumber}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Fitness Validity */}
+                                      <div className="rounded-lg border border-border/80 bg-background/60 p-3 space-y-1">
+                                        <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground">
+                                          <span>Fitness Upto</span>
+                                          <CheckCircle2 className="h-3 w-3 text-sky-400" />
+                                        </div>
+                                        <div className="text-sm font-bold text-foreground font-mono">
+                                          {fitnessUpto}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          Parivahan Fitness Cert
+                                        </p>
+                                      </div>
+
+                                      {/* Pollution (PUC) Validity */}
+                                      <div className="rounded-lg border border-border/80 bg-background/60 p-3 space-y-1">
+                                        <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground">
+                                          <span>PUC / Pollution</span>
+                                          <Gauge className="h-3 w-3 text-amber-400" />
+                                        </div>
+                                        <div className="text-sm font-bold text-foreground font-mono">
+                                          {pucUpto}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          Emission Certificate
+                                        </p>
+                                      </div>
+
+                                      {/* Road Tax Validity */}
+                                      <div className="rounded-lg border border-border/80 bg-background/60 p-3 space-y-1">
+                                        <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground">
+                                          <span>Road Tax Upto</span>
+                                          <Calendar className="h-3 w-3 text-indigo-400" />
+                                        </div>
+                                        <div className="text-sm font-bold text-foreground font-mono">
+                                          {roadTaxUpto}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          Motor Vehicle Tax Paid
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Hypothecation / Financer Card */}
+                                    <div className="rounded-lg border border-border/80 bg-background/40 p-3 flex flex-wrap items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <Landmark className="h-4 w-4 text-amber-400" />
+                                        <div>
+                                          <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                                            Hypothecation / Financer
+                                          </span>
+                                          <span className="text-xs font-semibold text-foreground">
+                                            {financer}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <span className={`text-[10px] font-semibold rounded px-2 py-0.5 border ${
+                                        financer.toLowerCase().includes("not") || financer.toLowerCase().includes("none")
+                                          ? "bg-secondary text-muted-foreground border-border"
+                                          : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                      }`}>
+                                        {financer.toLowerCase().includes("not") || financer.toLowerCase().includes("none")
+                                          ? "Unencumbered"
+                                          : "Financed Vehicle"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Technical & Engine Specifications */}
+                                  <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+                                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                        <Gauge className="h-3.5 w-3.5 text-sky-400" /> Technical & Engine Specifications
+                                      </h4>
+                                      <span className="text-[11px] text-muted-foreground">Manufacturer Specs</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Chassis No.</span>
+                                        <div className="flex items-center justify-between font-mono font-semibold text-foreground pt-0.5">
+                                          <span className="truncate" title={chassisNumber}>{chassisNumber}</span>
+                                          {chassisNumber !== "—" && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleCopyField(chassisNumber, "Chassis Number")}
+                                              className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                              title="Copy Chassis Number"
+                                            >
+                                              <Copy className="h-3 w-3" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Engine No.</span>
+                                        <div className="flex items-center justify-between font-mono font-semibold text-foreground pt-0.5">
+                                          <span className="truncate" title={engineNumber}>{engineNumber}</span>
+                                          {engineNumber !== "—" && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleCopyField(engineNumber, "Engine Number")}
+                                              className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                              title="Copy Engine Number"
+                                            >
+                                              <Copy className="h-3 w-3" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Displacement (CC)</span>
+                                        <span className="font-semibold text-foreground block pt-0.5">{cubicCapacity}</span>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Seating Capacity</span>
+                                        <span className="font-semibold text-foreground block pt-0.5">{seatingCapacity} Seats</span>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Vehicle Color</span>
+                                        <span className="font-semibold text-foreground block pt-0.5">{colorVal}</span>
+                                      </div>
+
+                                      <div className="rounded-lg border border-border/70 bg-background/60 p-2.5 space-y-0.5">
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Emission Norms</span>
+                                        <span className="font-semibold text-foreground block pt-0.5 truncate" title={norms}>{norms}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Empty state if not found */}
+                                  {!isVerified && (
+                                    <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-6 text-center space-y-2">
+                                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                                        <AlertCircle className="h-5 w-5" />
+                                      </div>
+                                      <h4 className="text-sm font-semibold text-foreground">
+                                        No Vehicle RC Record Found
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                                        No vehicle registration certificate records were found matching RC number {rcNumber} in the national Parivahan registry.
                                       </p>
                                     </div>
                                   )}
@@ -13360,7 +13902,9 @@ function TestApiPage() {
                         <div className="rounded-lg bg-background p-3 text-xs font-mono text-muted-foreground">
                           <p>
                             Target:{" "}
-                            {selectedService === "pan"
+                            {selectedService === "vehicle_rc"
+                              ? `Vehicle RC: ${vehicleRcNumber || "N/A"}`
+                              : selectedService === "pan"
                               ? `PAN: ${pan}`
                               : selectedService === "aadhaar"
                               ? `Aadhaar: ${aadhaar}`
@@ -13400,6 +13944,8 @@ function TestApiPage() {
                               ? resData.pan_status
                               : typeof resData.aadhaar_status === "string"
                               ? resData.aadhaar_status
+                              : typeof (resData as any).status === "string" && (resData as any).status !== "Unknown"
+                              ? (resData as any).status
                               : typeof responseJson.message === "string"
                               ? responseJson.message
                               : "Verification Failed / Invalid Input"}

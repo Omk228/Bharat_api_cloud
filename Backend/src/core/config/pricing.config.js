@@ -178,6 +178,12 @@ export const API_PRICING = {
   '/tan-to-company': 2.00,
   'tan_to_company': 2.00,
   'tan-to-company': 2.00,
+  '/api/v1/verify/vehicle-rc': 2.00,
+  '/verify/vehicle-rc': 2.00,
+  '/api/v1/vehicle-rc': 2.00,
+  '/vehicle-rc': 2.00,
+  'vehicle_rc': 2.00,
+  'vehicle-rc': 2.00,
   default: 2.00,
 };
 

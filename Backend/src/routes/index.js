@@ -35,6 +35,7 @@ import panToCinRoutes from '../modules/verification/pan_to_cin/panToCin.routes.j
 import itrCheckRoutes from '../modules/verification/itr_check/itrCheck.routes.js';
 import tanLookupRoutes from '../modules/verification/tan_lookup/tanLookup.routes.js';
 import tanToCompanyRoutes from '../modules/verification/tan_to_company/tanToCompany.routes.js';
+import vehicleRcRoutes from '../modules/verification/vehicle_rc/vehicleRc.routes.js';
 import senderRoutes from '../modules/sender/sender.routes.js';
 
 const apiRouter = Router();
@@ -114,5 +115,8 @@ apiRouter.use('/', tanLookupRoutes);
 apiRouter.use('/verify/tan-to-company', tanToCompanyRoutes);
 apiRouter.use('/tan-to-company', tanToCompanyRoutes);
 apiRouter.use('/', tanToCompanyRoutes);
+apiRouter.use('/verify/vehicle-rc', vehicleRcRoutes);
+apiRouter.use('/vehicle-rc', vehicleRcRoutes);
+apiRouter.use('/', vehicleRcRoutes);
 
 export default apiRouter;

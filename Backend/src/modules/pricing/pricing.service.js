@@ -278,6 +278,14 @@ const ENDPOINT_CATALOG_MAP = {
   '/tan-to-company': ['api_tan_to_company', '/tan-to-company', 'tan_to_company'],
   'tan_to_company': ['api_tan_to_company', '/verify/tan-to-company', '/api/v1/verify/tan-to-company'],
   'tan-to-company': ['api_tan_to_company', '/verify/tan-to-company', '/api/v1/verify/tan-to-company'],
+
+  // Vehicle RC (API Saathi Gateway)
+  '/api/v1/verify/vehicle-rc': ['api_vehicle_rc', '/verify/vehicle-rc', '/api/v1/verify/vehicle-rc', 'vehicle_rc', '/vehicle-rc'],
+  '/verify/vehicle-rc': ['api_vehicle_rc', '/verify/vehicle-rc', 'vehicle_rc'],
+  '/api/v1/vehicle-rc': ['api_vehicle_rc', '/vehicle-rc', 'vehicle_rc'],
+  '/vehicle-rc': ['api_vehicle_rc', '/vehicle-rc', 'vehicle_rc'],
+  'vehicle_rc': ['api_vehicle_rc', '/verify/vehicle-rc', '/api/v1/verify/vehicle-rc'],
+  'vehicle-rc': ['api_vehicle_rc', '/verify/vehicle-rc', '/api/v1/verify/vehicle-rc'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -294,6 +302,8 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   'tan-lookup': 'api_tan_lookup',
   tan_to_company: 'api_tan_to_company',
   'tan-to-company': 'api_tan_to_company',
+  vehicle_rc: 'api_vehicle_rc',
+  'vehicle-rc': 'api_vehicle_rc',
   gst_to_contact: 'api_gst_to_contact',
   'gst-to-contact': 'api_gst_to_contact',
   contact_to_gst: 'api_contact_to_gst',

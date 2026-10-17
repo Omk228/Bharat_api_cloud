@@ -18,6 +18,7 @@ import panToCinRoutes from './pan_to_cin/panToCin.routes.js';
 import itrCheckRoutes from './itr_check/itrCheck.routes.js';
 import tanLookupRoutes from './tan_lookup/tanLookup.routes.js';
 import tanToCompanyRoutes from './tan_to_company/tanToCompany.routes.js';
+import vehicleRcRoutes from './vehicle_rc/vehicleRc.routes.js';
 
 const router = Router();
 
@@ -41,5 +42,6 @@ router.use('/', panToCinRoutes);
 router.use('/', itrCheckRoutes);
 router.use('/', tanLookupRoutes);
 router.use('/', tanToCompanyRoutes);
+router.use('/', vehicleRcRoutes);
 
 export default router;

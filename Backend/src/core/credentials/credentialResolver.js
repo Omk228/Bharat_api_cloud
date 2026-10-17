@@ -376,6 +376,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for Vehicle RC (API Saathi Gateway)
+   */
+  async getVehicleRcCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('vehicle_rc_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.VEHICLE_RC.BASE_URL,
+      apiKey: cred?.apiKey || ENV.VEHICLE_RC.API_KEY,
+      timeoutMs: ENV.VEHICLE_RC.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {
