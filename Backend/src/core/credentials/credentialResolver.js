@@ -320,6 +320,20 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for PAN to CIN Verification (API Saathi Gateway)
+   */
+  async getPanToCinCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('pan_to_cin_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.PAN_TO_CIN.BASE_URL,
+      apiKey: cred?.apiKey || ENV.PAN_TO_CIN.API_KEY,
+      timeoutMs: ENV.PAN_TO_CIN.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {

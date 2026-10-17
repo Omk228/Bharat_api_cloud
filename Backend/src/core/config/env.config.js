@@ -187,6 +187,12 @@ export const ENV = {
     API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
     TIMEOUT_MS: parseInt(process.env.GST_AUTHENTICATED_ADVANCE_TIMEOUT_MS || '25000', 10),
   },
+
+  PAN_TO_CIN: {
+    BASE_URL: (process.env.PAN_TO_CIN_BASE_URL || 'https://apisathi.in/gw/v1/pan-to-cin-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.PAN_TO_CIN_TIMEOUT_MS || '25000', 10),
+  },
 };
 
 export default ENV;

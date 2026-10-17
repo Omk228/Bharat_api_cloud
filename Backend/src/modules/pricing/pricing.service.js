@@ -246,6 +246,14 @@ const ENDPOINT_CATALOG_MAP = {
   '/gst-authenticated-advance': ['api_gst_authenticated_advance', '/gst-authenticated-advance', 'gst_authenticated_advance'],
   'gst_authenticated_advance': ['api_gst_authenticated_advance', '/verify/gst-authenticated-advance', '/api/v1/verify/gst-authenticated-advance'],
   'gst-authenticated-advance': ['api_gst_authenticated_advance', '/verify/gst-authenticated-advance', '/api/v1/verify/gst-authenticated-advance'],
+
+  // PAN to CIN (API Saathi Gateway)
+  '/api/v1/verify/pan-to-cin': ['api_pan_to_cin', '/verify/pan-to-cin', '/api/v1/verify/pan-to-cin', 'pan_to_cin', '/pan-to-cin'],
+  '/verify/pan-to-cin': ['api_pan_to_cin', '/verify/pan-to-cin', 'pan_to_cin'],
+  '/api/v1/pan-to-cin': ['api_pan_to_cin', '/pan-to-cin', 'pan_to_cin'],
+  '/pan-to-cin': ['api_pan_to_cin', '/pan-to-cin', 'pan_to_cin'],
+  'pan_to_cin': ['api_pan_to_cin', '/verify/pan-to-cin', '/api/v1/verify/pan-to-cin'],
+  'pan-to-cin': ['api_pan_to_cin', '/verify/pan-to-cin', '/api/v1/verify/pan-to-cin'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -254,6 +262,8 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   pan_plus: 'api_verify_pan_plus',
   pan_to_gst: 'api_pan_to_gst',
   'pan-to-gst': 'api_pan_to_gst',
+  pan_to_cin: 'api_pan_to_cin',
+  'pan-to-cin': 'api_pan_to_cin',
   gst_to_contact: 'api_gst_to_contact',
   'gst-to-contact': 'api_gst_to_contact',
   contact_to_gst: 'api_contact_to_gst',

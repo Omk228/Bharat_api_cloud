@@ -14,6 +14,7 @@ import panToGstRoutes from './pan_to_gst/panToGst.routes.js';
 import gstToContactRoutes from './gst_to_contact/gstToContact.routes.js';
 import cinToPanRoutes from './cin_to_pan/cinToPan.routes.js';
 import contactToGstRoutes from './contact_to_gst/contactToGst.routes.js';
+import panToCinRoutes from './pan_to_cin/panToCin.routes.js';
 
 const router = Router();
 
@@ -33,5 +34,6 @@ router.use('/', panToGstRoutes);
 router.use('/', gstToContactRoutes);
 router.use('/', cinToPanRoutes);
 router.use('/', contactToGstRoutes);
+router.use('/', panToCinRoutes);
 
 export default router;
