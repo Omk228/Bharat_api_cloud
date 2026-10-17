@@ -19,14 +19,11 @@ if os.path.exists(dist_dir):
                 zipf.write(full_path, rel_path)
 
     print(f"[OK] Successfully updated {frontend_zip_path} ({os.path.getsize(frontend_zip_path)} bytes)")
-    frontend_hpanel_zip = os.path.join(root_dir, 'frontend-hpanel.zip')
     import shutil
-    shutil.copy2(frontend_zip_path, frontend_hpanel_zip)
-    print(f"[OK] Successfully updated {frontend_hpanel_zip} ({os.path.getsize(frontend_hpanel_zip)} bytes)")
-
-    frontend_cpanel_zip = os.path.join(root_dir, 'frontend-cpanel.zip')
-    shutil.copy2(frontend_zip_path, frontend_cpanel_zip)
-    print(f"[OK] Successfully updated {frontend_cpanel_zip} ({os.path.getsize(frontend_cpanel_zip)} bytes)")
+    for alias in ['frontend-hpanel.zip', 'frontend-cpanel.zip']:
+        target = os.path.join(root_dir, alias)
+        shutil.copy2(frontend_zip_path, target)
+        print(f"[OK] Successfully updated {target} ({os.path.getsize(target)} bytes)")
 
 # 1B. Package Frontend source code into frontend.zip (Full Source Code)
 frontend_dir = os.path.join(root_dir, 'Frontend')
@@ -43,7 +40,7 @@ if os.path.exists(frontend_dir):
         for root, dirs, files in os.walk(frontend_dir):
             dirs[:] = [d for d in dirs if d not in frontend_excluded_dirs]
             for file in files:
-                if file in frontend_excluded_files or file.endswith('.tmp') or file.endswith('.zip'):
+                if file in frontend_excluded_files or file.endswith('.tmp'):
                     continue
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, frontend_dir).replace(os.sep, '/')
@@ -51,7 +48,7 @@ if os.path.exists(frontend_dir):
 
     print(f"[OK] Successfully updated {frontend_src_zip_path} ({os.path.getsize(frontend_src_zip_path)} bytes)")
 
-# 2. Package Backend into backend.zip (Production Node deployment for cPanel)
+# 2. Package Backend into backend.zip (Production Node deployment)
 backend_dir = os.path.join(root_dir, 'Backend')
 backend_zip_path = os.path.join(root_dir, 'backend.zip')
 
@@ -65,7 +62,7 @@ with zipfile.ZipFile(backend_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
     for root, dirs, files in os.walk(backend_dir):
         dirs[:] = [d for d in dirs if d not in backend_excluded_dirs]
         for file in files:
-            if file in backend_excluded_files or file.endswith('.tmp') or file.endswith('.zip'):
+            if file in backend_excluded_files or file.endswith('.tmp'):
                 continue
             full_path = os.path.join(root, file)
             rel_path = os.path.relpath(full_path, backend_dir).replace(os.sep, '/')
@@ -77,12 +74,11 @@ with zipfile.ZipFile(backend_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(root_dump, 'bharat_api_dump.sql')
 
 print(f"[OK] Successfully updated {backend_zip_path} ({os.path.getsize(backend_zip_path)} bytes)")
-backend_deploy_zip = os.path.join(root_dir, 'backend-deploy.zip')
-backend_cpanel_zip = os.path.join(root_dir, 'backend-cpanel.zip')
-shutil.copy2(backend_zip_path, backend_deploy_zip)
-shutil.copy2(backend_zip_path, backend_cpanel_zip)
-print(f"[OK] Successfully updated {backend_deploy_zip} ({os.path.getsize(backend_deploy_zip)} bytes)")
-print(f"[OK] Successfully updated {backend_cpanel_zip} ({os.path.getsize(backend_cpanel_zip)} bytes)")
+import shutil
+for alias in ['backend-deploy.zip', 'backend-hpanel.zip', 'backend-cpanel.zip']:
+    target = os.path.join(root_dir, alias)
+    shutil.copy2(backend_zip_path, target)
+    print(f"[OK] Successfully updated {target} ({os.path.getsize(target)} bytes)")
 
 # 3. Package Complete Source Code into Bharat_api_cloud_updated.zip
 full_zip_path = os.path.join(root_dir, 'Bharat_api_cloud_updated.zip')
@@ -90,13 +86,14 @@ if os.path.exists(full_zip_path):
     os.remove(full_zip_path)
 
 excluded_dirs = {'node_modules', '.git', '.cache', '.gemini', '.system_generated', 'dist'}
+excluded_files = {'Bharat_api_cloud_updated.zip', 'frontend-dist.zip', 'backend.zip'}
 
 with zipfile.ZipFile(full_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
     for root, dirs, files in os.walk(root_dir):
         # Skip excluded dirs in-place
         dirs[:] = [d for d in dirs if d not in excluded_dirs]
         for file in files:
-            if file.endswith('.zip') or file.endswith('.tmp') or file in {'.DS_Store', 'npm-debug.log'}:
+            if file in excluded_files or file.endswith('.tmp'):
                 continue
             full_path = os.path.join(root, file)
             rel_path = os.path.relpath(full_path, root_dir).replace(os.sep, '/')
