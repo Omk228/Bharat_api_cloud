@@ -394,6 +394,33 @@ function ApisPage() {
                         ⚡ Test In Console
                       </Link>
                     )}
+                    {(ep.id === "itr-check" || ep.id === "api_itr_check") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "itr_check" }}
+                        className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {(ep.id === "tan-lookup" || ep.id === "api_tan_lookup") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "tan_lookup" }}
+                        className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
+                    {(ep.id === "tan-to-company" || ep.id === "api_tan_to_company") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "tan_to_company" }}
+                        className="inline-flex items-center gap-1 rounded bg-orange-500/10 border border-orange-500/30 px-2 py-0.5 font-medium text-orange-400 hover:bg-orange-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {(ep.id === "contact-to-gst" || ep.id === "api_contact_to_gst") && (
                       <Link
                         to="/dashboard/test-api"

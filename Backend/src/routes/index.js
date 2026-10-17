@@ -32,6 +32,9 @@ import contactToGstRoutes from '../modules/verification/contact_to_gst/contactTo
 import dinToPanRoutes from '../modules/verification/din_to_pan/dinToPan.routes.js';
 import gstAuthenticatedAdvanceRoutes from '../modules/verification/gst_authenticated_advance/gstAuthenticatedAdvance.routes.js';
 import panToCinRoutes from '../modules/verification/pan_to_cin/panToCin.routes.js';
+import itrCheckRoutes from '../modules/verification/itr_check/itrCheck.routes.js';
+import tanLookupRoutes from '../modules/verification/tan_lookup/tanLookup.routes.js';
+import tanToCompanyRoutes from '../modules/verification/tan_to_company/tanToCompany.routes.js';
 import senderRoutes from '../modules/sender/sender.routes.js';
 
 const apiRouter = Router();
@@ -102,5 +105,14 @@ apiRouter.use('/', gstAuthenticatedAdvanceRoutes);
 apiRouter.use('/verify/pan-to-cin', panToCinRoutes);
 apiRouter.use('/pan-to-cin', panToCinRoutes);
 apiRouter.use('/', panToCinRoutes);
+apiRouter.use('/verify/itr-check', itrCheckRoutes);
+apiRouter.use('/itr-check', itrCheckRoutes);
+apiRouter.use('/', itrCheckRoutes);
+apiRouter.use('/verify/tan-lookup', tanLookupRoutes);
+apiRouter.use('/tan-lookup', tanLookupRoutes);
+apiRouter.use('/', tanLookupRoutes);
+apiRouter.use('/verify/tan-to-company', tanToCompanyRoutes);
+apiRouter.use('/tan-to-company', tanToCompanyRoutes);
+apiRouter.use('/', tanToCompanyRoutes);
 
 export default apiRouter;

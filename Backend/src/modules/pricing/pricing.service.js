@@ -254,6 +254,30 @@ const ENDPOINT_CATALOG_MAP = {
   '/pan-to-cin': ['api_pan_to_cin', '/pan-to-cin', 'pan_to_cin'],
   'pan_to_cin': ['api_pan_to_cin', '/verify/pan-to-cin', '/api/v1/verify/pan-to-cin'],
   'pan-to-cin': ['api_pan_to_cin', '/verify/pan-to-cin', '/api/v1/verify/pan-to-cin'],
+
+  // ITR Check (API Saathi Gateway)
+  '/api/v1/verify/itr-check': ['api_itr_check', '/verify/itr-check', '/api/v1/verify/itr-check', 'itr_check', '/itr-check'],
+  '/verify/itr-check': ['api_itr_check', '/verify/itr-check', 'itr_check'],
+  '/api/v1/itr-check': ['api_itr_check', '/itr-check', 'itr_check'],
+  '/itr-check': ['api_itr_check', '/itr-check', 'itr_check'],
+  'itr_check': ['api_itr_check', '/verify/itr-check', '/api/v1/verify/itr-check'],
+  'itr-check': ['api_itr_check', '/verify/itr-check', '/api/v1/verify/itr-check'],
+
+  // TAN Lookup (API Saathi Gateway)
+  '/api/v1/verify/tan-lookup': ['api_tan_lookup', '/verify/tan-lookup', '/api/v1/verify/tan-lookup', 'tan_lookup', '/tan-lookup'],
+  '/verify/tan-lookup': ['api_tan_lookup', '/verify/tan-lookup', 'tan_lookup'],
+  '/api/v1/tan-lookup': ['api_tan_lookup', '/tan-lookup', 'tan_lookup'],
+  '/tan-lookup': ['api_tan_lookup', '/tan-lookup', 'tan_lookup'],
+  'tan_lookup': ['api_tan_lookup', '/verify/tan-lookup', '/api/v1/verify/tan-lookup'],
+  'tan-lookup': ['api_tan_lookup', '/verify/tan-lookup', '/api/v1/verify/tan-lookup'],
+
+  // TAN to Company (API Saathi Gateway)
+  '/api/v1/verify/tan-to-company': ['api_tan_to_company', '/verify/tan-to-company', '/api/v1/verify/tan-to-company', 'tan_to_company', '/tan-to-company'],
+  '/verify/tan-to-company': ['api_tan_to_company', '/verify/tan-to-company', 'tan_to_company'],
+  '/api/v1/tan-to-company': ['api_tan_to_company', '/tan-to-company', 'tan_to_company'],
+  '/tan-to-company': ['api_tan_to_company', '/tan-to-company', 'tan_to_company'],
+  'tan_to_company': ['api_tan_to_company', '/verify/tan-to-company', '/api/v1/verify/tan-to-company'],
+  'tan-to-company': ['api_tan_to_company', '/verify/tan-to-company', '/api/v1/verify/tan-to-company'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -264,6 +288,12 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   'pan-to-gst': 'api_pan_to_gst',
   pan_to_cin: 'api_pan_to_cin',
   'pan-to-cin': 'api_pan_to_cin',
+  itr_check: 'api_itr_check',
+  'itr-check': 'api_itr_check',
+  tan_lookup: 'api_tan_lookup',
+  'tan-lookup': 'api_tan_lookup',
+  tan_to_company: 'api_tan_to_company',
+  'tan-to-company': 'api_tan_to_company',
   gst_to_contact: 'api_gst_to_contact',
   'gst-to-contact': 'api_gst_to_contact',
   contact_to_gst: 'api_contact_to_gst',

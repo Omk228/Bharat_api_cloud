@@ -309,6 +309,161 @@ export const endpoints: ApiEndpoint[] = [
     },
   },
   {
+    id: "itr-check",
+    group: "KYC",
+    method: "POST",
+    path: "/api/v1/verify/itr-check",
+    title: "ITR filling verification",
+    desc: "Verify Income Tax Return (ITR) filing compliance directly for an Indian PAN across recent assessment years. Returns filing statuses, acknowledgement numbers, filing dates, ITR forms filed, filing type, and section without requiring OTP.",
+    tags: ["itr filling verification", "itr check", "income tax return", "itr compliance", "tax filing status", "pan itr", "kyc"],
+    latency: "~280ms",
+    params: [
+      { name: "pan", type: "string", required: true, desc: "10-character Indian Permanent Account Number (PAN) (e.g. ABCDE1234F)" },
+      { name: "client_ref_num", type: "string", required: false, desc: "Optional client reference tracking ID" },
+      { name: "api_id", type: "string", desc: "Your Bharat API ID" },
+      { name: "api_key", type: "string", desc: "Your Bharat API Key" },
+      { name: "token_id", type: "string", desc: "Your Bharat API Token ID" },
+    ],
+    sampleBody: {
+      pan: "ABCDE1234F",
+      client_ref_num: "ITR_REF_001",
+      api_id: "APID••••••••",
+      api_key: "••••••••-••••-••••-••••-••••••••••••",
+      token_id: "••••••••••••••••••••••••••••••••",
+    },
+    sampleResponse: {
+      status_code: 200,
+      status_message: "Success",
+      result_code: 101,
+      request_id: "req_itr_check_4f3e2d1c0b",
+      client_ref_num: "ITR_REF_001",
+      message: "ITR records fetched successfully for PAN ABCDE1234F.",
+      result: {
+        pan: "ABCDE1234F",
+        name: "VIKRAM SHARMA",
+        has_filings: true,
+        total_filings: 2,
+        filings: [
+          {
+            assessment_year: "2025-26",
+            financial_year: "2024-25",
+            acknowledgement_number: "987654321012345",
+            filed_date: "2025-07-15",
+            form_filed: "ITR-1",
+            filing_type: "Original",
+            section: "139(1)",
+            status: "Filed"
+          },
+          {
+            assessment_year: "2024-25",
+            financial_year: "2023-24",
+            acknowledgement_number: "123456789054321",
+            filed_date: "2024-07-20",
+            form_filed: "ITR-1",
+            filing_type: "Original",
+            section: "139(1)",
+            status: "Filed"
+          }
+        ]
+      }
+    }
+  },
+  {
+    id: "tan-lookup",
+    group: "KYC",
+    method: "POST",
+    path: "/api/v1/verify/tan-lookup",
+    title: "TAN Lookup",
+    desc: "Search and verify Indian Tax Deduction and Collection Account Number (TAN) registry records using a company or deductor legal entity name without requiring OTP.",
+    tags: ["tan lookup", "tan search", "tan verification", "deductor tan", "tds tan", "company tan", "kyc"],
+    latency: "~260ms",
+    params: [
+      { name: "company_name", type: "string", required: true, desc: "Company or deductor registered legal business name (e.g. RELIANCE INDUSTRIES LIMITED)" },
+      { name: "client_ref_num", type: "string", required: false, desc: "Optional client reference tracking ID" },
+      { name: "api_id", type: "string", desc: "Your Bharat API ID" },
+      { name: "api_key", type: "string", desc: "Your Bharat API Key" },
+      { name: "token_id", type: "string", desc: "Your Bharat API Token ID" },
+    ],
+    sampleBody: {
+      company_name: "RELIANCE INDUSTRIES LIMITED",
+      client_ref_num: "TAN_REF_001",
+      api_id: "APID••••••••",
+      api_key: "••••••••-••••-••••-••••-••••••••••••",
+      token_id: "••••••••••••••••••••••••••••••••",
+    },
+    sampleResponse: {
+      status_code: 200,
+      status_message: "Success",
+      result_code: 101,
+      request_id: "req_tan_lookup_3e2d1c0b",
+      client_ref_num: "TAN_REF_001",
+      message: "Successfully found 1 TAN match(es) for \"RELIANCE INDUSTRIES LIMITED\".",
+      result: {
+        company_name: "RELIANCE INDUSTRIES LIMITED",
+        verified: true,
+        total_matches: 1,
+        all_tans: ["MUMR09795C"],
+        matches: [
+          {
+            tan_numbers: ["MUMR09795C"],
+            primary_tan: "MUMR09795C",
+            name_match_score: 100
+          }
+        ]
+      }
+    }
+  },
+  {
+    id: "tan-to-company",
+    group: "KYC",
+    method: "POST",
+    path: "/api/v1/verify/tan-to-company",
+    title: "TAN to Company",
+    desc: "Retrieve deductor and legal company identity, registered address, category, AO code, and tax compliance details from an Indian Tax Deduction and Collection Account Number (TAN).",
+    tags: ["tan to company", "tan verification", "deductor details", "tan search", "company tan", "tds", "kyc"],
+    latency: "~250ms",
+    params: [
+      { name: "tan", type: "string", required: true, desc: "10-character Indian TAN (e.g. MUMR09795C)" },
+      { name: "client_ref_num", type: "string", required: false, desc: "Optional client reference tracking ID" },
+      { name: "api_id", type: "string", desc: "Your Bharat API ID" },
+      { name: "api_key", type: "string", desc: "Your Bharat API Key" },
+      { name: "token_id", type: "string", desc: "Your Bharat API Token ID" },
+    ],
+    sampleBody: {
+      tan: "MUMR09795C",
+      client_ref_num: "TAN_CO_001",
+      api_id: "APID••••••••",
+      api_key: "••••••••-••••-••••-••••-••••••••••••",
+      token_id: "••••••••••••••••••••••••••••••••",
+    },
+    sampleResponse: {
+      status_code: 200,
+      status_message: "Success",
+      result_code: 101,
+      request_id: "req_tan_co_8e4d2a1b",
+      client_ref_num: "TAN_CO_001",
+      message: "Successfully retrieved company details for TAN \"MUMR09795C\".",
+      result: {
+        tan: "MUMR09795C",
+        verified: true,
+        company_name: "RELIANCE INDUSTRIES LIMITED",
+        category: "Company",
+        pan: "AAACR1234A",
+        address: "MAKER CHAMBERS IV, 3RD FLOOR, 222 NARIMAN POINT, MUMBAI, MAHARASHTRA, 400021",
+        city: "MUMBAI",
+        state: "MAHARASHTRA",
+        pincode: "400021",
+        email: "investor.relations@ril.com",
+        phone: "022-35555000",
+        ao_code: "MUM",
+        ao_type: "W",
+        range_code: "21",
+        area_code: "72",
+        status: "Active"
+      }
+    }
+  },
+  {
     id: "pan-to-gst",
     group: "KYC",
     method: "POST",

@@ -244,7 +244,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -260,6 +260,12 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "cin_to_pan"
         : search["service"] === "pan_to_cin" || search["service"] === "pan-to-cin" || search["service"] === "pan_cin" || search["service"] === "pan_to_cin_v1"
         ? "pan_to_cin"
+        : search["service"] === "itr_check" || search["service"] === "itr-check" || search["service"] === "itr" || search["service"] === "itr_filling_verification" || search["service"] === "itr_filing"
+        ? "itr_check"
+        : search["service"] === "tan_lookup" || search["service"] === "tan-lookup" || search["service"] === "tan_search"
+        ? "tan_lookup"
+        : search["service"] === "tan_to_company" || search["service"] === "tan-to-company" || search["service"] === "tan" || search["service"] === "tan_company" || search["service"] === "tan_deductor"
+        ? "tan_to_company"
         : search["service"] === "gst_to_contact" || search["service"] === "gst-to-contact" || search["service"] === "gst_contact" || search["service"] === "gstin_to_contact"
         ? "gst_to_contact"
         : search["service"] === "pan_to_gst" || search["service"] === "pan-to-gst" || search["service"] === "pan_gst" || search["service"] === "gstin_by_pan"
@@ -333,7 +339,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
     searchParams.service === "gst_authenticated_advance"
       ? "gst_authenticated_advance"
       : searchParams.service === "din_to_pan"
@@ -344,6 +350,12 @@ function TestApiPage() {
       ? "cin_to_pan"
       : searchParams.service === "pan_to_cin"
       ? "pan_to_cin"
+      : searchParams.service === "itr_check"
+      ? "itr_check"
+      : searchParams.service === "tan_lookup"
+      ? "tan_lookup"
+      : searchParams.service === "tan_to_company"
+      ? "tan_to_company"
       : searchParams.service === "gst_to_contact"
       ? "gst_to_contact"
       : searchParams.service === "pan_to_gst"
@@ -453,6 +465,9 @@ function TestApiPage() {
     if (serviceKey === "din_to_pan" || serviceKey === "din-to-pan") return 3.54;
     if (serviceKey === "cin_to_pan" || serviceKey === "cin-to-pan") return 3.54;
     if (serviceKey === "pan_to_cin" || serviceKey === "pan-to-cin") return 21.24;
+    if (serviceKey === "itr_check" || serviceKey === "itr-check" || serviceKey === "api_itr_check") return 5.90;
+    if (serviceKey === "tan_lookup" || serviceKey === "tan-lookup" || serviceKey === "api_tan_lookup") return 2.36;
+    if (serviceKey === "tan_to_company" || serviceKey === "tan-to-company" || serviceKey === "api_tan_to_company") return 2.36;
     if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.90;
     if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.90;
     if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.54;
@@ -569,6 +584,18 @@ function TestApiPage() {
   // PAN to CIN fields
   const [panToCinNumber, setPanToCinNumber] = useState("");
   const [panToCinClientRef, setPanToCinClientRef] = useState("");
+
+  // ITR filling verification fields
+  const [itrCheckPan, setItrCheckPan] = useState("");
+  const [itrCheckClientRef, setItrCheckClientRef] = useState("");
+
+  // TAN Lookup fields
+  const [tanLookupCompanyName, setTanLookupCompanyName] = useState("");
+  const [tanLookupClientRef, setTanLookupClientRef] = useState("");
+
+  // TAN to Company fields
+  const [tanToCompanyTan, setTanToCompanyTan] = useState("");
+  const [tanToCompanyClientRef, setTanToCompanyClientRef] = useState("");
 
   // Contact To GST fields
   const [contactToGstInput, setContactToGstInput] = useState("");
@@ -969,6 +996,30 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "itr_check"
+      ? {
+          pan: itrCheckPan.trim().toUpperCase() || "<10-char PAN>",
+          ...(itrCheckClientRef.trim() ? { client_ref_num: itrCheckClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "tan_lookup"
+      ? {
+          company_name: tanLookupCompanyName.trim() || "<Company Name>",
+          ...(tanLookupClientRef.trim() ? { client_ref_num: tanLookupClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
+      : selectedService === "tan_to_company"
+      ? {
+          tan: tanToCompanyTan.trim().toUpperCase() || "<10-char TAN>",
+          ...(tanToCompanyClientRef.trim() ? { client_ref_num: tanToCompanyClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
       : selectedService === "gst_to_contact"
       ? {
           gstin: gstToContactNumber.trim().toUpperCase() || "<15-char GSTIN>",
@@ -1289,6 +1340,35 @@ function TestApiPage() {
         return;
       }
     }
+    if (selectedService === "itr_check") {
+      const cleanPan = itrCheckPan.trim().toUpperCase();
+      if (!cleanPan) {
+        toast.error("Please enter a 10-character PAN number (e.g. ABCDE1234F)");
+        return;
+      }
+      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+        toast.error("Invalid PAN format. PAN must be 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)");
+        return;
+      }
+    }
+    if (selectedService === "tan_lookup") {
+      const cleanName = tanLookupCompanyName.trim();
+      if (!cleanName) {
+        toast.error("Please enter a company name (e.g. RELIANCE INDUSTRIES LIMITED)");
+        return;
+      }
+    }
+    if (selectedService === "tan_to_company") {
+      const cleanTan = tanToCompanyTan.trim().toUpperCase();
+      if (!cleanTan) {
+        toast.error("Please enter a 10-character TAN number (e.g. MUMR09795C)");
+        return;
+      }
+      if (!/^[A-Z]{4}[0-9]{5}[A-Z]{1}$/.test(cleanTan)) {
+        toast.error("Invalid TAN format. TAN must be 4 letters, 5 digits, 1 letter (e.g. MUMR09795C)");
+        return;
+      }
+    }
     if (selectedService === "gst_to_contact") {
       const cleanGst = gstToContactNumber.trim().toUpperCase();
       if (!cleanGst) {
@@ -1523,6 +1603,30 @@ function TestApiPage() {
         rawData = await apiClient.verifyPanToCin({
           pan: panToCinNumber.trim().toUpperCase(),
           client_ref_num: panToCinClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "itr_check") {
+        rawData = await apiClient.verifyItrCheck({
+          pan: itrCheckPan.trim().toUpperCase(),
+          client_ref_num: itrCheckClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "tan_lookup") {
+        rawData = await apiClient.verifyTanLookup({
+          company_name: tanLookupCompanyName.trim(),
+          client_ref_num: tanLookupClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "tan_to_company") {
+        rawData = await apiClient.verifyTanToCompany({
+          tan: tanToCompanyTan.trim().toUpperCase(),
+          client_ref_num: tanToCompanyClientRef.trim() || undefined,
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -2011,6 +2115,12 @@ function TestApiPage() {
       ? "/api/v1/verify/cin-to-pan"
       : selectedService === "pan_to_cin"
       ? "/api/v1/verify/pan-to-cin"
+      : selectedService === "itr_check"
+      ? "/api/v1/verify/itr-check"
+      : selectedService === "tan_lookup"
+      ? "/api/v1/verify/tan-lookup"
+      : selectedService === "tan_to_company"
+      ? "/api/v1/verify/tan-to-company"
       : selectedService === "gst_to_contact"
       ? "/api/v1/verify/gst-to-contact"
       : selectedService === "pan_to_gst"
@@ -2080,6 +2190,12 @@ function TestApiPage() {
       ? "CIN to PAN"
       : selectedService === "pan_to_cin"
       ? "PAN to CIN"
+      : selectedService === "itr_check"
+      ? "ITR filling verification"
+      : selectedService === "tan_lookup"
+      ? "TAN Lookup"
+      : selectedService === "tan_to_company"
+      ? "TAN to Company"
       : selectedService === "gst_to_contact"
       ? "GST to Contact Details"
       : selectedService === "pan_to_gst"
@@ -2236,6 +2352,12 @@ function TestApiPage() {
                       ? "cin-to-pan"
                       : selectedService === "pan_to_cin"
                       ? "pan-to-cin"
+                      : selectedService === "itr_check"
+                      ? "itr-check"
+                      : selectedService === "tan_lookup"
+                      ? "tan-lookup"
+                      : selectedService === "tan_to_company"
+                      ? "tan-to-company"
                       : selectedService === "gst_to_contact"
                       ? "gst-to-contact"
                       : selectedService === "pan_to_gst"
@@ -2313,6 +2435,9 @@ function TestApiPage() {
                   {selectedService === "contact_to_gst" && <Building2 className="h-4 w-4 text-cyan-400" />}
                   {selectedService === "cin_to_pan" && <Building className="h-4 w-4 text-blue-400" />}
                   {selectedService === "pan_to_cin" && <Building className="h-4 w-4 text-violet-400" />}
+                  {selectedService === "itr_check" && <FileCheck className="h-4 w-4 text-emerald-400" />}
+                  {selectedService === "tan_lookup" && <Search className="h-4 w-4 text-amber-400" />}
+                  {selectedService === "tan_to_company" && <Building2 className="h-4 w-4 text-orange-400" />}
                   {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
                   {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
@@ -2348,6 +2473,9 @@ function TestApiPage() {
                     {selectedService === "contact_to_gst" && "Contact To GST (/api/v1/verify/contact-to-gst)"}
                     {selectedService === "cin_to_pan" && "CIN to PAN (/api/v1/verify/cin-to-pan)"}
                     {selectedService === "pan_to_cin" && "PAN to CIN (/api/v1/verify/pan-to-cin)"}
+                    {selectedService === "itr_check" && "ITR filling verification (/api/v1/verify/itr-check)"}
+                    {selectedService === "tan_lookup" && "TAN Lookup (/api/v1/verify/tan-lookup)"}
+                    {selectedService === "tan_to_company" && "TAN to Company (/api/v1/verify/tan-to-company)"}
                     {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
                     {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
                     {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
@@ -2896,6 +3024,194 @@ function TestApiPage() {
 
                       <p className="text-[11px] text-muted-foreground">
                         👉 Real-time retrieval of corporate CIN (Corporate Identification Number), company name, incorporation date, RoC jurisdiction, authorized & paid-up capital from a 10-character PAN.
+                      </p>
+                    </>
+                  ) : selectedService === "itr_check" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <CreditCard className="h-3.5 w-3.5 text-emerald-400" /> Permanent Account Number (PAN) *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-Digit Alphanumeric</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={10}
+                            value={itrCheckPan}
+                            onChange={(e) => setItrCheckPan(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+                            placeholder="e.g. ABCDE1234F"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Input Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setItrCheckPan("ABCDE1234F")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample PAN
+                        </button>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={itrCheckClientRef}
+                          onChange={(e) => setItrCheckClientRef(e.target.value)}
+                          placeholder="e.g. ITR_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-xs text-emerald-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-emerald-400">₹{getServicePrice("itr_check").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-emerald-300/80">₹5.00 + 18% GST (₹0.90)</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Instant Income Tax Return (ITR) filing compliance verification for Indian PANs across assessment years without OTP or document upload. Returns acknowledgment numbers, filing dates, ITR forms, sections, and compliance history.
+                      </p>
+                    </>
+                  ) : selectedService === "tan_lookup" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-amber-400" /> Company / Deductor Name *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">Entity Name</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={tanLookupCompanyName}
+                            onChange={(e) => setTanLookupCompanyName(e.target.value)}
+                            placeholder="e.g. RELIANCE INDUSTRIES LIMITED"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-medium text-xs tracking-wide outline-none placeholder:text-muted-foreground/50 focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Input Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTanLookupCompanyName("RELIANCE INDUSTRIES LIMITED")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample Company
+                        </button>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={tanLookupClientRef}
+                          onChange={(e) => setTanLookupClientRef(e.target.value)}
+                          placeholder="e.g. TAN_REF_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-amber-400">₹{getServicePrice("tan_lookup").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-amber-300/80">₹2.00 + 18% GST (₹0.36)</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time Tax Deduction and Collection Account Number (TAN) search & deductor entity verification from legal company name with matching score and registered TAN numbers.
+                      </p>
+                    </>
+                  ) : selectedService === "tan_to_company" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-orange-400" /> Tax Deduction Account Number (TAN) *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-Digit Alphanumeric</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            maxLength={10}
+                            value={tanToCompanyTan}
+                            onChange={(e) => setTanToCompanyTan(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+                            placeholder="e.g. MUMR09795C"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wider uppercase outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-orange-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Input Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTanToCompanyTan("MUMR09795C")}
+                          className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          Use Sample TAN
+                        </button>
+                      </div>
+
+                      {/* Client Ref Num (Optional) */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference (Optional)</span>
+                          <span className="text-[11px] text-muted-foreground">Unique audit trace tag</span>
+                        </div>
+                        <input
+                          value={tanToCompanyClientRef}
+                          onChange={(e) => setTanToCompanyClientRef(e.target.value)}
+                          placeholder="e.g. TAN_CO_001"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-orange-500"
+                        />
+                      </div>
+
+                      {/* Pricing Banner */}
+                      <div className="rounded-lg bg-orange-500/10 border border-orange-500/20 p-2.5 text-xs text-orange-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          💰 Wallet Debit:
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-orange-400">₹{getServicePrice("tan_to_company").toFixed(2)} / Request</span>
+                          <span className="block text-[10px] text-orange-300/80">₹2.00 + 18% GST (₹0.36)</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        👉 Real-time retrieval of deductor legal entity identity, company name, deductor category, linked PAN, registered address, and Assessing Officer (AO) jurisdiction from an Indian TAN number.
                       </p>
                     </>
                   ) : selectedService === "gst_to_contact" ? (
@@ -6080,6 +6396,779 @@ function TestApiPage() {
                                       </div>
                                       <p className="text-xs text-foreground/90 leading-relaxed font-medium">
                                         {regAddress}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()
+                          ) : selectedService === "itr_check" ? (
+                            (() => {
+                              const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                              const panVal = String(rawResult.pan || itrCheckPan || "—").toUpperCase();
+                              const taxpayerName = String(
+                                rawResult.name ||
+                                rawResult.taxpayer_name ||
+                                rawResult.tax_payer_name ||
+                                rawResult.full_name ||
+                                ""
+                              ).trim();
+                              const filingsList: any[] = Array.isArray(rawResult.filings)
+                                ? rawResult.filings
+                                : Array.isArray(rawResult.records)
+                                ? rawResult.records
+                                : Array.isArray(rawResult.itr_details)
+                                ? rawResult.itr_details
+                                : [];
+                              const hasFilings = Boolean(rawResult.has_filings || filingsList.length > 0);
+                              const totalFilings = rawResult.total_filings ?? filingsList.length;
+                              const sec206ab = rawResult.sec_206ab || rawResult.sec_206ab_206cca || null;
+
+                              return (
+                                <div className="space-y-4">
+                                  {/* Top Header Banner */}
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                                        <FileCheck className="h-5 w-5" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h3 className="text-base font-bold text-foreground">
+                                            {taxpayerName || panVal}
+                                          </h3>
+                                          <span
+                                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                                              hasFilings
+                                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                                : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                            }`}
+                                          >
+                                            {hasFilings ? "ITR Filings Verified" : "No Filings Recorded"}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground font-mono">
+                                          PAN: {panVal}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-400">
+                                        {totalFilings} {totalFilings === 1 ? "Return" : "Returns"} Found
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Highlight Summary Cards */}
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    {/* PAN & Taxpayer Identity */}
+                                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 space-y-1">
+                                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1.5 font-medium text-foreground">
+                                          <CreditCard className="h-3.5 w-3.5 text-emerald-400" /> Permanent Account Number (PAN)
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(panVal, "PAN")}
+                                          className="text-emerald-400 hover:underline flex items-center gap-1 text-[11px]"
+                                        >
+                                          <Copy className="h-3 w-3" /> Copy
+                                        </button>
+                                      </div>
+                                      <div className="font-mono text-xl font-bold tracking-wider text-emerald-400">
+                                        {panVal}
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground truncate">
+                                        {taxpayerName ? `Name on Record: ${taxpayerName}` : "Taxpayer identity checked against Income Tax Dept records"}
+                                      </p>
+                                    </div>
+
+                                    {/* Compliance & Section 206AB/206CCA Card */}
+                                    <div className="rounded-xl border border-border bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1.5 font-medium text-foreground">
+                                          <ShieldCheck className="h-3.5 w-3.5 text-sky-400" /> Section 206AB / 206CCA Compliance
+                                        </span>
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">TDS / TCS</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-foreground pt-0.5">
+                                        {sec206ab
+                                          ? String(sec206ab)
+                                          : hasFilings
+                                          ? "Compliant (Standard TDS/TCS Applicable)"
+                                          : "No ITR Record (Verify TDS/TCS Applicability)"}
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Higher rate deduction compliance status under Income Tax Act
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Detailed Filing Records List */}
+                                  {filingsList.length > 0 ? (
+                                    <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+                                      <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
+                                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                          <FileText className="h-3.5 w-3.5 text-emerald-400" /> ITR Filing History ({filingsList.length})
+                                        </h4>
+                                        <span className="text-[11px] text-muted-foreground">Official Income Tax Acknowledgements</span>
+                                      </div>
+
+                                      <div className="grid gap-3">
+                                        {filingsList.map((item: any, idx: number) => {
+                                          const ay = item.assessment_year || item.ay || item.assessmentYear || "—";
+                                          const fy = item.financial_year || item.fy || item.financialYear || "";
+                                          const ackNo = String(
+                                            item.acknowledgement_number ||
+                                            item.acknowledgment_number ||
+                                            item.ack_no ||
+                                            item.ackNumber ||
+                                            ""
+                                          ).trim();
+                                          const filedDate = item.filed_date || item.filing_date || item.date || "—";
+                                          const formFiled = item.form_filed || item.form || item.itr_form || "ITR";
+                                          const filingType = item.filing_type || item.type || "Original";
+                                          const section = item.section || item.filing_section || item.sec || "139(1)";
+                                          const filingStatus = item.status || (ackNo ? "Filed" : "Pending");
+
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className="rounded-lg border border-border/80 bg-background/60 p-3.5 space-y-2.5 hover:border-emerald-500/40 transition-colors"
+                                            >
+                                              {/* Card Top: AY, FY, Form, Status */}
+                                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-[11px] font-bold text-emerald-400">
+                                                    {idx + 1}
+                                                  </span>
+                                                  <span className="font-semibold text-foreground text-xs">
+                                                    AY: {ay}
+                                                  </span>
+                                                  {fy && (
+                                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                                      (FY: {fy})
+                                                    </span>
+                                                  )}
+                                                  <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">
+                                                    {formFiled}
+                                                  </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                  <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 uppercase">
+                                                    {filingStatus}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              {/* Card Meta Details */}
+                                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                                <div>
+                                                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block tracking-wider">
+                                                    Acknowledgement No.
+                                                  </span>
+                                                  <div className="flex items-center gap-1 font-mono font-medium text-foreground pt-0.5">
+                                                    <span className="truncate" title={ackNo || "—"}>
+                                                      {ackNo || "—"}
+                                                    </span>
+                                                    {ackNo && (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleCopyField(ackNo, `Ack No (${ay})`)}
+                                                        className="text-muted-foreground hover:text-foreground shrink-0"
+                                                        title="Copy Acknowledgement Number"
+                                                      >
+                                                        <Copy className="h-3 w-3" />
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                </div>
+
+                                                <div>
+                                                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block tracking-wider">
+                                                    Filing Date
+                                                  </span>
+                                                  <span className="font-mono text-foreground block pt-0.5">
+                                                    {filedDate}
+                                                  </span>
+                                                </div>
+
+                                                <div>
+                                                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block tracking-wider">
+                                                    Filing Type
+                                                  </span>
+                                                  <span className="text-foreground block pt-0.5">
+                                                    {filingType}
+                                                  </span>
+                                                </div>
+
+                                                <div>
+                                                  <span className="text-[10px] uppercase font-semibold text-muted-foreground block tracking-wider">
+                                                    Section
+                                                  </span>
+                                                  <span className="font-mono text-muted-foreground block pt-0.5">
+                                                    Sec {section}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-6 text-center space-y-2">
+                                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                                        <AlertCircle className="h-5 w-5" />
+                                      </div>
+                                      <h4 className="text-sm font-semibold text-foreground">
+                                        No ITR Filing Records Found
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                                        The Income Tax Department returned no filing records registered for PAN {panVal} across recent assessment years.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()
+                          ) : selectedService === "tan_lookup" ? (
+                            (() => {
+                              const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                              const companyNameVal = String(
+                                rawResult.company_name ||
+                                rawResult.name ||
+                                tanLookupCompanyName ||
+                                "—"
+                              ).trim();
+
+                              let matchesList: any[] = [];
+                              if (Array.isArray(rawResult.matches)) {
+                                matchesList = rawResult.matches;
+                              } else if (Array.isArray(rawResult.results)) {
+                                matchesList = rawResult.results;
+                              } else if (Array.isArray(rawResult.data)) {
+                                matchesList = rawResult.data;
+                              }
+
+                              // Extract all unique TAN numbers
+                              let allTans: string[] = [];
+                              if (Array.isArray(rawResult.all_tans)) {
+                                allTans = rawResult.all_tans;
+                              } else {
+                                const tanSet = new Set<string>();
+                                matchesList.forEach((m: any) => {
+                                  if (Array.isArray(m.tan_numbers)) {
+                                    m.tan_numbers.forEach((t: any) => tanSet.add(String(t).toUpperCase()));
+                                  } else if (Array.isArray(m.tan_number)) {
+                                    m.tan_number.forEach((t: any) => tanSet.add(String(t).toUpperCase()));
+                                  } else if (typeof m.tan_number === "string" && m.tan_number.trim()) {
+                                    tanSet.add(m.tan_number.trim().toUpperCase());
+                                  } else if (Array.isArray(m.tan)) {
+                                    m.tan.forEach((t: any) => tanSet.add(String(t).toUpperCase()));
+                                  } else if (typeof m.tan === "string" && m.tan.trim()) {
+                                    tanSet.add(m.tan.trim().toUpperCase());
+                                  } else if (typeof m === "string" && m.trim()) {
+                                    tanSet.add(m.trim().toUpperCase());
+                                  }
+                                });
+                                allTans = Array.from(tanSet);
+                              }
+
+                              const isVerified = Boolean(
+                                rawResult.verified ||
+                                allTans.length > 0 ||
+                                matchesList.length > 0
+                              );
+                              const totalMatches = rawResult.total_matches ?? matchesList.length;
+                              const primaryTan = allTans[0] || (matchesList[0]?.primary_tan) || (Array.isArray(matchesList[0]?.tan_number) ? matchesList[0]?.tan_number[0] : null);
+
+                              return (
+                                <div className="space-y-4">
+                                  {/* Top Header Card */}
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                                        <Building2 className="h-5 w-5" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h3 className="text-base font-bold text-foreground">
+                                            {companyNameVal}
+                                          </h3>
+                                          <span
+                                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                                              isVerified
+                                                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                                : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                            }`}
+                                          >
+                                            {isVerified ? "TAN Verified" : "No Match Found"}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                          Tax Deduction & Collection Account Registry (NSDL / Income Tax Dept)
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <span className="rounded-lg border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-medium text-foreground">
+                                        Total Matches: <strong className="text-amber-400">{totalMatches}</strong>
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Hero Primary TAN Card (if found) */}
+                                  {primaryTan && (
+                                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5 relative overflow-hidden">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <div>
+                                          <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 block mb-1">
+                                            Primary Tax Deduction Account Number (TAN)
+                                          </span>
+                                          <div className="flex items-center gap-2 font-mono text-xl sm:text-2xl font-bold tracking-wider text-foreground">
+                                            <span>{primaryTan}</span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleCopyField(primaryTan, "Primary TAN")}
+                                              className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                                              title="Copy TAN"
+                                            >
+                                              <Copy className="h-4 w-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 text-xs">
+                                          {matchesList[0]?.name_match_score != null && (
+                                            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-right">
+                                              <span className="text-[10px] uppercase font-semibold text-emerald-300 block">
+                                                Match Score
+                                              </span>
+                                              <span className="text-sm font-bold text-emerald-400">
+                                                {matchesList[0].name_match_score}%
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Metrics & Overview Row */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Hash className="h-3.5 w-3.5 text-amber-400" />
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Unique TANs</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-foreground pt-0.5 font-mono">
+                                        {allTans.length}
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Total registered TAN numbers associated
+                                      </p>
+                                    </div>
+
+                                    <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Match Status</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-foreground pt-0.5">
+                                        {isVerified ? "Entity Verified" : "Unverified"}
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Confirmed deductor record in central database
+                                      </p>
+                                    </div>
+
+                                    <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <ShieldCheck className="h-3.5 w-3.5 text-blue-400" />
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Verification Gateway</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-foreground pt-0.5">
+                                        NSDL / Income Tax Dept
+                                      </div>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Government authorized deductor directory
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Detailed Matches List */}
+                                  {matchesList.length > 0 ? (
+                                    <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+                                      <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
+                                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                          <Building2 className="h-3.5 w-3.5 text-amber-400" /> Matched Deductor Records ({matchesList.length})
+                                        </h4>
+                                        <span className="text-[11px] text-muted-foreground">Official Deductor Records</span>
+                                      </div>
+
+                                      <div className="grid gap-3">
+                                        {matchesList.map((item: any, idx: number) => {
+                                          let tans: string[] = [];
+                                          if (Array.isArray(item.tan_numbers)) {
+                                            tans = item.tan_numbers;
+                                          } else if (Array.isArray(item.tan_number)) {
+                                            tans = item.tan_number;
+                                          } else if (typeof item.tan_number === "string" && item.tan_number.trim()) {
+                                            tans = [item.tan_number.trim()];
+                                          } else if (Array.isArray(item.tan)) {
+                                            tans = item.tan;
+                                          } else if (typeof item.tan === "string" && item.tan.trim()) {
+                                            tans = [item.tan.trim()];
+                                          } else if (typeof item === "string" && item.trim()) {
+                                            tans = [item.trim()];
+                                          }
+
+                                          const matchScore = item.name_match_score ?? item.match_score ?? item.score ?? null;
+
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className="rounded-lg border border-border/80 bg-background/60 p-3.5 space-y-2.5 hover:border-amber-500/40 transition-colors"
+                                            >
+                                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15 text-[11px] font-bold text-amber-400">
+                                                    {idx + 1}
+                                                  </span>
+                                                  <span className="font-semibold text-foreground text-xs">
+                                                    Record #{idx + 1}
+                                                  </span>
+                                                </div>
+
+                                                {matchScore != null && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] uppercase font-semibold text-muted-foreground">
+                                                      Match Score:
+                                                    </span>
+                                                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 font-mono">
+                                                      {matchScore}%
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </div>
+
+                                              {/* TAN Numbers in this record */}
+                                              <div>
+                                                <span className="text-[10px] uppercase font-semibold text-muted-foreground block tracking-wider mb-1.5">
+                                                  Registered TAN Number(s)
+                                                </span>
+                                                <div className="flex flex-wrap gap-2">
+                                                  {tans.length > 0 ? (
+                                                    tans.map((tVal: string, tIdx: number) => (
+                                                      <div
+                                                        key={tIdx}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 font-mono text-xs font-bold text-foreground"
+                                                      >
+                                                        <span>{tVal}</span>
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => handleCopyField(tVal, `TAN (${tVal})`)}
+                                                          className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                                          title="Copy TAN"
+                                                        >
+                                                          <Copy className="h-3 w-3" />
+                                                        </button>
+                                                      </div>
+                                                    ))
+                                                  ) : (
+                                                    <span className="text-xs text-muted-foreground italic">—</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-6 text-center space-y-2">
+                                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                                        <AlertCircle className="h-5 w-5" />
+                                      </div>
+                                      <h4 className="text-sm font-semibold text-foreground">
+                                        No TAN Records Found
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                                        The Income Tax / NSDL TAN registry returned no active Tax Deduction and Collection Account Number (TAN) records matching "{companyNameVal}".
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()
+                          ) : selectedService === "tan_to_company" ? (
+                            (() => {
+                              const rawResult: any = responseJson?.result || responseJson?.data || responseJson || {};
+                              const tanVal = String(rawResult.tan || tanToCompanyTan || "—").toUpperCase();
+                              const companyName = String(
+                                rawResult.company_name ||
+                                rawResult.deductor_name ||
+                                rawResult.name ||
+                                rawResult.entity_name ||
+                                ""
+                              ).trim();
+                              const category = String(rawResult.category || rawResult.deductor_category || "—").trim();
+                              const panVal = String(rawResult.pan || rawResult.deductor_pan || "").trim().toUpperCase();
+                              const addressVal = String(
+                                rawResult.address ||
+                                rawResult.registered_address ||
+                                rawResult.communication_address ||
+                                ""
+                              ).trim();
+                              const cityVal = String(rawResult.city || "").trim();
+                              const stateVal = String(rawResult.state || "").trim();
+                              const pinVal = String(rawResult.pincode || "").trim();
+                              const emailVal = String(rawResult.email || "").trim();
+                              const phoneVal = String(rawResult.phone || rawResult.contact_number || "").trim();
+                              const aoCode = String(rawResult.ao_code || "").trim();
+                              const aoType = String(rawResult.ao_type || "").trim();
+                              const rangeCode = String(rawResult.range_code || "").trim();
+                              const areaCode = String(rawResult.area_code || "").trim();
+                              const statusVal = String(rawResult.status || (companyName ? "Active" : "Unknown")).trim();
+                              const isVerified = Boolean(rawResult.verified || companyName);
+
+                              return (
+                                <div className="space-y-4">
+                                  {/* Top Header Card */}
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/20 text-orange-400">
+                                        <Building2 className="h-5 w-5" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h3 className="text-base font-bold text-foreground">
+                                            {companyName || tanVal}
+                                          </h3>
+                                          <span
+                                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                                              isVerified
+                                                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                                : "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                                            }`}
+                                          >
+                                            {isVerified ? "Deductor Verified" : "Unverified TAN"}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground font-mono">
+                                          TAN: {tanVal} {category !== "—" ? `· ${category}` : ""}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <span className="rounded-lg border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-semibold text-emerald-400 uppercase">
+                                        {statusVal}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Hero Primary Card */}
+                                  {companyName && (
+                                    <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4 sm:p-5 relative overflow-hidden">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <div>
+                                          <span className="text-[10px] uppercase font-bold tracking-wider text-orange-400 block mb-1">
+                                            Legal Deductor / Company Name
+                                          </span>
+                                          <div className="flex items-center gap-2 text-lg sm:text-xl font-bold text-foreground">
+                                            <span>{companyName}</span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleCopyField(companyName, "Company Name")}
+                                              className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                                              title="Copy Company Name"
+                                            >
+                                              <Copy className="h-4 w-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {panVal && (
+                                          <div className="rounded-lg border border-border/80 bg-background/80 px-3 py-1.5">
+                                            <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                                              Linked Corporate PAN
+                                            </span>
+                                            <div className="flex items-center gap-1 font-mono font-bold text-sm text-foreground pt-0.5">
+                                              <span>{panVal}</span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleCopyField(panVal, "PAN")}
+                                                className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                                title="Copy PAN"
+                                              >
+                                                <Copy className="h-3 w-3" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Key Details Grid */}
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Hash className="h-3.5 w-3.5 text-orange-400" />
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">TAN</span>
+                                      </div>
+                                      <div className="flex items-center gap-1 text-sm font-semibold text-foreground pt-0.5 font-mono">
+                                        <span>{tanVal}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(tanVal, "TAN")}
+                                          className="text-muted-foreground hover:text-foreground"
+                                          title="Copy TAN"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Briefcase className="h-3.5 w-3.5 text-blue-400" />
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Category</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-foreground pt-0.5 truncate" title={category}>
+                                        {category}
+                                      </div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <MapPin className="h-3.5 w-3.5 text-emerald-400" />
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">State / City</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-foreground pt-0.5 truncate" title={`${cityVal} ${stateVal}`}>
+                                        {cityVal || stateVal ? `${cityVal}${cityVal && stateVal ? ", " : ""}${stateVal}` : "—"}
+                                      </div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 space-y-1">
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                        <span className="text-[10px] uppercase font-bold text-muted-foreground">Status</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-emerald-400 pt-0.5">
+                                        {statusVal}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* AO (Assessing Officer) Jurisdiction Details */}
+                                  {(aoCode || aoType || rangeCode || areaCode) && (
+                                    <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+                                      <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                          <ShieldCheck className="h-3.5 w-3.5 text-blue-400" /> Assessing Officer (AO) Jurisdiction
+                                        </h4>
+                                        <span className="text-[11px] text-muted-foreground">Income Tax Ward / Circle</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Area Code</span>
+                                          <span className="font-mono text-foreground font-semibold block pt-0.5">{areaCode || "—"}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground block">AO Type</span>
+                                          <span className="font-mono text-foreground font-semibold block pt-0.5">{aoType || "—"}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Range Code</span>
+                                          <span className="font-mono text-foreground font-semibold block pt-0.5">{rangeCode || "—"}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[10px] uppercase font-semibold text-muted-foreground block">AO Code</span>
+                                          <span className="font-mono text-foreground font-semibold block pt-0.5">{aoCode || "—"}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Registered Address Card */}
+                                  {addressVal && (
+                                    <div className="rounded-xl border border-border bg-card/60 p-4 space-y-2">
+                                      <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                          <MapPin className="h-3.5 w-3.5 text-orange-400" /> Registered Deductor Address
+                                        </h4>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyField(addressVal, "Address")}
+                                          className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Copy className="h-3 w-3" /> Copy Address
+                                        </button>
+                                      </div>
+                                      <p className="text-xs text-foreground/90 leading-relaxed font-medium">
+                                        {addressVal}
+                                        {pinVal && !addressVal.includes(pinVal) ? ` - ${pinVal}` : ""}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Contact Information (if available) */}
+                                  {(emailVal || phoneVal) && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      {emailVal && (
+                                        <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 flex items-center justify-between">
+                                          <div className="space-y-0.5">
+                                            <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5">
+                                              <Mail className="h-3 w-3 text-violet-400" /> Email Address
+                                            </span>
+                                            <span className="text-xs text-foreground font-medium block truncate max-w-[200px] sm:max-w-[250px]">{emailVal}</span>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopyField(emailVal, "Email")}
+                                            className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          >
+                                            <Copy className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                      )}
+
+                                      {phoneVal && (
+                                        <div className="rounded-xl border border-border/70 bg-card/60 p-3.5 flex items-center justify-between">
+                                          <div className="space-y-0.5">
+                                            <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5">
+                                              <Phone className="h-3 w-3 text-sky-400" /> Phone Number
+                                            </span>
+                                            <span className="text-xs text-foreground font-medium block">{phoneVal}</span>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopyField(phoneVal, "Phone")}
+                                            className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                          >
+                                            <Copy className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Empty state if not found */}
+                                  {!isVerified && (
+                                    <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-6 text-center space-y-2">
+                                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                                        <AlertCircle className="h-5 w-5" />
+                                      </div>
+                                      <h4 className="text-sm font-semibold text-foreground">
+                                        No Deductor Record Found
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                                        No registered deductor entity or company details were found for TAN {tanVal}.
                                       </p>
                                     </div>
                                   )}

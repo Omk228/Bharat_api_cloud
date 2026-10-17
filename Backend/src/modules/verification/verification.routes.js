@@ -15,6 +15,9 @@ import gstToContactRoutes from './gst_to_contact/gstToContact.routes.js';
 import cinToPanRoutes from './cin_to_pan/cinToPan.routes.js';
 import contactToGstRoutes from './contact_to_gst/contactToGst.routes.js';
 import panToCinRoutes from './pan_to_cin/panToCin.routes.js';
+import itrCheckRoutes from './itr_check/itrCheck.routes.js';
+import tanLookupRoutes from './tan_lookup/tanLookup.routes.js';
+import tanToCompanyRoutes from './tan_to_company/tanToCompany.routes.js';
 
 const router = Router();
 
@@ -35,5 +38,8 @@ router.use('/', gstToContactRoutes);
 router.use('/', cinToPanRoutes);
 router.use('/', contactToGstRoutes);
 router.use('/', panToCinRoutes);
+router.use('/', itrCheckRoutes);
+router.use('/', tanLookupRoutes);
+router.use('/', tanToCompanyRoutes);
 
 export default router;

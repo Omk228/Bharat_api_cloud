@@ -193,6 +193,24 @@ export const ENV = {
     API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
     TIMEOUT_MS: parseInt(process.env.PAN_TO_CIN_TIMEOUT_MS || '25000', 10),
   },
+
+  ITR_CHECK: {
+    BASE_URL: (process.env.ITR_CHECK_BASE_URL || 'https://apisathi.in/gw/v1/itr-check/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.ITR_CHECK_TIMEOUT_MS || '25000', 10),
+  },
+
+  TAN_LOOKUP: {
+    BASE_URL: (process.env.TAN_LOOKUP_BASE_URL || 'https://apisathi.in/gw/v1/tan-lookup-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.TAN_LOOKUP_TIMEOUT_MS || '25000', 10),
+  },
+
+  TAN_TO_COMPANY: {
+    BASE_URL: (process.env.TAN_TO_COMPANY_BASE_URL || 'https://apisathi.in/gw/v1/tan-to-company-v1/').trim(),
+    API_KEY: (process.env.API_SAATHI || 'live_oFRVobuxRsK8UZ6U4zp2gxahjPM4fNe7').trim(),
+    TIMEOUT_MS: parseInt(process.env.TAN_TO_COMPANY_TIMEOUT_MS || '25000', 10),
+  },
 };
 
 export default ENV;

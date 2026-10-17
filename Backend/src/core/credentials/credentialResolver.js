@@ -334,6 +334,48 @@ class CredentialResolver {
   }
 
   /**
+   * Get upstream credentials for ITR Check (API Saathi Gateway)
+   */
+  async getItrCheckCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('itr_check_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.ITR_CHECK.BASE_URL,
+      apiKey: cred?.apiKey || ENV.ITR_CHECK.API_KEY,
+      timeoutMs: ENV.ITR_CHECK.TIMEOUT_MS,
+    };
+  }
+
+  /**
+   * Get upstream credentials for TAN Lookup (API Saathi Gateway)
+   */
+  async getTanLookupCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('tan_lookup_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.TAN_LOOKUP.BASE_URL,
+      apiKey: cred?.apiKey || ENV.TAN_LOOKUP.API_KEY,
+      timeoutMs: ENV.TAN_LOOKUP.TIMEOUT_MS,
+    };
+  }
+
+  /**
+   * Get upstream credentials for TAN to Company (API Saathi Gateway)
+   */
+  async getTanToCompanyCredentials() {
+    await this.loadAllCredentials();
+    const cred = this.cache.get('tan_to_company_master') || this.cache.get('apisathi_master');
+
+    return {
+      baseUrl: cred?.baseUrl || ENV.TAN_TO_COMPANY.BASE_URL,
+      apiKey: cred?.apiKey || ENV.TAN_TO_COMPANY.API_KEY,
+      timeoutMs: ENV.TAN_TO_COMPANY.TIMEOUT_MS,
+    };
+  }
+
+  /**
    * Generic get by provider ID
    */
   async getProviderCredentials(providerId) {
