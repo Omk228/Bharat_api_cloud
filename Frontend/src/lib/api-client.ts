@@ -255,6 +255,8 @@ export const apiClient = {
           uan_direct: 5.0,
           ip_lookup: 0.15,
           reverse_geocode: 0.2,
+          mobile_advance: 15.0,
+          mobile_advance_lookup: 15.0,
         },
         catalog: [],
       };
@@ -1412,6 +1414,39 @@ export const apiClient = {
     const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
 
     const res = await fetch(`${host}/api/v1/verify/mobile-intelligence`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        ...data,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
+  async verifyMobileAdvanceLookup(data: {
+    phone?: string | undefined;
+    mobile_number?: string | undefined;
+    first_name?: string | undefined;
+    last_name?: string | undefined;
+    client_ref_num?: string | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${host}/api/v1/verify/mobile-advance-lookup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

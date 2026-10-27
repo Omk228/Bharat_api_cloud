@@ -475,6 +475,15 @@ function ApisPage() {
                         ⚡ Test In Console
                       </Link>
                     )}
+                    {(ep.id === "mobile-advance-lookup" || ep.id === "api_mobile_advance_lookup") && (
+                      <Link
+                        to="/dashboard/test-api"
+                        search={{ service: "mobile_advance" }}
+                        className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
+                      >
+                        ⚡ Test In Console
+                      </Link>
+                    )}
                     {(ep.id === "experian-credit-report-srv2" || ep.id === "api_experian_credit_report") && (
                       <Link
                         to="/dashboard/test-api"

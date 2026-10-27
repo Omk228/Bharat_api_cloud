@@ -249,7 +249,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | "mobile_advance" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -279,6 +279,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "gst_to_contact"
         : search["service"] === "pan_to_gst" || search["service"] === "pan-to-gst" || search["service"] === "pan_gst" || search["service"] === "gstin_by_pan"
         ? "pan_to_gst"
+        : search["service"] === "mobile_advance" || search["service"] === "mobile-advance" || search["service"] === "mobile_advance_lookup" || search["service"] === "mobile-advance-lookup"
+        ? "mobile_advance"
         : search["service"] === "mobile_intelligence" || search["service"] === "mobile-intelligence" || search["service"] === "caller_intelligence"
         ? "mobile_intelligence"
         : search["service"] === "dth_advance" || search["service"] === "dth-advance" || search["service"] === "dth_operator_advance" || search["service"] === "dth-operator-advance" || search["service"] === "dth_info" || search["service"] === "dth-info"
@@ -348,7 +350,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence">(
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | "mobile_advance">(
     searchParams.service === "gst_authenticated_advance"
       ? "gst_authenticated_advance"
       : searchParams.service === "din_to_pan"
@@ -373,6 +375,8 @@ function TestApiPage() {
       ? "gst_to_contact"
       : searchParams.service === "pan_to_gst"
       ? "pan_to_gst"
+      : searchParams.service === "mobile_advance"
+      ? "mobile_advance"
       : searchParams.service === "mobile_intelligence"
       ? "mobile_intelligence"
       : searchParams.service === "dth_advance"
@@ -486,6 +490,7 @@ function TestApiPage() {
     if (serviceKey === "contact_to_gst" || serviceKey === "contact-to-gst") return 5.90;
     if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.90;
     if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.54;
+    if (serviceKey === "mobile_advance" || serviceKey === "mobile-advance" || serviceKey === "mobile_advance_lookup" || serviceKey === "mobile-advance-lookup" || serviceKey === "api_mobile_advance_lookup") return 15.0;
     if (serviceKey === "mobile_intelligence" || serviceKey === "mobile-intelligence") return 2.0;
     if (serviceKey === "dth_advance" || serviceKey === "dth-advance" || serviceKey === "dth_operator_advance" || serviceKey === "dth-operator-advance" || serviceKey === "dth_info") return 2.5;
     if (serviceKey === "dth_operator" || serviceKey === "dth-operator" || serviceKey === "dth_check" || serviceKey === "dth-check" || serviceKey === "dth-operator-check" || serviceKey === "dth") return 2.0;
@@ -637,6 +642,12 @@ function TestApiPage() {
   // Mobile Intelligence fields
   const [mobileIntelligencePhone, setMobileIntelligencePhone] = useState("");
   const [mobileIntelligenceClientRef, setMobileIntelligenceClientRef] = useState("");
+
+  // Mobile Advance Lookup fields (Composite)
+  const [mobileAdvancePhone, setMobileAdvancePhone] = useState("");
+  const [mobileAdvanceFirstName, setMobileAdvanceFirstName] = useState("");
+  const [mobileAdvanceLastName, setMobileAdvanceLastName] = useState("");
+  const [mobileAdvanceClientRef, setMobileAdvanceClientRef] = useState("");
 
   // DTH Operator Advance fields
   const [dthAdvanceNumber, setDthAdvanceNumber] = useState("");
@@ -1075,6 +1086,16 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "mobile_advance"
+      ? {
+          phone: mobileAdvancePhone.trim() || "<10-digit Phone>",
+          ...(mobileAdvanceFirstName.trim() ? { first_name: mobileAdvanceFirstName.trim() } : {}),
+          ...(mobileAdvanceLastName.trim() ? { last_name: mobileAdvanceLastName.trim() } : {}),
+          ...(mobileAdvanceClientRef.trim() ? { client_ref_num: mobileAdvanceClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
       : selectedService === "mobile_intelligence"
       ? {
           phone: mobileIntelligencePhone.trim() || "<10-digit Phone>",
@@ -1452,6 +1473,17 @@ function TestApiPage() {
         return;
       }
     }
+    if (selectedService === "mobile_advance") {
+      const cleanMob = mobileAdvancePhone.trim().replace(/\D/g, "");
+      if (!cleanMob || (cleanMob.length !== 10 && cleanMob.length !== 12)) {
+        toast.error("Please enter a valid 10-digit Indian mobile number (e.g. 9876543210)");
+        return;
+      }
+      if (!mobileAdvanceFirstName.trim()) {
+        toast.error("First Name is mandatory for Mobile Advance Lookup (KYC Prefill).");
+        return;
+      }
+    }
     if (selectedService === "mobile_intelligence") {
       const cleanMob = mobileIntelligencePhone.trim().replace(/\D/g, "");
       if (!cleanMob || (cleanMob.length !== 10 && cleanMob.length !== 12)) {
@@ -1720,6 +1752,16 @@ function TestApiPage() {
         rawData = await apiClient.verifyPanToGst({
           pan: panToGstNumber.trim().toUpperCase(),
           client_ref_num: panToGstClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "mobile_advance") {
+        rawData = await apiClient.verifyMobileAdvanceLookup({
+          phone: mobileAdvancePhone.trim().replace(/\D/g, ""),
+          first_name: mobileAdvanceFirstName.trim() || undefined,
+          last_name: mobileAdvanceLastName.trim() || undefined,
+          client_ref_num: mobileAdvanceClientRef.trim() || undefined,
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -2059,9 +2101,7 @@ function TestApiPage() {
     state: (resourceData.state || rawRes.state || "") as string,
     micr: (rawRes.micr || rawRes.micr_code || rawRes.micrCode || "") as string,
     ifscCode: (rawRes.ifscCode || rawRes.ifsc || rawRes.ifsc_code || ifscCode) as string,
-    ifsc: (rawRes.ifsc || rawRes.ifscCode || rawRes.ifsc_code || ifscCode) as string,
-    account_status: (beneResp?.metaData?.status || rawRes.account_status || rawRes.accountStatus || rawRes.status || "ACTIVE") as string,
-    is_valid: rawRes.is_valid !== undefined ? Boolean(rawRes.is_valid) : true,
+    account_status: (beneResp?.metaData?.status || rawRes.account_status || rawRes.accountStatus || (selectedService === "bank" || selectedService === "bank_validation" || selectedService === "bank_v2" ? (rawRes.status || "ACTIVE") : (rawRes.account_status || ""))) as string,
     account_exists: rawRes.account_exists !== undefined ? Boolean(rawRes.account_exists) : true,
     pan: (resourceData.pan || rawRes.pan || "") as string,
     pan_type: (rawRes.pan_type || rawRes.panType || "Individual") as string,
@@ -2211,6 +2251,8 @@ function TestApiPage() {
       ? "/api/v1/verify/gst-to-contact"
       : selectedService === "pan_to_gst"
       ? "/api/v1/verify/pan-to-gst"
+      : selectedService === "mobile_advance"
+      ? "/api/v1/verify/mobile-advance-lookup"
       : selectedService === "mobile_intelligence"
       ? "/api/v1/verify/mobile-intelligence"
       : selectedService === "dth_advance"
@@ -2290,6 +2332,8 @@ function TestApiPage() {
       ? "GST to Contact Details"
       : selectedService === "pan_to_gst"
       ? "PAN to GST"
+      : selectedService === "mobile_advance"
+      ? "Mobile Advance Lookup"
       : selectedService === "mobile_intelligence"
       ? "Mobile Intelligence"
       : selectedService === "dth_advance"
@@ -2383,6 +2427,8 @@ function TestApiPage() {
                   ? "Direct live GST to Contact Details gateway: retrieve official registered contact details (mobile numbers, email addresses, authorized signatories, and principal place of business) from an Indian GSTIN powered by Bharat API Cloud."
                   : selectedService === "pan_to_gst"
                   ? "Direct live PAN to GST gateway: retrieve all Goods and Services Tax Identification Numbers (GSTIN) and registration details registered under an Indian business or individual PAN powered by Bharat API Cloud."
+                  : selectedService === "mobile_advance"
+                  ? "Direct live Mobile Advance Lookup gateway: unified composite engine combining real-time telecom caller intelligence, carrier, circle, and spam signals with verified identity records, PAN, and registered addresses powered by Bharat API Cloud."
                   : selectedService === "mobile_intelligence"
                   ? "Direct live Mobile Intelligence & Caller ID search gateway: comprehensive identity signals, alternate numbers, address history, telecom details, and multi-field confidence matching scores powered by Bharat API Cloud."
                   : selectedService === "dth_advance"
@@ -2460,6 +2506,8 @@ function TestApiPage() {
                       ? "gst-to-contact"
                       : selectedService === "pan_to_gst"
                       ? "pan-to-gst"
+                      : selectedService === "mobile_advance"
+                      ? "mobile-advance-lookup"
                       : selectedService === "mobile_intelligence"
                       ? "mobile-intelligence"
                       : selectedService === "dth_advance"
@@ -2540,6 +2588,7 @@ function TestApiPage() {
                   {selectedService === "voter_id" && <Vote className="h-4 w-4 text-indigo-400" />}
                   {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
                   {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
+                  {selectedService === "mobile_advance" && <Sparkles className="h-4 w-4 text-amber-400" />}
                   {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
                   {selectedService === "dth_advance" && <Tv className="h-4 w-4 text-amber-400" />}
                   {selectedService === "dth_operator" && <Tv className="h-4 w-4 text-amber-400" />}
@@ -2580,6 +2629,7 @@ function TestApiPage() {
                     {selectedService === "voter_id" && "Voter ID (/api/v1/verify/voter-id)"}
                     {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
                     {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
+                    {selectedService === "mobile_advance" && "Mobile Advance Lookup (/api/v1/verify/mobile-advance-lookup)"}
                     {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
                     {selectedService === "dth_advance" && "DTH operator advance (/api/v1/verify/dth-advance)"}
                     {selectedService === "dth_operator" && "DTH operator check (/api/v1/verify/dth-operator)"}
@@ -3523,6 +3573,101 @@ function TestApiPage() {
                       <p className="text-[11px] text-muted-foreground">
                         👉 Real-time retrieval of all Goods and Services Tax Identification Numbers (GSTIN) registered under the specified business or individual PAN.
                       </p>
+                    </>
+                  ) : selectedService === "mobile_advance" ? (
+                    <>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Mobile Number *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-digit Indian Number</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={mobileAdvancePhone}
+                            onChange={(e) => setMobileAdvancePhone(e.target.value.trim())}
+                            placeholder="e.g. 9876543210"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMobileAdvancePhone("9883744176");
+                            setMobileAdvanceFirstName("Indrajit");
+                            setMobileAdvanceLastName("Basak");
+                          }}
+                          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <Sparkles className="h-3 w-3" /> Use Verified Sample (Indrajit Basak)
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-semibold text-foreground flex items-center gap-1">
+                              First Name <span className="text-amber-400">*</span>
+                            </span>
+                            <span className="text-[10px] font-semibold text-amber-400">Required</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={mobileAdvanceFirstName}
+                            onChange={(e) => setMobileAdvanceFirstName(e.target.value)}
+                            placeholder="e.g. Indrajit"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/50 focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Last Name</span>
+                            <span className="text-[10px] text-muted-foreground">Optional</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={mobileAdvanceLastName}
+                            onChange={(e) => setMobileAdvanceLastName(e.target.value)}
+                            placeholder="e.g. Basak"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/50 focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference</span>
+                          <span className="text-[10px] text-muted-foreground">Optional</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={mobileAdvanceClientRef}
+                          onChange={(e) => setMobileAdvanceClientRef(e.target.value.trim())}
+                          placeholder="e.g. ADV_REF_001"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none placeholder:text-muted-foreground/50 focus:border-amber-400"
+                        />
+                      </div>
+
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-foreground">Pricing:</span>
+                          <span className="font-bold text-amber-400">₹{getServicePrice("mobile_advance").toFixed(2)} + 18% GST (₹17.70 / Request)</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+                          Unified composite lookup: parallelly queries KYC Identity Prefill (PAN, DOB, registered address) and Telecom Intelligence with aggregated single-hit reporting.
+                        </p>
+                      </div>
                     </>
                   ) : selectedService === "mobile_intelligence" ? (
                     <>
@@ -8629,6 +8774,354 @@ function TestApiPage() {
                                   <div className="rounded-xl border border-dashed border-border/80 bg-background/30 p-6 text-center text-xs text-muted-foreground">
                                     <p className="font-semibold text-foreground">No GSTINs Registered</p>
                                     <p className="mt-1 text-[11px]">No active GST identification numbers found for PAN {panNum}.</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "mobile_advance" ? (
+                          (() => {
+                            const rawResp: any = responseJson as any;
+                            const advData: any = rawResp?.data || rawResp?.result || rawResp || {};
+                            const unifiedProfile: any = advData?.unified_profile || advData?.result || {};
+                            const prefillBlock: any = advData?.prefill?.record || advData?.prefill || {};
+                            const intelBlock: any = advData?.intelligence?.primary || advData?.intelligence || {};
+                            const intelRecords: any[] = Array.isArray(advData?.intelligence?.records)
+                              ? advData.intelligence.records
+                              : Array.isArray(advData?.intelligence?.data?.results)
+                              ? advData.intelligence.data.results
+                              : [];
+                            const summaryInfo: any = rawResp?.summary || {};
+
+                            const targetPhone = String(unifiedProfile?.phone || advData?.phone || mobileAdvancePhone || "—");
+                            const cleanTarget = targetPhone.replace(/\D/g, "").slice(-10);
+
+                            // Strict check: Does Credit Bureau KYC prefill have actual bureau record?
+                            const isPrefillFound = Boolean(
+                              summaryInfo?.identity_verified ||
+                              advData?.prefill?.status === "success" ||
+                              Boolean(prefillBlock?.pan) ||
+                              Boolean(prefillBlock?.dob) ||
+                              Boolean(unifiedProfile?.kyc_found)
+                            );
+
+                            const kycName = String(prefillBlock?.name || prefillBlock?.fullname || (isPrefillFound ? unifiedProfile?.name : "") || "—");
+                            const kycPan = String(unifiedProfile?.pan || prefillBlock?.pan || "—");
+                            const kycDob = String(unifiedProfile?.dob || prefillBlock?.dob || "—");
+                            const kycGender = String(unifiedProfile?.gender || prefillBlock?.gender || "—");
+                            const kycEmail = String(unifiedProfile?.email || prefillBlock?.email || "—");
+
+                            // Intelligence & Telecom Signals
+                            const callerName = String(
+                              advData?.intelligence?.caller_name ||
+                              intelBlock?.name ||
+                              intelRecords[0]?.name ||
+                              (!isPrefillFound ? unifiedProfile?.name : "") ||
+                              "—"
+                            );
+                            const fatherName = String(
+                              unifiedProfile?.father_name ||
+                              advData?.intelligence?.father_name ||
+                              intelBlock?.fname ||
+                              intelRecords[0]?.fname ||
+                              "—"
+                            );
+                            const registeredId = String(
+                              unifiedProfile?.registered_id ||
+                              advData?.intelligence?.registered_id ||
+                              intelBlock?.id ||
+                              intelRecords[0]?.id ||
+                              "—"
+                            );
+                            const operator = String(
+                              unifiedProfile?.telecom_operator ||
+                              advData?.intelligence?.operator ||
+                              intelBlock?.operator ||
+                              intelBlock?.carrier ||
+                              intelRecords[0]?.operator ||
+                              intelRecords[0]?.carrier ||
+                              "—"
+                            );
+                            const circle = String(
+                              unifiedProfile?.telecom_circle ||
+                              advData?.intelligence?.circle ||
+                              intelBlock?.circle ||
+                              intelBlock?.location ||
+                              intelRecords[0]?.circle ||
+                              "—"
+                            );
+
+                            // Extract Alternate Mobile Numbers (excluding primary phone)
+                            const rawAltSources = [
+                              ...(Array.isArray(unifiedProfile?.alternate_numbers) ? unifiedProfile.alternate_numbers : []),
+                              ...(Array.isArray(advData?.intelligence?.alternate_numbers) ? advData.intelligence.alternate_numbers : []),
+                              intelBlock?.alt,
+                              intelBlock?.alt_mobile,
+                              intelBlock?.mobile,
+                              ...intelRecords.map((r: any) => r?.alt),
+                              ...intelRecords.map((r: any) => r?.mobile),
+                            ].filter(Boolean);
+
+                            const altNumbers: string[] = Array.from(
+                              new Set(
+                                rawAltSources
+                                  .join(", ")
+                                  .split(/[,\s/|]+/)
+                                  .map((n: string) => n.replace(/\D/g, "").slice(-10))
+                                  .filter((n: string) => /^[6-9]\d{9}$/.test(n) && n !== cleanTarget)
+                              )
+                            );
+
+                            const mainDisplayTitle = callerName !== "—"
+                              ? callerName
+                              : (isPrefillFound && kycName !== "—" ? kycName : (unifiedProfile?.name || "Mobile Advance Lookup"));
+
+                            const confidence = typeof unifiedProfile?.confidence_score === "number"
+                              ? unifiedProfile.confidence_score
+                              : (intelBlock?.confidence || (isPrefillFound ? 95 : 0));
+
+                            const addresses: any[] = Array.isArray(unifiedProfile?.addresses) && unifiedProfile.addresses.length > 0
+                              ? unifiedProfile.addresses
+                              : Array.isArray(prefillBlock?.address) && prefillBlock.address.length > 0
+                              ? prefillBlock.address
+                              : (intelBlock?.address ? [{ first_line_of_address: intelBlock.address }] : []);
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Header / Verified Composite Badge Banner */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                      <Sparkles className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                                        {mainDisplayTitle}
+                                        <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-semibold text-amber-400 flex items-center gap-1">
+                                          <ShieldCheck className="h-3 w-3" /> ADVANCE VERIFIED
+                                        </span>
+                                      </h3>
+                                      <p className="text-xs text-muted-foreground font-mono">
+                                        Query: +91 {cleanTarget} · Composite KYC & Telecom Record
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-mono font-semibold text-foreground">
+                                      {confidence}% Match
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* 4 Summary Cards */}
+                                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                                  <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Bureau KYC Prefill</span>
+                                    <span className={`text-xs font-bold mt-1 block flex items-center gap-1 ${isPrefillFound ? "text-emerald-400" : "text-amber-400"}`}>
+                                      {isPrefillFound ? "✓ Identity Found" : "No Bureau Record"}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Telecom Carrier</span>
+                                    <span className="text-xs font-bold text-foreground mt-1 block truncate">
+                                      {operator !== "—" ? operator : "Verified Active"}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Circle / Region</span>
+                                    <span className="text-xs font-bold text-foreground mt-1 block truncate">
+                                      {circle !== "—" ? circle : "India (+91)"}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-xl border border-border/80 bg-background/60 p-3">
+                                    <span className="text-[11px] text-muted-foreground block font-medium">Alternate Numbers</span>
+                                    <span className={`text-xs font-bold mt-1 block ${altNumbers.length > 0 ? "text-cyan-400" : "text-muted-foreground"}`}>
+                                      {altNumbers.length > 0 ? `${altNumbers.length} Linked Number(s)` : "None Linked"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Dedicated Alternate Mobile Numbers Pill Box */}
+                                {altNumbers.length > 0 && (
+                                  <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3.5 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                                        <Phone className="h-3.5 w-3.5" /> Associated & Alternate Mobile Numbers ({altNumbers.length})
+                                      </span>
+                                      <span className="text-[10px] font-mono text-cyan-400/80 uppercase">Linked Signals</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 pt-0.5">
+                                      {altNumbers.map((num, idx) => (
+                                        <div
+                                          key={idx}
+                                          className="flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-background/80 px-3 py-1.5 text-xs font-mono font-semibold text-foreground shadow-sm"
+                                        >
+                                          <Smartphone className="h-3.5 w-3.5 text-cyan-400" />
+                                          <span>+91 {num}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopyField(num, `Alternate Mobile #${idx + 1}`)}
+                                            className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                                            title="Copy alternate number"
+                                          >
+                                            {copiedField === `Alternate Mobile #${idx + 1}` ? (
+                                              <Check className="h-3 w-3 text-emerald-400" />
+                                            ) : (
+                                              <Copy className="h-3 w-3" />
+                                            )}
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Split 2-Column: Left Prefill Identity, Right Telecom Intelligence */}
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  {/* Identity & KYC Prefill Details */}
+                                  {isPrefillFound ? (
+                                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
+                                      <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                                        <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                          <CreditCard className="h-3.5 w-3.5" /> Identity & KYC Records
+                                        </span>
+                                        <span className="text-[10px] font-mono text-emerald-400/80 uppercase">Prefill</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                          <span className="text-[11px] text-muted-foreground block">Full Name</span>
+                                          <span className="font-semibold text-foreground">{kycName}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[11px] text-muted-foreground block">PAN Number</span>
+                                          <span className="font-mono font-bold text-emerald-400 flex items-center gap-1">
+                                            {kycPan}
+                                            {kycPan !== "—" && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleCopyField(kycPan, "PAN Number")}
+                                                className="text-muted-foreground hover:text-foreground transition-colors"
+                                                title="Copy PAN"
+                                              >
+                                                {copiedField === "PAN Number" ? (
+                                                  <Check className="h-3 w-3 text-emerald-400" />
+                                                ) : (
+                                                  <Copy className="h-3 w-3" />
+                                                )}
+                                              </button>
+                                            )}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[11px] text-muted-foreground block">Date of Birth</span>
+                                          <span className="font-mono text-foreground">{kycDob}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[11px] text-muted-foreground block">Gender</span>
+                                          <span className="text-foreground">{kycGender}</span>
+                                        </div>
+                                        {kycEmail !== "—" && (
+                                          <div className="col-span-2">
+                                            <span className="text-[11px] text-muted-foreground block">Registered Email</span>
+                                            <span className="font-mono text-foreground truncate block">{kycEmail}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                                      <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                                        <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                          <CreditCard className="h-3.5 w-3.5" /> Identity & KYC Records
+                                        </span>
+                                        <span className="text-[10px] font-mono text-amber-400/80 uppercase">No Bureau Record</span>
+                                      </div>
+                                      <div className="rounded-lg border border-amber-500/20 bg-background/60 p-3 space-y-1.5 text-xs">
+                                        <div className="flex items-center gap-2 text-amber-400 font-semibold">
+                                          <AlertCircle className="h-4 w-4 shrink-0" />
+                                          <span>No Credit Bureau Profile Linked</span>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                          Upstream Credit Bureau (Experian/Equifax) has no active credit or loan history registered for +91 {cleanTarget}. Bureau KYC prefill requires prior loan/credit footprint.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Telecom & Intelligence Details */}
+                                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-3">
+                                    <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
+                                      <span className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                                        <Smartphone className="h-3.5 w-3.5" /> Telecom Intelligence
+                                      </span>
+                                      <span className="text-[10px] font-mono text-purple-400/80 uppercase">Signals</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block">Caller Identity</span>
+                                        <span className="font-semibold text-foreground">{callerName}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block">Relative / Spouse / Father</span>
+                                        <span className="font-semibold text-foreground">{fatherName}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block">Registered ID</span>
+                                        <span className="font-mono text-foreground truncate block">{registeredId}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block">Operator</span>
+                                        <span className="font-semibold text-foreground">{operator}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block">Circle / State</span>
+                                        <span className="font-semibold text-foreground">{circle}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[11px] text-muted-foreground block">Total Records</span>
+                                        <span className="font-mono text-foreground">{intelRecords.length || 1} Found</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Registered Addresses */}
+                                {addresses.length > 0 && (
+                                  <div className="rounded-xl border border-border bg-background/60 p-3.5 space-y-2">
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      <MapPin className="h-3.5 w-3.5 text-amber-400" /> Registered Addresses ({addresses.length})
+                                    </span>
+                                    <div className="space-y-1.5">
+                                      {addresses.map((addr: any, idx: number) => {
+                                        const fullAddress = [
+                                          addr.first_line_of_address,
+                                          addr.second_line_of_address,
+                                          addr.third_line_of_address,
+                                          addr.city,
+                                          addr.state,
+                                          addr.pincode,
+                                        ].filter(Boolean).join(", ");
+                                        return (
+                                          <div key={idx} className="flex items-start justify-between gap-2 rounded-lg border border-border/60 bg-background/40 p-2 text-xs font-mono text-foreground">
+                                            <span>{fullAddress || JSON.stringify(addr)}</span>
+                                            {fullAddress && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleCopyField(fullAddress, `Address #${idx + 1}`)}
+                                                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+                                                title="Copy address"
+                                              >
+                                                {copiedField === `Address #${idx + 1}` ? (
+                                                  <Check className="h-3 w-3 text-emerald-400" />
+                                                ) : (
+                                                  <Copy className="h-3 w-3" />
+                                                )}
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -14679,31 +15172,61 @@ function TestApiPage() {
                               : selectedService === "voter_id"
                               ? `Voter ID (EPIC): ${voterIdEpicNumber || "N/A"}`
                               : selectedService === "pan"
-                              ? `PAN: ${pan}`
+                              ? `PAN: ${pan || "N/A"}`
+                              : selectedService === "pan_to_cin"
+                              ? `PAN: ${panToCinNumber || pan || "N/A"}`
+                              : selectedService === "cin_to_pan"
+                              ? `CIN: ${cinToPanNumber || "N/A"}`
+                              : selectedService === "pan_to_gst"
+                              ? `PAN: ${panToGstNumber || pan || "N/A"}`
+                              : selectedService === "gst_to_contact"
+                              ? `GSTIN: ${gstToContactNumber || "N/A"}`
+                              : selectedService === "contact_to_gst"
+                              ? `Contact: ${contactToGstInput || "N/A"}`
+                              : selectedService === "din_to_pan"
+                              ? `DIN: ${dinToPanNumber || "N/A"}`
+                              : selectedService === "gst_authenticated_advance"
+                              ? `GSTIN: ${gstAuthAdvanceGstin || "N/A"}`
+                              : selectedService === "itr_check"
+                              ? `PAN: ${itrCheckPan || pan || "N/A"}`
+                              : selectedService === "tan_lookup"
+                              ? `Company: ${tanLookupCompanyName || "N/A"}`
+                              : selectedService === "tan_to_company"
+                              ? `TAN: ${tanToCompanyTan || "N/A"}`
                               : selectedService === "aadhaar"
-                              ? `Aadhaar: ${aadhaar}`
+                              ? `Aadhaar: ${aadhaar || "N/A"}`
                               : selectedService === "bank"
-                              ? `Account: ${creditorAccountId} · IFSC: ${ifscCode}`
+                              ? `Account: ${creditorAccountId || "N/A"} · IFSC: ${ifscCode || "N/A"}`
+                              : selectedService === "bank_validation"
+                              ? `Account: ${bankValidateAccountNumber || "N/A"} · IFSC: ${bankValidateIfscCode || "N/A"}`
+                              : selectedService === "bank_v2"
+                              ? `Account: ${bankV2AccountNumber || "N/A"} · IFSC: ${bankV2IfscCode || "N/A"}`
                               : selectedService === "name_finder"
-                              ? `Mobile: ${mobileNameNumber}`
+                              ? `Mobile: ${mobileNameNumber || "N/A"}`
                               : selectedService === "ip_lookup"
                               ? `IP Address: ${ipAddress || "Caller IP (Auto-detect)"}`
                               : selectedService === "reverse_geocode"
                               ? `Coordinates: Lat: ${latitude || "28.6139"}, Lon: ${longitude || "77.2090"}`
-                              : selectedService === "bank_validation"
-                              ? `Account: ${bankValidateAccountNumber || "38237401582"} · IFSC: ${bankValidateIfscCode || "SBIN0002296"}`
                               : selectedService === "uan"
-                              ? `Mobile: ${uanMobile}`
+                              ? `Mobile: ${uanMobile || "N/A"}`
                               : selectedService === "mobile_upi"
-                              ? `Mobile: ${mobileUpiNumber}`
+                              ? `Mobile: ${mobileUpiNumber || "N/A"}`
                               : selectedService === "domain_age"
-                              ? `Domain: ${domainName}`
+                              ? `Domain: ${domainName || "N/A"}`
+                              : selectedService === "mobile_advance"
+                              ? `Mobile: ${mobileAdvancePhone || "N/A"}`
                               : selectedService === "mobile_intelligence"
                               ? `Mobile: ${mobileIntelligencePhone || "N/A"}`
                               : selectedService === "dth_advance"
                               ? `DTH Number: ${dthAdvanceNumber || "N/A"} · Operator: ${dthAdvanceOperator || "N/A"}`
                               : selectedService === "dth_operator"
                               ? `DTH Number: ${dthNumber || "N/A"}`
+                              : selectedService === "mobile_operator"
+                              ? `Mobile: ${operatorMobile || "N/A"}`
+                              : selectedService === "work_email"
+                              ? `Email: ${workEmailInput || "N/A"}`
+                              : selectedService === "work_email_plus"
+                              ? `Email: ${workEmailPlusInput || "N/A"}`
                               : selectedService === "transunion"
                               ? `PAN: ${tuPan || "N/A"} · Name: ${[tuForename, tuSurname].filter(Boolean).join(" ") || "N/A"} · Phone: ${tuPhone || "N/A"}`
                               : selectedService === "crif"
@@ -14712,17 +15235,35 @@ function TestApiPage() {
                           </p>
                           <p>
                             Status:{" "}
-                            {typeof resData.account_status === "string"
-                              ? resData.account_status
-                              : typeof resData.pan_status === "string"
+                            {responseStatus && responseStatus >= 400
+                              ? `HTTP ${responseStatus} · ${
+                                  responseStatus === 504
+                                    ? "GATEWAY TIMEOUT"
+                                    : responseStatus === 502
+                                    ? "UPSTREAM UNAVAILABLE"
+                                    : responseStatus === 503
+                                    ? "SERVICE TEMPORARILY UNAVAILABLE"
+                                    : responseStatus === 422
+                                    ? "INVALID INPUT / REJECTED"
+                                    : responseStatus === 400
+                                    ? "BAD REQUEST"
+                                    : "VERIFICATION FAILED"
+                                }`
+                              : typeof resData.pan_status === "string" && resData.pan_status && resData.pan_status !== "ACTIVE"
                               ? resData.pan_status
-                              : typeof resData.aadhaar_status === "string"
+                              : typeof resData.aadhaar_status === "string" && resData.aadhaar_status && resData.aadhaar_status !== "ACTIVE"
                               ? resData.aadhaar_status
-                              : typeof (resData as any).status === "string" && (resData as any).status !== "Unknown"
+                              : typeof (resData as any).company_status === "string" && (resData as any).company_status
+                              ? (resData as any).company_status
+                              : typeof resData.account_status === "string" && resData.account_status && resData.account_status !== "ACTIVE"
+                              ? resData.account_status
+                              : typeof (resData as any).status === "string" && (resData as any).status !== "Unknown" && (resData as any).status !== "ACTIVE"
                               ? (resData as any).status
+                              : typeof responseJson.status_message === "string" && responseJson.status_message !== "Success"
+                              ? responseJson.status_message
                               : typeof responseJson.message === "string"
                               ? responseJson.message
-                              : "Verification Failed / Invalid Input"}
+                              : "VERIFICATION FAILED"}
                           </p>
                         </div>
                       </div>

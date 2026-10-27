@@ -294,6 +294,19 @@ const ENDPOINT_CATALOG_MAP = {
   '/voter-id': ['api_voter_id', '/voter-id', 'voter_id'],
   'voter_id': ['api_voter_id', '/verify/voter-id', '/api/v1/verify/voter-id'],
   'voter-id': ['api_voter_id', '/verify/voter-id', '/api/v1/verify/voter-id'],
+
+  // Mobile Advance Lookup (Composite)
+  '/api/v1/verify/mobile-advance-lookup': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup', '/api/v1/verify/mobile-advance-lookup', 'mobile_advance_lookup', '/mobile-advance-lookup'],
+  '/verify/mobile-advance-lookup': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup', 'mobile_advance_lookup'],
+  '/api/v1/mobile-advance-lookup': ['api_mobile_advance_lookup', '/mobile-advance-lookup', 'mobile_advance_lookup'],
+  '/mobile-advance-lookup': ['api_mobile_advance_lookup', '/mobile-advance-lookup', 'mobile_advance_lookup'],
+  '/verify/mobile-advance': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup', 'mobile_advance_lookup'],
+  '/api/v1/verify/mobile-advance': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup', 'mobile_advance_lookup'],
+  '/mobile-advance': ['api_mobile_advance_lookup', '/mobile-advance-lookup', 'mobile_advance_lookup'],
+  'mobile_advance_lookup': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup'],
+  'mobile_advance': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup'],
+  'mobile-advance': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup'],
+  'mobile-advance-lookup': ['api_mobile_advance_lookup', '/verify/mobile-advance-lookup'],
 };
 
 // UI Service Keys to Catalog IDs
@@ -353,6 +366,11 @@ export const SERVICE_KEY_TO_CATALOG_ID = {
   dth_advance: 'api_dth_operator_advance',
   dth_operator_advance: 'api_dth_operator_advance',
   dth_info: 'api_dth_operator_advance',
+  mobile_intelligence: 'api_mobile_intelligence',
+  'mobile-intelligence': 'api_mobile_intelligence',
+  mobile_advance: 'api_mobile_advance_lookup',
+  mobile_advance_lookup: 'api_mobile_advance_lookup',
+  'mobile-advance-lookup': 'api_mobile_advance_lookup',
 };
 
 export const GST_RATE = 0.18;

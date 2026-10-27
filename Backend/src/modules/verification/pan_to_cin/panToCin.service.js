@@ -68,6 +68,10 @@ export class PanToCinService {
       ''
     ).trim();
 
+    if (!cin && !companyName) {
+      return null;
+    }
+
     const companyStatus = String(
       item.company_status ||
       item.status ||
@@ -327,25 +331,44 @@ export class PanToCinService {
 
       if (upstreamRes.ok && responseJson) {
         upstreamData = responseJson;
-        isSuccess = true;
-      } else if (responseJson) {
-        upstreamData = responseJson;
         const errorMsg = responseJson.message || responseJson.error || responseJson.detail || '';
         if (isUpstreamLowBalance(errorMsg)) {
           return formatUpstreamLowBalanceResponse(clientRef, requestId);
         }
 
-        if (responseJson.status === true || responseJson.status_code === 200 || responseJson.success === true) {
+        const lowerMsg = String(errorMsg).toLowerCase();
+        if (
+          responseJson.verified === false ||
+          responseJson.result_code === 103 ||
+          lowerMsg.includes('no record') ||
+          lowerMsg.includes('not found') ||
+          lowerMsg.includes('no cin')
+        ) {
           isSuccess = true;
+          resultCode = 103;
         } else {
-          const lowerMsg = errorMsg.toLowerCase();
-          if (lowerMsg.includes('no record') || lowerMsg.includes('not found') || lowerMsg.includes('no cin')) {
-            isSuccess = true;
-            upstreamData = { data: null };
-          } else {
-            statusCode = upstreamRes.status || 400;
-            resultCode = 102;
-          }
+          isSuccess = true;
+          resultCode = 101;
+        }
+      } else if (responseJson) {
+        upstreamData = responseJson;
+        const errorMsg =
+          responseJson.message ||
+          responseJson.error?.message ||
+          (typeof responseJson.error === 'string' ? responseJson.error : '') ||
+          responseJson.detail ||
+          '';
+        if (isUpstreamLowBalance(errorMsg)) {
+          return formatUpstreamLowBalanceResponse(clientRef, requestId);
+        }
+
+        const lowerMsg = String(errorMsg).toLowerCase();
+        if (lowerMsg.includes('no record') || lowerMsg.includes('not found') || lowerMsg.includes('no cin')) {
+          isSuccess = true;
+          resultCode = 103;
+        } else {
+          statusCode = upstreamRes.status || 400;
+          resultCode = 102;
         }
       } else {
         throw new Error(`Upstream gateway returned HTTP status ${upstreamRes.status}`);
@@ -365,18 +388,25 @@ export class PanToCinService {
     // 5. Normalization
     const normalizedResult = this.normalizePanToCinData(upstreamData, cleanPan);
     const hasCin = Boolean(normalizedResult.cin || (normalizedResult.companies && normalizedResult.companies.length > 0));
+    const isNoRecord = resultCode === 103 || (!hasCin && isSuccess);
+
+    const errorMessage =
+      upstreamData?.message ||
+      upstreamData?.error?.message ||
+      (typeof upstreamData?.error === 'string' ? upstreamData.error : '') ||
+      'Unable to fetch CIN details for PAN.';
 
     const finalResponse = {
       http_response_code: statusCode,
-      result_code: resultCode,
+      result_code: isNoRecord ? 103 : (isSuccess ? 101 : 102),
       request_id: requestId,
       client_ref_num: clientRef,
-      status_message: isSuccess ? 'Success' : 'Failed',
+      status_message: isNoRecord ? 'No Record Found' : (isSuccess ? 'Success' : 'Failed'),
       message: isSuccess
         ? hasCin
           ? `Successfully retrieved CIN (${normalizedResult.cin || 'Multiple CINs'}) and company details for PAN ${cleanPan}.`
-          : `Corporate record retrieved for PAN ${cleanPan}.`
-        : (upstreamData?.message || 'Unable to fetch CIN details for PAN.'),
+          : (upstreamData?.message || `No corporate records or CIN found for PAN ${cleanPan}.`)
+        : errorMessage,
       result: normalizedResult,
     };
 
