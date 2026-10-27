@@ -5,6 +5,7 @@ import { getEffectiveApiPrice } from '../../../core/config/pricing.config.js';
 import { ApiError } from '../../../core/utils/apiError.js';
 import { PrefillVerificationService } from '../prefill/prefill.service.js';
 import { MobileIntelligenceService } from '../mobile_intelligence/mobileIntelligence.service.js';
+import { MobileAdvanceLookupPdfService } from './mobileAdvanceLookupPdf.service.js';
 
 export class MobileAdvanceLookupService {
   /**
@@ -26,6 +27,226 @@ export class MobileAdvanceLookupService {
     }
     return clean.slice(-10);
   }
+
+  /**
+   * Helper to extract clean 10-digit Indian mobile numbers from an Intelligence response
+   */
+  static extractAlternateNumbers(intelRes, excludePhone) {
+    if (!intelRes) return [];
+    const data = intelRes?.data || {};
+    const result = intelRes?.result || {};
+    const primary = data?.primary_result || result || {};
+    const records = Array.isArray(data?.results) ? data.results : (Array.isArray(result?.records) ? result.records : []);
+
+    const altSources = [
+      result?.alt,
+      result?.alt_mobile,
+      primary?.alt,
+      primary?.mobile,
+      ...records.map((r) => r?.alt),
+      ...records.map((r) => r?.mobile),
+    ].filter(Boolean).join(', ');
+
+    return Array.from(new Set(
+      altSources
+        .split(/[,\s/|]+/)
+        .map((n) => n.replace(/\D/g, '').slice(-10))
+        .filter((n) => /^[6-9]\d{9}$/.test(n) && n !== excludePhone)
+    ));
+  }
+
+  /**
+   * Multi-Level Recursive Alternate Discovery (Depth 1 to 3 with Cycle/Duplicate Prevention)
+   * Stopping conditions:
+   * 1. Max Depth = 3 (Leaves analyzed without further recursion)
+   * 2. Visited / Loop detection (Same number returned in alternate branches halts immediately)
+   * 3. No alternates found
+   */
+  static async discoverAlternateNetwork({
+    rootPhone,
+    rootAlternates = [],
+    endpoint = '/api/v1/verify/mobile-advance-lookup',
+    maxDepth = 3,
+    maxBranchesPerLevel = 6,
+  }) {
+    const visited = new Set([rootPhone]);
+    const network = {
+      root_phone: rootPhone,
+      max_depth: maxDepth,
+      unique_numbers_count: 1,
+      loops_prevented_count: 0,
+      levels: {
+        level_1: [],
+        level_2: [],
+        level_3: [],
+      },
+    };
+
+    // Helper for resilient individual mobile intelligence query
+    const fetchNodeIntelligence = async (phoneToQuery, parentPhone) => {
+      try {
+        const intelRes = await MobileIntelligenceService.searchMobileIntelligence({
+          phone: phoneToQuery,
+          client_ref_num: `ADV_ALT_${phoneToQuery.slice(-4)}`,
+          apiClient: null, // Zero internal charge
+          endpoint,
+        });
+
+        const data = intelRes?.data || {};
+        const result = intelRes?.result || {};
+        const primary = data?.primary_result || result || {};
+        const records = Array.isArray(data?.results) ? data.results : (Array.isArray(result?.records) ? result.records : []);
+
+        const callerName = result?.name || primary?.name || records[0]?.name || null;
+        const operator = primary?.operator || records[0]?.operator || records[0]?.carrier || null;
+        const circle = primary?.circle || records[0]?.circle || records[0]?.location || null;
+        const fatherName = primary?.fname || result?.fname || null;
+        const address = primary?.address || result?.address || records[0]?.address || null;
+        const confidence = result?.confidence || primary?.confidence || (records[0] ? 85 : 0);
+
+        const childAlternates = MobileAdvanceLookupService.extractAlternateNumbers(intelRes, phoneToQuery);
+
+        return {
+          phone: phoneToQuery,
+          parent_phone: parentPhone,
+          caller_name: callerName,
+          operator,
+          circle,
+          father_name: fatherName,
+          address,
+          confidence,
+          alternate_numbers: childAlternates,
+          loop_detected: false,
+          is_duplicate: false,
+        };
+      } catch (err) {
+        console.warn(`⚠️ [ADVANCE NETWORK] Failed to query intelligence for alternate ${phoneToQuery}:`, err.message);
+        return {
+          phone: phoneToQuery,
+          parent_phone: parentPhone,
+          caller_name: null,
+          operator: null,
+          circle: null,
+          father_name: null,
+          address: null,
+          confidence: 0,
+          alternate_numbers: [],
+          loop_detected: false,
+          is_duplicate: false,
+          error: err.message,
+        };
+      }
+    };
+
+    // --- LEVEL 1: Direct Alternates from Root ---
+    const level1Candidates = (rootAlternates || []).slice(0, maxBranchesPerLevel);
+    const level1FetchPromises = [];
+
+    for (const phone of level1Candidates) {
+      if (visited.has(phone)) {
+        network.loops_prevented_count += 1;
+        network.levels.level_1.push({
+          phone,
+          parent_phone: rootPhone,
+          loop_detected: true,
+          is_duplicate: true,
+          caller_name: null,
+          alternate_numbers: [],
+        });
+      } else {
+        visited.add(phone);
+        level1FetchPromises.push(fetchNodeIntelligence(phone, rootPhone));
+      }
+    }
+
+    const level1Settled = await Promise.allSettled(level1FetchPromises);
+    for (const res of level1Settled) {
+      if (res.status === 'fulfilled' && res.value) {
+        network.levels.level_1.push(res.value);
+      }
+    }
+
+    // --- LEVEL 2: Secondary Alternates from Level 1 ---
+    const level2Candidates = [];
+    for (const l1Node of network.levels.level_1) {
+      if (l1Node.loop_detected) continue;
+      const childAlts = l1Node.alternate_numbers || [];
+      for (const alt of childAlts) {
+        level2Candidates.push({ phone: alt, parentPhone: l1Node.phone });
+      }
+    }
+
+    const limitedLevel2 = level2Candidates.slice(0, maxBranchesPerLevel);
+    const level2FetchPromises = [];
+
+    for (const item of limitedLevel2) {
+      if (visited.has(item.phone)) {
+        network.loops_prevented_count += 1;
+        network.levels.level_2.push({
+          phone: item.phone,
+          parent_phone: item.parentPhone,
+          loop_detected: true,
+          is_duplicate: true,
+          caller_name: null,
+          alternate_numbers: [],
+        });
+      } else {
+        visited.add(item.phone);
+        level2FetchPromises.push(fetchNodeIntelligence(item.phone, item.parentPhone));
+      }
+    }
+
+    const level2Settled = await Promise.allSettled(level2FetchPromises);
+    for (const res of level2Settled) {
+      if (res.status === 'fulfilled' && res.value) {
+        network.levels.level_2.push(res.value);
+      }
+    }
+
+    // --- LEVEL 3: Tertiary Alternates from Level 2 (STOP CONDITION: DEPTH 3 REACHED) ---
+    const level3Candidates = [];
+    for (const l2Node of network.levels.level_2) {
+      if (l2Node.loop_detected) continue;
+      const childAlts = l2Node.alternate_numbers || [];
+      for (const alt of childAlts) {
+        level3Candidates.push({ phone: alt, parentPhone: l2Node.phone });
+      }
+    }
+
+    const limitedLevel3 = level3Candidates.slice(0, maxBranchesPerLevel);
+    const level3FetchPromises = [];
+
+    for (const item of limitedLevel3) {
+      if (visited.has(item.phone)) {
+        network.loops_prevented_count += 1;
+        network.levels.level_3.push({
+          phone: item.phone,
+          parent_phone: item.parentPhone,
+          loop_detected: true,
+          is_duplicate: true,
+          caller_name: null,
+          alternate_numbers: [],
+        });
+      } else {
+        visited.add(item.phone);
+        level3FetchPromises.push(fetchNodeIntelligence(item.phone, item.parentPhone));
+      }
+    }
+
+    const level3Settled = await Promise.allSettled(level3FetchPromises);
+    for (const res of level3Settled) {
+      if (res.status === 'fulfilled' && res.value) {
+        const node = res.value;
+        // Strictly enforce max depth 3: do NOT traverse any further
+        node.depth_limit_reached = true;
+        network.levels.level_3.push(node);
+      }
+    }
+
+    network.unique_numbers_count = visited.size;
+    return network;
+  }
+
 
   /**
    * Execute Unified Mobile Advance Lookup (Composite of Prefill & Intelligence)
@@ -94,6 +315,10 @@ export class MobileAdvanceLookupService {
         client_ref_num: clientRef,
         _cached: true,
       };
+
+      if (cachedResult.data?.pdf_base64 || cachedResult.pdf_base64) {
+        cachedResponse._pdfBuffer = Buffer.from(cachedResult.data?.pdf_base64 || cachedResult.pdf_base64, 'base64');
+      }
 
       if (apiClient?.user_id) {
         QueueService.addAuditJob({
@@ -248,6 +473,56 @@ export class MobileAdvanceLookupService {
       ? prefillResult.address
       : (intelPrimary?.address || intelResult?.address ? [{ first_line_of_address: intelPrimary?.address || intelResult?.address }] : []);
 
+    // 3. Multi-Level Recursive Alternate Discovery (Depth 1 to 3 with Loop/Cycle Prevention)
+    console.log(`🌐 [MOBILE ADVANCE] Initiating recursive alternate discovery up to Depth 3 for ${cleanPhone}...`);
+    const networkGraph = await this.discoverAlternateNetwork({
+      rootPhone: cleanPhone,
+      rootAlternates: alternateNumbers,
+      endpoint,
+      maxDepth: 3,
+    });
+    console.log(`✅ [MOBILE ADVANCE] Network mapped: ${networkGraph.unique_numbers_count} unique contacts, ${networkGraph.loops_prevented_count} loops prevented.`);
+
+    // 4. High-Fidelity PDF Report Generation
+    let pdfBuffer = null;
+    let pdfBase64 = null;
+    try {
+      pdfBuffer = await MobileAdvanceLookupPdfService.generatePdf({
+        phone: cleanPhone,
+        status: isSuccess ? 'success' : 'failed',
+        request_id: requestId,
+        client_ref_num: clientRef,
+        unified_profile: {
+          name: unifiedName,
+          phone: cleanPhone,
+          alternate_numbers: alternateNumbers,
+          pan: unifiedPan,
+          dob: unifiedDob,
+          gender: unifiedGender,
+          email: unifiedEmail,
+          father_name: relationName,
+          registered_id: registeredId,
+          addresses: unifiedAddresses,
+          telecom_circle: telecomCircle,
+          telecom_operator: telecomOperator,
+        },
+        network_graph: networkGraph,
+        summary: {
+          phone: cleanPhone,
+          identity_verified: isPrefillSuccess,
+          telecom_intelligence_found: isIntelSuccess,
+          total_telecom_records: intelData?.total_records || intelRecords.length,
+          alternate_numbers_found: alternateNumbers.length,
+        },
+      });
+
+      if (pdfBuffer && pdfBuffer.length > 0) {
+        pdfBase64 = pdfBuffer.toString('base64');
+      }
+    } catch (pdfErr) {
+      console.warn('⚠️ [MOBILE ADVANCE] PDF Generation error (continuing API):', pdfErr.message);
+    }
+
     const finalResponse = {
       status: isSuccess ? 'success' : 'failed',
       status_message: isSuccess ? 'completed' : 'no_records_found',
@@ -262,6 +537,10 @@ export class MobileAdvanceLookupService {
         telecom_intelligence_found: isIntelSuccess,
         total_telecom_records: intelData?.total_records || intelRecords.length,
         alternate_numbers_found: alternateNumbers.length,
+        network_depth_scanned: 3,
+        total_network_numbers_discovered: networkGraph?.unique_numbers_count || (1 + alternateNumbers.length),
+        loops_prevented: networkGraph?.loops_prevented_count || 0,
+        pdf_generated: Boolean(pdfBase64),
         execution_time_ms: durationMs,
       },
       data: {
@@ -283,6 +562,14 @@ export class MobileAdvanceLookupService {
           kyc_found: isPrefillSuccess,
           telecom_found: isIntelSuccess,
         },
+        network_graph: networkGraph,
+        alternate_tree: networkGraph?.levels || { level_1: [], level_2: [], level_3: [] },
+        pdf_report: {
+          format: 'pdf',
+          filename: `mobile_advance_report_${cleanPhone}.pdf`,
+          base64: pdfBase64,
+        },
+        pdf_base64: pdfBase64,
         prefill: {
           status: isPrefillSuccess ? 'success' : 'not_found',
           name: prefillResult?.name || null,
@@ -318,12 +605,17 @@ export class MobileAdvanceLookupService {
         operator: telecomOperator,
         circle: telecomCircle,
         telecom_records: intelRecords,
+        network_graph: networkGraph,
+        pdf_base64: pdfBase64,
       },
+      _pdfBuffer: pdfBuffer,
     };
 
-    // Cache successful composite result in Redis for 24 hours
+    // Cache successful composite result in Redis for 24 hours (excluding raw _pdfBuffer)
     if (isSuccess) {
-      CacheService.setVerification('mobile_advance_lookup', cacheKey, finalResponse, 86400).catch((err) => {
+      const cachePayload = { ...finalResponse };
+      delete cachePayload._pdfBuffer;
+      CacheService.setVerification('mobile_advance_lookup', cacheKey, cachePayload, 86400).catch((err) => {
         console.warn('Cache write error for mobile advance lookup:', err.message);
       });
     }

@@ -78,6 +78,27 @@ export const MobileAdvanceLookupController = {
     });
 
     const httpCode = result.http_response_code || 200;
+
+    // Direct PDF download support (via query param ?format=pdf, ?download=pdf or header Accept: application/pdf)
+    const wantsPdf =
+      req.query?.format === 'pdf' ||
+      req.query?.download === 'pdf' ||
+      req.query?.download_pdf === 'true' ||
+      req.body?.format === 'pdf' ||
+      req.headers?.accept === 'application/pdf';
+
+    if (wantsPdf && result._pdfBuffer) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="mobile_advance_report_${result.summary?.phone || 'report'}.pdf"`
+      );
+      return res.status(200).send(result._pdfBuffer);
+    }
+
+    // Strip internal binary buffer reference so JSON response remains clean
+    delete result._pdfBuffer;
+
     return res.status(httpCode).json(result);
   }),
 };
