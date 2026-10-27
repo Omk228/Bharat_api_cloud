@@ -8851,10 +8851,23 @@ function TestApiPage() {
                               "—"
                             );
 
-                            // Extract Alternate Mobile Numbers (excluding primary phone)
+                            // Extract Multi-Tier Network Graph & PDF data from backend response
+                            const networkGraph: any = advData?.network_graph || rawResp?.network_graph || rawResp?.result?.network_graph || null;
+                            const pdfBase64: string = advData?.pdf_base64 || rawResp?.pdf_base64 || rawResp?.result?.pdf_base64 || advData?.pdf_report?.base64 || "";
+
+                            const level1Nodes: any[] = Array.isArray(networkGraph?.levels?.level_1) ? networkGraph.levels.level_1 : [];
+                            const level2Nodes: any[] = Array.isArray(networkGraph?.levels?.level_2) ? networkGraph.levels.level_2 : [];
+                            const level3Nodes: any[] = Array.isArray(networkGraph?.levels?.level_3) ? networkGraph.levels.level_3 : [];
+                            const loopsPrevented = Number(networkGraph?.loops_prevented_count || summaryInfo?.loops_prevented || 0);
+
+                            // Extract Alternate Mobile Numbers across all tiers (excluding primary phone)
                             const rawAltSources = [
                               ...(Array.isArray(unifiedProfile?.alternate_numbers) ? unifiedProfile.alternate_numbers : []),
+                              ...(Array.isArray(unifiedProfile?.all_network_numbers) ? unifiedProfile.all_network_numbers : []),
                               ...(Array.isArray(advData?.intelligence?.alternate_numbers) ? advData.intelligence.alternate_numbers : []),
+                              ...level1Nodes.map((n: any) => n.phone),
+                              ...level2Nodes.map((n: any) => n.phone),
+                              ...level3Nodes.map((n: any) => n.phone),
                               intelBlock?.alt,
                               intelBlock?.alt_mobile,
                               intelBlock?.mobile,
@@ -8906,10 +8919,55 @@ function TestApiPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2.5">
                                     <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-mono font-semibold text-foreground">
                                       {confidence}% Match
                                     </span>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        try {
+                                          if (pdfBase64) {
+                                            const byteCharacters = atob(pdfBase64);
+                                            const byteNumbers = new Array(byteCharacters.length);
+                                            for (let i = 0; i < byteCharacters.length; i++) {
+                                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                            }
+                                            const byteArray = new Uint8Array(byteNumbers);
+                                            const blob = new Blob([byteArray], { type: "application/pdf" });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.download = `mobile_advance_report_${cleanTarget || "report"}.pdf`;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(url);
+                                          } else {
+                                            const blob = await apiClient.downloadMobileAdvancePdf({
+                                              phone: cleanTarget,
+                                              first_name: mobileAdvanceFirstName || "User",
+                                              last_name: mobileAdvanceLastName || undefined,
+                                              client_ref_num: mobileAdvanceClientRef || undefined,
+                                            });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.download = `mobile_advance_report_${cleanTarget || "report"}.pdf`;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(url);
+                                          }
+                                        } catch (err: any) {
+                                          console.error("PDF download failed:", err);
+                                        }
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 text-xs font-bold shadow-md transition-all cursor-pointer"
+                                      title="Download Mobile Advance Intelligence PDF Report"
+                                    >
+                                      <Download className="h-3.5 w-3.5" /> Download PDF Report
+                                    </button>
                                   </div>
                                 </div>
 
@@ -8936,19 +8994,19 @@ function TestApiPage() {
                                   <div className="rounded-xl border border-border/80 bg-background/60 p-3">
                                     <span className="text-[11px] text-muted-foreground block font-medium">Alternate Numbers</span>
                                     <span className={`text-xs font-bold mt-1 block ${altNumbers.length > 0 ? "text-cyan-400" : "text-muted-foreground"}`}>
-                                      {altNumbers.length > 0 ? `${altNumbers.length} Linked Number(s)` : "None Linked"}
+                                      {altNumbers.length > 0 ? `${altNumbers.length} Unique Contact(s)` : "None Linked"}
                                     </span>
                                   </div>
                                 </div>
 
-                                {/* Dedicated Alternate Mobile Numbers Pill Box */}
+                                {/* Dedicated All Alternate Numbers Pill Box */}
                                 {altNumbers.length > 0 && (
                                   <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3.5 space-y-2">
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-                                        <Phone className="h-3.5 w-3.5" /> Associated & Alternate Mobile Numbers ({altNumbers.length})
+                                        <Phone className="h-3.5 w-3.5" /> All Discovered Alternate Numbers ({altNumbers.length})
                                       </span>
-                                      <span className="text-[10px] font-mono text-cyan-400/80 uppercase">Linked Signals</span>
+                                      <span className="text-[10px] font-mono text-cyan-400/80 uppercase">All Network Signals</span>
                                     </div>
                                     <div className="flex flex-wrap gap-2 pt-0.5">
                                       {altNumbers.map((num, idx) => (
@@ -8973,6 +9031,191 @@ function TestApiPage() {
                                         </div>
                                       ))}
                                     </div>
+                                  </div>
+                                )}
+
+                                {/* Multi-Tier Recursive Alternate Network (Depth 1 -> 2 -> 3 Tree) */}
+                                {networkGraph && (level1Nodes.length > 0 || level2Nodes.length > 0 || level3Nodes.length > 0) && (
+                                  <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-3.5">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-500/20 pb-2.5">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400">
+                                          <Layers className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                          <span className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                                            Recursive Alternate Network (Depth 3 Hierarchy)
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground">
+                                            Scanned up to Depth 3 with automated cycle & loop prevention
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {loopsPrevented > 0 && (
+                                          <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                                            {loopsPrevented} Cycle(s) Stopped
+                                          </span>
+                                        )}
+                                        <span className="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-400">
+                                          Max Depth 3
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Level 1 Nodes */}
+                                    {level1Nodes.length > 0 && (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-[11px] font-bold text-blue-400">
+                                          <span className="flex items-center gap-1.5">
+                                            <span className="h-2 w-2 rounded-full bg-blue-400" /> LEVEL 1: Direct Alternates ({level1Nodes.length})
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground font-normal">Discovered from +91 {cleanTarget}</span>
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                          {level1Nodes.map((node: any, idx: number) => {
+                                            const isLoop = Boolean(node.loop_detected || node.is_duplicate);
+                                            return (
+                                              <div
+                                                key={idx}
+                                                className={`rounded-lg border p-2.5 text-xs space-y-1 ${
+                                                  isLoop ? "border-amber-500/30 bg-amber-500/5" : "border-blue-500/20 bg-background/80"
+                                                }`}
+                                              >
+                                                <div className="flex items-center justify-between">
+                                                  <span className="font-mono font-bold text-foreground flex items-center gap-1.5">
+                                                    <Smartphone className="h-3 w-3 text-blue-400" /> +91 {node.phone}
+                                                  </span>
+                                                  {isLoop ? (
+                                                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-amber-400">
+                                                      Loop Detected / Stopped
+                                                    </span>
+                                                  ) : (
+                                                    <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-blue-400">
+                                                      {node.alternate_numbers?.length || 0} Alternate(s)
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <div className="text-[11px] text-muted-foreground truncate">
+                                                  Name: <span className="font-semibold text-foreground">{node.caller_name || node.name || "Identity Unknown"}</span>
+                                                </div>
+                                                {node.father_name && (
+                                                  <div className="text-[10px] text-muted-foreground truncate">
+                                                    Father/Spouse: <span className="text-foreground">{node.father_name}</span>
+                                                  </div>
+                                                )}
+                                                {node.operator && (
+                                                  <div className="text-[10px] text-muted-foreground truncate">
+                                                    Telecom: <span className="text-foreground">{node.operator} ({node.circle || "India"})</span>
+                                                  </div>
+                                                )}
+                                                {node.address && (
+                                                  <div className="text-[10px] text-muted-foreground line-clamp-1">
+                                                    Address: <span className="text-foreground">{node.address}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Level 2 Nodes */}
+                                    {level2Nodes.length > 0 && (
+                                      <div className="space-y-2 pt-1 border-t border-indigo-500/10">
+                                        <div className="flex items-center justify-between text-[11px] font-bold text-purple-400">
+                                          <span className="flex items-center gap-1.5">
+                                            <span className="h-2 w-2 rounded-full bg-purple-400" /> LEVEL 2: Secondary Alternates ({level2Nodes.length})
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground font-normal">Discovered from Level 1</span>
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                          {level2Nodes.map((node: any, idx: number) => {
+                                            const isLoop = Boolean(node.loop_detected || node.is_duplicate);
+                                            return (
+                                              <div
+                                                key={idx}
+                                                className={`rounded-lg border p-2.5 text-xs space-y-1 ${
+                                                  isLoop ? "border-amber-500/30 bg-amber-500/5" : "border-purple-500/20 bg-background/80"
+                                                }`}
+                                              >
+                                                <div className="flex items-center justify-between">
+                                                  <span className="font-mono font-bold text-foreground flex items-center gap-1.5">
+                                                    <Smartphone className="h-3 w-3 text-purple-400" /> +91 {node.phone}
+                                                  </span>
+                                                  {isLoop ? (
+                                                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-amber-400">
+                                                      Loop Detected / Stopped
+                                                    </span>
+                                                  ) : (
+                                                    <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-purple-400">
+                                                      Linked from +91 {node.parent_phone}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <div className="text-[11px] text-muted-foreground truncate">
+                                                  Name: <span className="font-semibold text-foreground">{node.caller_name || node.name || "Identity Unknown"}</span>
+                                                </div>
+                                                {node.father_name && (
+                                                  <div className="text-[10px] text-muted-foreground truncate">
+                                                    Father/Spouse: <span className="text-foreground">{node.father_name}</span>
+                                                  </div>
+                                                )}
+                                                {node.address && (
+                                                  <div className="text-[10px] text-muted-foreground line-clamp-1">
+                                                    Address: <span className="text-foreground">{node.address}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Level 3 Nodes */}
+                                    {level3Nodes.length > 0 && (
+                                      <div className="space-y-2 pt-1 border-t border-indigo-500/10">
+                                        <div className="flex items-center justify-between text-[11px] font-bold text-emerald-400">
+                                          <span className="flex items-center gap-1.5">
+                                            <span className="h-2 w-2 rounded-full bg-emerald-400" /> LEVEL 3: Tertiary Connections ({level3Nodes.length})
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground font-normal">Depth 3 Limit Reached</span>
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                          {level3Nodes.map((node: any, idx: number) => {
+                                            const isLoop = Boolean(node.loop_detected || node.is_duplicate);
+                                            return (
+                                              <div
+                                                key={idx}
+                                                className={`rounded-lg border p-2.5 text-xs space-y-1 ${
+                                                  isLoop ? "border-amber-500/30 bg-amber-500/5" : "border-emerald-500/20 bg-background/80"
+                                                }`}
+                                              >
+                                                <div className="flex items-center justify-between">
+                                                  <span className="font-mono font-bold text-foreground flex items-center gap-1.5">
+                                                    <Smartphone className="h-3 w-3 text-emerald-400" /> +91 {node.phone}
+                                                  </span>
+                                                  {isLoop ? (
+                                                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-amber-400">
+                                                      Loop Detected / Stopped
+                                                    </span>
+                                                  ) : (
+                                                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-400">
+                                                      Depth 3 Stop
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <div className="text-[11px] text-muted-foreground truncate">
+                                                  Name: <span className="font-semibold text-foreground">{node.caller_name || node.name || "Identity Unknown"}</span>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 

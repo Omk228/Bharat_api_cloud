@@ -523,6 +523,14 @@ export class MobileAdvanceLookupService {
       console.warn('⚠️ [MOBILE ADVANCE] PDF Generation error (continuing API):', pdfErr.message);
     }
 
+    // Aggregate all unique alternate numbers discovered across all levels (excluding root target)
+    const allDiscoveredAlternates = Array.from(new Set([
+      ...alternateNumbers,
+      ...(networkGraph?.levels?.level_1?.map((n) => n.phone) || []),
+      ...(networkGraph?.levels?.level_2?.map((n) => n.phone) || []),
+      ...(networkGraph?.levels?.level_3?.map((n) => n.phone) || []),
+    ])).filter((n) => n && n !== cleanPhone);
+
     const finalResponse = {
       status: isSuccess ? 'success' : 'failed',
       status_message: isSuccess ? 'completed' : 'no_records_found',
@@ -536,9 +544,10 @@ export class MobileAdvanceLookupService {
         identity_verified: isPrefillSuccess,
         telecom_intelligence_found: isIntelSuccess,
         total_telecom_records: intelData?.total_records || intelRecords.length,
-        alternate_numbers_found: alternateNumbers.length,
+        alternate_numbers_found: allDiscoveredAlternates.length,
+        direct_alternate_numbers_found: alternateNumbers.length,
         network_depth_scanned: 3,
-        total_network_numbers_discovered: networkGraph?.unique_numbers_count || (1 + alternateNumbers.length),
+        total_network_numbers_discovered: networkGraph?.unique_numbers_count || (1 + allDiscoveredAlternates.length),
         loops_prevented: networkGraph?.loops_prevented_count || 0,
         pdf_generated: Boolean(pdfBase64),
         execution_time_ms: durationMs,
@@ -548,7 +557,9 @@ export class MobileAdvanceLookupService {
         unified_profile: {
           name: unifiedName,
           phone: cleanPhone,
-          alternate_numbers: alternateNumbers,
+          alternate_numbers: allDiscoveredAlternates,
+          direct_alternate_numbers: alternateNumbers,
+          all_network_numbers: allDiscoveredAlternates,
           pan: unifiedPan,
           dob: unifiedDob,
           gender: unifiedGender,
@@ -599,7 +610,9 @@ export class MobileAdvanceLookupService {
         gender: unifiedGender,
         email: unifiedEmail,
         father_name: relationName,
-        alternate_numbers: alternateNumbers,
+        alternate_numbers: allDiscoveredAlternates,
+        direct_alternate_numbers: alternateNumbers,
+        all_network_numbers: allDiscoveredAlternates,
         registered_id: registeredId,
         addresses: unifiedAddresses,
         operator: telecomOperator,
