@@ -2,7 +2,7 @@ import PDFDocument from 'pdfkit';
 
 /**
  * Mobile Advance Lookup PDF Generation Service
- * Generates high-fidelity, professional multi-page intelligence & alternate network reports.
+ * Generates executive, overlap-free, multi-page intelligence & alternate network reports.
  */
 export class MobileAdvanceLookupPdfService {
   /**
@@ -21,7 +21,7 @@ export class MobileAdvanceLookupPdfService {
             Title: `Mobile Advance Intelligence Report - ${reportData.phone || 'Report'}`,
             Author: 'Bharat API Cloud',
             Subject: 'Mobile Intelligence & Multi-Tier Alternate Network Analysis',
-            Creator: 'Bharat API Cloud Platform',
+            Creator: 'Bharat API Cloud Enterprise Platform',
           },
         });
 
@@ -47,7 +47,8 @@ export class MobileAdvanceLookupPdfService {
         const rootPhone = reportData.phone || profile.phone || summary.phone || 'N/A';
         const requestId = reportData.request_id || 'N/A';
         const clientRef = reportData.client_ref_num || 'N/A';
-        const status = (reportData.status || 'success').toUpperCase();
+        const isSuccess = (reportData.status || 'success').toLowerCase() === 'success';
+
         const dateStr = new Date().toLocaleString('en-IN', {
           timeZone: 'Asia/Kolkata',
           day: '2-digit',
@@ -61,52 +62,73 @@ export class MobileAdvanceLookupPdfService {
 
         let currentY = margin;
 
-        // Helper to check for page break
+        // Space checker & auto-page break
         const ensureSpace = (neededHeight) => {
-          if (currentY + neededHeight > pageHeight - margin - 30) {
+          if (currentY + neededHeight > pageHeight - margin - 35) {
             doc.addPage();
             currentY = margin;
-            drawCompactHeader();
+            drawCompactRunningHeader();
           }
         };
 
-        const drawCompactHeader = () => {
-          doc.rect(margin, currentY, contentWidth, 22).fill('#0B132B');
-          doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold')
-            .text('BHARAT API CLOUD  |  MOBILE ADVANCE REPORT', margin + 10, currentY + 7);
+        const drawCompactRunningHeader = () => {
+          doc.rect(margin, currentY, contentWidth, 22).fill('#0F172A');
+          doc.fillColor('#38BDF8').fontSize(8).font('Helvetica-Bold')
+            .text('BHARAT API CLOUD', margin + 10, currentY + 7);
+          doc.fillColor('#E2E8F0').fontSize(7.5).font('Helvetica')
+            .text('ADVANCE MOBILE INTELLIGENCE REPORT', margin + 110, currentY + 7);
           doc.fillColor('#94A3B8').fontSize(7).font('Helvetica')
-            .text(`TARGET: ${rootPhone}  |  REF: ${clientRef}`, margin + 280, currentY + 7, { align: 'right', width: contentWidth - 290 });
+            .text(`TARGET: +91 ${rootPhone}  |  REF: ${clientRef}`, margin, currentY + 7, {
+              align: 'right',
+              width: contentWidth - 10,
+            });
           currentY += 28;
         };
 
-        // --- 1. FULL HEADER (Page 1) ---
+        // ==========================================
+        // 1. PRIMARY COVER HEADER (Page 1)
+        // ==========================================
         doc.rect(margin, currentY, contentWidth, 68).fill('#0B132B');
-        
+
+        // Cyan Left Accent Strip
+        doc.rect(margin, currentY, 4, 68).fill('#38BDF8');
+
         // Brand & Subtitle
         doc.fillColor('#38BDF8').fontSize(14).font('Helvetica-Bold')
-          .text('BHARAT API CLOUD', margin + 14, currentY + 12);
-        doc.fillColor('#94A3B8').fontSize(8).font('Helvetica')
-          .text('CONFIDENTIAL INTELLIGENCE & MULTI-TIER NETWORK REPORT', margin + 14, currentY + 30);
-        doc.fillColor('#E2E8F0').fontSize(7).font('Helvetica')
-          .text(`Generated: ${dateStr} IST  |  Depth Scanned: Level 3 (Stop on Duplicates)`, margin + 14, currentY + 44);
+          .text('BHARAT API CLOUD', margin + 16, currentY + 12);
+        doc.fillColor('#F8FAFC').fontSize(8.5).font('Helvetica-Bold')
+          .text('ADVANCE MOBILE INTELLIGENCE & NETWORK DOSSIER', margin + 16, currentY + 30);
+        doc.fillColor('#94A3B8').fontSize(7.5).font('Helvetica')
+          .text(`Generated: ${dateStr} IST  |  Multi-Tier Traversal: Depth 1 -> 2 -> 3`, margin + 16, currentY + 46);
 
         // Status Badge Box
-        const isSuccess = status === 'SUCCESS';
-        const badgeColor = isSuccess ? '#10B981' : '#EF4444';
-        const badgeText = isSuccess ? 'VERIFIED' : 'NO RECORDS';
-        
-        doc.roundedRect(margin + contentWidth - 110, currentY + 12, 96, 22, 4)
-          .fill(isSuccess ? '#064E3B' : '#7F1D1D');
-        doc.fillColor(badgeColor).fontSize(9).font('Helvetica-Bold')
-          .text(badgeText, margin + contentWidth - 110, currentY + 17, { width: 96, align: 'center' });
+        const badgeBg = isSuccess ? '#064E3B' : '#7F1D1D';
+        const badgeTextColor = isSuccess ? '#34D399' : '#FCA5A5';
+        const badgeLabel = isSuccess ? 'VERIFIED RECORD' : 'NO RECORDS';
 
-        doc.fillColor('#94A3B8').fontSize(7).font('Helvetica')
-          .text(`REQ: ${requestId.slice(0, 20)}`, margin + contentWidth - 130, currentY + 40, { width: 120, align: 'right' });
-        doc.text(`REF: ${clientRef.slice(0, 20)}`, margin + contentWidth - 130, currentY + 50, { width: 120, align: 'right' });
+        const badgeW = 110;
+        const badgeH = 20;
+        const badgeX = margin + contentWidth - badgeW - 12;
+        doc.roundedRect(badgeX, currentY + 12, badgeW, badgeH, 3).fill(badgeBg);
+        doc.roundedRect(badgeX, currentY + 12, badgeW, badgeH, 3).lineWidth(0.8).stroke(badgeTextColor);
+        doc.fillColor(badgeTextColor).fontSize(8).font('Helvetica-Bold')
+          .text(badgeLabel, badgeX, currentY + 17, { width: badgeW, align: 'center' });
+
+        doc.fillColor('#CBD5E1').fontSize(7).font('Helvetica')
+          .text(`REQ: ${requestId.slice(0, 22)}`, margin + contentWidth - 160, currentY + 38, {
+            width: 148,
+            align: 'right',
+          });
+        doc.text(`REF: ${clientRef.slice(0, 22)}`, margin + contentWidth - 160, currentY + 50, {
+          width: 148,
+          align: 'right',
+        });
 
         currentY += 76;
 
-        // --- 2. SUMMARY KPI METRIC BOXES ---
+        // ==========================================
+        // 2. EXECUTIVE KPI METRICS BAR
+        // ==========================================
         const totalL1 = levels.level_1?.length || 0;
         const totalL2 = levels.level_2?.length || 0;
         const totalL3 = levels.level_3?.length || 0;
@@ -117,250 +139,301 @@ export class MobileAdvanceLookupPdfService {
         const kpiHeight = 44;
 
         const kpiItems = [
-          { label: 'TARGET NUMBER', val: rootPhone, color: '#2563EB', bg: '#EFF6FF' },
-          { label: 'UNIQUE CONTACTS', val: `${totalUnique} Found`, color: '#059669', bg: '#ECFDF5' },
-          { label: 'NETWORK DEPTH', val: 'Depth 3 Scanned', color: '#7C3AED', bg: '#F5F3FF' },
-          { label: 'LOOPS STOPPED', val: `${loopsAvoided} Interconnected`, color: '#D97706', bg: '#FFFBEB' },
+          { label: 'TARGET SUBSCRIBER', val: `+91 ${rootPhone}`, color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+          { label: 'UNIQUE CONTACTS', val: `${totalUnique} Discovered`, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+          { label: 'MAX SCAN DEPTH', val: 'Depth 3 Scanned', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+          { label: 'CYCLES PREVENTED', val: `${loopsAvoided} Loops Stopped`, color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
         ];
 
         kpiItems.forEach((kpi, idx) => {
           const kpiX = margin + idx * (kpiWidth + 6);
           doc.roundedRect(kpiX, currentY, kpiWidth, kpiHeight, 4).fill(kpi.bg);
-          doc.roundedRect(kpiX, currentY, kpiWidth, kpiHeight, 4).lineWidth(0.8).stroke(kpi.color);
+          doc.roundedRect(kpiX, currentY, kpiWidth, kpiHeight, 4).lineWidth(0.8).stroke(kpi.border);
 
           doc.fillColor('#64748B').fontSize(6.5).font('Helvetica-Bold')
-            .text(kpi.label, kpiX + 6, currentY + 7, { width: kpiWidth - 12 });
+            .text(kpi.label, kpiX + 8, currentY + 8, { width: kpiWidth - 16 });
           doc.fillColor(kpi.color).fontSize(9.5).font('Helvetica-Bold')
-            .text(kpi.val, kpiX + 6, currentY + 22, { width: kpiWidth - 12 });
+            .text(kpi.val, kpiX + 8, currentY + 22, { width: kpiWidth - 16 });
         });
 
         currentY += 52;
 
-        // --- 3. SECTION: PRIMARY TARGET PROFILE (Level 0) ---
-        ensureSpace(120);
+        // ==========================================
+        // 3. SECTION 1: TARGET SUBSCRIBER (LEVEL 0)
+        // ==========================================
+        ensureSpace(130);
 
-        doc.roundedRect(margin, currentY, contentWidth, 18, 3).fill('#1E293B');
+        doc.roundedRect(margin, currentY, contentWidth, 20, 3).fill('#0F172A');
         doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold')
-          .text('PRIMARY SUBSCRIBER PROFILE (LEVEL 0 - ROOT)', margin + 8, currentY + 5);
-        currentY += 22;
+          .text('SECTION 1: PRIMARY SUBSCRIBER PROFILE (LEVEL 0 - ROOT)', margin + 10, currentY + 6);
+        currentY += 24;
 
-        // Profile Container Box
-        const profileBoxY = currentY;
-        const profileBoxH = 104;
-        doc.roundedRect(margin, profileBoxY, contentWidth, profileBoxH, 4).fill('#F8FAFC');
-        doc.roundedRect(margin, profileBoxY, contentWidth, profileBoxH, 4).lineWidth(0.6).stroke('#CBD5E1');
-
+        // Dynamic Profile Content Box
+        const startProfileY = currentY;
         const colW = (contentWidth - 24) / 3;
-        
-        // Row 1
-        let pY = profileBoxY + 8;
-        // Col 1
-        doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold').text('FULL NAME (VERIFIED):', margin + 8, pY);
-        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(profile.name || 'Not Available', margin + 8, pY + 10, { width: colW });
 
-        // Col 2
-        doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold').text('FATHER / RELATION NAME:', margin + 8 + colW + 8, pY);
-        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(profile.father_name || 'Not Available', margin + 8 + colW + 8, pY + 10, { width: colW });
-
-        // Col 3
-        doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold').text('PAN CARD NUMBER:', margin + 8 + (colW + 8) * 2, pY);
-        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(profile.pan || 'Not Linked', margin + 8 + (colW + 8) * 2, pY + 10, { width: colW });
-
-        // Row 2
-        pY += 28;
-        // Col 1
-        doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold').text('DOB / GENDER:', margin + 8, pY);
-        const dobGender = [profile.dob, profile.gender].filter(Boolean).join(' / ') || 'Not Available';
-        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(dobGender, margin + 8, pY + 10, { width: colW });
-
-        // Col 2
-        doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold').text('EMAIL ADDRESS:', margin + 8 + colW + 8, pY);
-        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(profile.email || 'Not Available', margin + 8 + colW + 8, pY + 10, { width: colW });
-
-        // Col 3
-        doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold').text('TELECOM OPERATOR & CIRCLE:', margin + 8 + (colW + 8) * 2, pY);
-        const telecom = [profile.telecom_operator, profile.telecom_circle].filter(Boolean).join(', ') || 'Not Available';
-        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(telecom, margin + 8 + (colW + 8) * 2, pY + 10, { width: colW });
-
-        // Row 3
-        pY += 28;
-        doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold').text('PRIMARY REGISTERED ADDRESS:', margin + 8, pY);
-        const addressText = Array.isArray(profile.addresses) && profile.addresses.length > 0
+        // Pre-extract address text
+        const rawAddr = Array.isArray(profile.addresses) && profile.addresses.length > 0
           ? (typeof profile.addresses[0] === 'string' ? profile.addresses[0] : (profile.addresses[0].first_line_of_address || profile.addresses[0].address || JSON.stringify(profile.addresses[0])))
-          : 'Not Available';
-        doc.fillColor('#334155').fontSize(7.5).font('Helvetica').text(addressText, margin + 8, pY + 10, { width: contentWidth - 16, lineBreak: false });
+          : 'No registered address footprint available.';
 
-        currentY += profileBoxH + 14;
+        // Measure address height cleanly
+        doc.fontSize(7.5).font('Helvetica');
+        const addrHeight = Math.max(16, doc.heightOfString(rawAddr, { width: contentWidth - 24 }));
+        const profileBoxHeight = 12 + 28 + 28 + 14 + addrHeight + 10;
 
-        // --- 4. SECTION: MULTI-LEVEL ALTERNATE NETWORK TREE (DEPTH 1 TO 3) ---
-        ensureSpace(40);
-        doc.roundedRect(margin, currentY, contentWidth, 20, 3).fill('#1E293B');
+        doc.roundedRect(margin, startProfileY, contentWidth, profileBoxHeight, 4).fill('#F8FAFC');
+        doc.roundedRect(margin, startProfileY, contentWidth, profileBoxHeight, 4).lineWidth(0.8).stroke('#CBD5E1');
+
+        let pY = startProfileY + 8;
+
+        // Row 1: Name, Father, PAN
+        doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold').text('FULL NAME (VERIFIED):', margin + 10, pY);
+        doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text(profile.name || 'Identity Unknown', margin + 10, pY + 10, { width: colW, ellipsis: true });
+
+        doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold').text('FATHER / RELATION NAME:', margin + 10 + colW + 6, pY);
+        doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text(profile.father_name || 'Not Available', margin + 10 + colW + 6, pY + 10, { width: colW, ellipsis: true });
+
+        doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold').text('PAN CARD NUMBER:', margin + 10 + (colW + 6) * 2, pY);
+        doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text(profile.pan || 'Not Linked', margin + 10 + (colW + 6) * 2, pY + 10, { width: colW });
+
+        // Row 2: DOB/Gender, Email, Telecom
+        pY += 28;
+        doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold').text('DOB / GENDER:', margin + 10, pY);
+        const dobGender = [profile.dob, profile.gender].filter(Boolean).join(' / ') || 'Not Available';
+        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(dobGender, margin + 10, pY + 10, { width: colW });
+
+        doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold').text('REGISTERED EMAIL:', margin + 10 + colW + 6, pY);
+        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(profile.email || 'Not Available', margin + 10 + colW + 6, pY + 10, { width: colW, ellipsis: true });
+
+        doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold').text('OPERATOR & CIRCLE:', margin + 10 + (colW + 6) * 2, pY);
+        const telecom = [profile.telecom_operator, profile.telecom_circle].filter(Boolean).join(', ') || 'Telecom info available';
+        doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text(telecom, margin + 10 + (colW + 6) * 2, pY + 10, { width: colW, ellipsis: true });
+
+        // Row 3: Full Address (Flows smoothly without overlapping)
+        pY += 28;
+        doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold').text('PRIMARY REGISTERED ADDRESS:', margin + 10, pY);
+        pY += 11;
+        doc.fillColor('#334155').fontSize(7.5).font('Helvetica')
+          .text(rawAddr, margin + 10, pY, { width: contentWidth - 20, lineBreak: true });
+
+        currentY += profileBoxHeight + 16;
+
+        // ==========================================
+        // 4. SECTION 2: MULTI-TIER NETWORK TREE
+        // ==========================================
+        ensureSpace(45);
+        doc.roundedRect(margin, currentY, contentWidth, 20, 3).fill('#0F172A');
         doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold')
-          .text('RECURSIVE ALTERNATE NETWORK (DEPTH 1 -> 2 -> 3 HIERARCHY)', margin + 8, currentY + 6);
+          .text('SECTION 2: RECURSIVE ALTERNATE NETWORK (DEPTH 1 -> 2 -> 3 TREE)', margin + 10, currentY + 6);
         currentY += 26;
 
-        // Render Helper for Individual Node Cards
-        const renderNetworkLevel = (levelNumber, title, nodes, badgeBg, badgeTextColor, borderColor) => {
-          ensureSpace(50);
+        // Render Helper for Individual Node Cards with Dynamic Heights
+        const renderNetworkLevel = (levelNumber, title, nodes, badgeBg, badgeTextColor, borderColor, leftStripeColor) => {
+          ensureSpace(40);
 
           // Level Header Banner
           doc.roundedRect(margin, currentY, contentWidth, 18, 3).fill(badgeBg);
-          doc.roundedRect(margin, currentY, contentWidth, 18, 3).lineWidth(0.6).stroke(borderColor);
+          doc.roundedRect(margin, currentY, contentWidth, 18, 3).lineWidth(0.8).stroke(borderColor);
           doc.fillColor(badgeTextColor).fontSize(8).font('Helvetica-Bold')
-            .text(`LEVEL ${levelNumber}: ${title} (${nodes?.length || 0} Numbers Discovered)`, margin + 8, currentY + 5);
+            .text(`LEVEL ${levelNumber}: ${title} (${nodes?.length || 0} Contacts)`, margin + 10, currentY + 5);
           currentY += 24;
 
           if (!nodes || nodes.length === 0) {
             ensureSpace(24);
             doc.roundedRect(margin, currentY, contentWidth, 20, 3).fill('#F8FAFC');
             doc.fillColor('#64748B').fontSize(7.5).font('Helvetica-Oblique')
-              .text(`No alternate numbers found at Level ${levelNumber}.`, margin + 12, currentY + 6);
+              .text(`No alternate numbers discovered at Level ${levelNumber}.`, margin + 12, currentY + 6);
             currentY += 26;
             return;
           }
 
-          nodes.forEach((node, nodeIdx) => {
-            const cardHeight = 60;
+          nodes.forEach((node) => {
+            const isLoop = Boolean(node.loop_detected || node.is_duplicate);
+            const parentPhone = node.parent_phone || rootPhone;
+
+            // Compute dynamic card height based on actual text lengths
+            doc.fontSize(7.5).font('Helvetica');
+            const addressText = node.address || (node.father_name ? `Father/Relative: ${node.father_name}` : null) || 'No registered location available';
+            const addressH = Math.max(12, doc.heightOfString(`Address: ${addressText}`, { width: contentWidth - 26 }));
+
+            let altsPreview = '';
+            let altsH = 0;
+            if (!isLoop && Array.isArray(node.alternate_numbers) && node.alternate_numbers.length > 0) {
+              altsPreview = `Discovered Alternates: ${node.alternate_numbers.map(n => `+91 ${n}`).join(', ')}`;
+              altsH = Math.max(12, doc.heightOfString(altsPreview, { width: contentWidth - 26 }));
+            }
+
+            // Total dynamic height calculation:
+            // Top padding (8) + Row 1 Phone/Name (16) + Row 2 Operator/Lineage (13) + Row 3 Address (addressH + 4) + Row 4 Alts/Notice (altsH or 12) + Bottom padding (8)
+            const nodeNoticeH = isLoop ? 12 : (levelNumber === 3 ? 12 : altsH);
+            const cardHeight = 8 + 16 + 13 + addressH + 4 + (nodeNoticeH > 0 ? nodeNoticeH + 4 : 0) + 6;
+
             ensureSpace(cardHeight + 8);
 
-            const isLoop = Boolean(node.loop_detected || node.is_duplicate);
             const cardBg = isLoop ? '#FFFBEB' : '#FFFFFF';
-            const cardBorder = isLoop ? '#F59E0B' : '#E2E8F0';
+            const cardBorder = isLoop ? '#FDE68A' : '#E2E8F0';
+            const stripeColor = isLoop ? '#F59E0B' : leftStripeColor;
 
+            // Background Card
             doc.roundedRect(margin, currentY, contentWidth, cardHeight, 4).fill(cardBg);
-            doc.roundedRect(margin, currentY, contentWidth, cardHeight, 4).lineWidth(0.6).stroke(cardBorder);
+            doc.roundedRect(margin, currentY, contentWidth, cardHeight, 4).lineWidth(0.8).stroke(cardBorder);
 
-            // Left accent bar
-            doc.rect(margin, currentY, 4, cardHeight).fill(isLoop ? '#F59E0B' : badgeTextColor);
+            // Left colored stripe
+            doc.rect(margin, currentY, 4, cardHeight).fill(stripeColor);
 
-            // Row 1: Phone + Name + Status Badge
-            const leftColX = margin + 12;
-            doc.fillColor('#0F172A').fontSize(9).font('Helvetica-Bold')
-              .text(`📱 ${node.phone || 'N/A'}`, leftColX, currentY + 7);
+            let rowY = currentY + 7;
+            const leftX = margin + 12;
+
+            // --- Row 1: Phone Pill, Name, and Status Badge ---
+            // Phone Pill Box
+            doc.roundedRect(leftX, rowY - 1, 98, 15, 3).fill(isLoop ? '#FEF3C7' : '#F1F5F9');
+            doc.roundedRect(leftX, rowY - 1, 98, 15, 3).lineWidth(0.6).stroke(isLoop ? '#F59E0B' : '#CBD5E1');
+            doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold')
+              .text(`+91 ${node.phone || 'N/A'}`, leftX + 4, rowY + 2, { width: 90, align: 'center' });
 
             const nodeName = node.caller_name || node.name || 'Identity Unknown';
             doc.fillColor('#334155').fontSize(8.5).font('Helvetica-Bold')
-              .text(`Name: ${nodeName}`, leftColX + 130, currentY + 7, { width: 220, ellipsis: true });
+              .text(`Name: ${nodeName}`, leftX + 108, rowY + 2, { width: 230, ellipsis: true });
+
+            // Right Badge
+            const badgeW = 142;
+            const badgeH = 14;
+            const badgeX = margin + contentWidth - badgeW - 10;
 
             if (isLoop) {
-              doc.roundedRect(margin + contentWidth - 145, currentY + 6, 138, 14, 3).fill('#FEF3C7');
+              doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).fill('#FEF3C7');
+              doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).lineWidth(0.6).stroke('#F59E0B');
               doc.fillColor('#92400E').fontSize(6.5).font('Helvetica-Bold')
-                .text('⚠️ LOOP / ALREADY VISITED', margin + contentWidth - 145, currentY + 9, { width: 138, align: 'center' });
+                .text('[ LOOP DETECTED - STOPPED ]', badgeX, rowY + 3, { width: badgeW, align: 'center' });
             } else if (levelNumber === 3) {
-              doc.roundedRect(margin + contentWidth - 145, currentY + 6, 138, 14, 3).fill('#ECFDF5');
+              doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).fill('#ECFDF5');
+              doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).lineWidth(0.6).stroke('#10B981');
               doc.fillColor('#065F46').fontSize(6.5).font('Helvetica-Bold')
-                .text('✅ LEVEL 3 REACHED (STOPPED)', margin + contentWidth - 145, currentY + 9, { width: 138, align: 'center' });
+                .text('[ LEVEL 3 LIMIT REACHED ]', badgeX, rowY + 3, { width: badgeW, align: 'center' });
             } else {
               const altCount = node.alternate_numbers?.length || 0;
-              doc.roundedRect(margin + contentWidth - 145, currentY + 6, 138, 14, 3).fill('#EFF6FF');
+              doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).fill('#EFF6FF');
+              doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).lineWidth(0.6).stroke('#3B82F6');
               doc.fillColor('#1E40AF').fontSize(6.5).font('Helvetica-Bold')
-                .text(`🔗 ${altCount} Alternates Discovered`, margin + contentWidth - 145, currentY + 9, { width: 138, align: 'center' });
+                .text(`[ ${altCount} ALTERNATE(S) DISCOVERED ]`, badgeX, rowY + 3, { width: badgeW, align: 'center' });
             }
 
-            // Row 2: Telecom Details & Lineage
-            const operatorStr = [node.operator, node.circle].filter(Boolean).join(' | ') || 'Telecom info not found';
-            const lineageStr = node.parent_phone ? `Linked From: ${node.parent_phone}` : `Directly Linked to: ${rootPhone}`;
+            rowY += 17;
 
-            doc.fillColor('#64748B').fontSize(7).font('Helvetica')
-              .text(`Operator/Circle: ${operatorStr}`, leftColX, currentY + 23);
-            doc.fillColor('#475569').fontSize(7).font('Helvetica-Bold')
-              .text(lineageStr, leftColX + 220, currentY + 23);
+            // --- Row 2: Telecom Details & Lineage ---
+            const operatorStr = [node.operator, node.circle].filter(Boolean).join(' | ') || 'Telecom active';
+            const lineageStr = `Connected Via: +91 ${parentPhone}`;
 
-            // Row 3: Address or Father Name
-            const addressSnippet = node.address || (node.father_name ? `Father: ${node.father_name}` : null) || 'No registered location available';
-            doc.fillColor('#64748B').fontSize(6.8).font('Helvetica')
-              .text(`Address: ${addressSnippet}`, leftColX, currentY + 36, { width: contentWidth - 24, ellipsis: true });
+            doc.fillColor('#64748B').fontSize(7.2).font('Helvetica')
+              .text(`Operator / Circle: ${operatorStr}`, leftX, rowY, { width: 220, ellipsis: true });
+            doc.fillColor('#475569').fontSize(7.2).font('Helvetica-Bold')
+              .text(lineageStr, leftX + 230, rowY, { width: contentWidth - 250, ellipsis: true });
 
-            // Row 4: Discovered Alternate Numbers List
-            if (!isLoop && Array.isArray(node.alternate_numbers) && node.alternate_numbers.length > 0) {
-              const altsPreview = node.alternate_numbers.slice(0, 4).join(', ') + (node.alternate_numbers.length > 4 ? ` (+${node.alternate_numbers.length - 4} more)` : '');
-              doc.fillColor('#2563EB').fontSize(6.8).font('Helvetica')
-                .text(`Discovered Alternates: ${altsPreview}`, leftColX, currentY + 47, { width: contentWidth - 24, ellipsis: true });
+            rowY += 13;
+
+            // --- Row 3: Address (Dynamic Height, Never Overlaps!) ---
+            doc.fillColor('#334155').fontSize(7.2).font('Helvetica')
+              .text(`Address: ${addressText}`, leftX, rowY, { width: contentWidth - 24, lineBreak: true });
+
+            rowY += addressH + 3;
+
+            // --- Row 4: Alternates or Loop Notice ---
+            if (!isLoop && altsPreview) {
+              doc.fillColor('#2563EB').fontSize(7).font('Helvetica-Bold')
+                .text(altsPreview, leftX, rowY, { width: contentWidth - 24, lineBreak: true });
             } else if (isLoop) {
-              doc.fillColor('#B45309').fontSize(6.8).font('Helvetica-Oblique')
-                .text('Stopped further recursion to prevent duplicate requests and infinite cycles.', leftColX, currentY + 47);
+              doc.fillColor('#B45309').fontSize(7).font('Helvetica-Oblique')
+                .text('Loop Rule Applied: Number already visited in prior branches. Sub-query halted.', leftX, rowY, { width: contentWidth - 24 });
             } else if (levelNumber === 3) {
-              doc.fillColor('#059669').fontSize(6.8).font('Helvetica-Oblique')
-                .text('Max depth limit 3 achieved. No further child exploration performed.', leftColX, currentY + 47);
+              doc.fillColor('#059669').fontSize(7).font('Helvetica-Oblique')
+                .text('Depth Limit Rule Applied: Depth 3 achieved. No further child exploration performed.', leftX, rowY, { width: contentWidth - 24 });
             }
 
             currentY += cardHeight + 6;
           });
 
-          currentY += 8;
+          currentY += 6;
         };
 
         // Render Level 1
         renderNetworkLevel(
           1,
-          'DIRECT ALTERNATES (Discovered from Root)',
+          'DIRECT ALTERNATES (Discovered from Root Target)',
           levels.level_1,
           '#EFF6FF',
           '#1D4ED8',
-          '#93C5FD'
+          '#93C5FD',
+          '#2563EB'
         );
 
         // Render Level 2
         renderNetworkLevel(
           2,
-          'SECONDARY ALTERNATES (Discovered from Level 1)',
+          'SECONDARY ALTERNATES (Discovered from Level 1 Nodes)',
           levels.level_2,
           '#FAF5FF',
           '#6B21A8',
-          '#D8B4FE'
+          '#D8B4FE',
+          '#7C3AED'
         );
 
         // Render Level 3
         renderNetworkLevel(
           3,
-          'TERTIARY CONNECTIONS (Discovered from Level 2 - Depth Limit 3)',
+          'TERTIARY CONNECTIONS (Leaf Nodes - Depth Limit 3)',
           levels.level_3,
           '#ECFDF5',
           '#047857',
-          '#A7F3D0'
+          '#A7F3D0',
+          '#059669'
         );
 
-        // --- 5. NETWORK RECONCILIATION SUMMARY TABLE ---
+        // ==========================================
+        // 5. SECTION 3: RECONCILIATION SUMMARY
+        // ==========================================
         ensureSpace(70);
-        doc.roundedRect(margin, currentY, contentWidth, 18, 3).fill('#1E293B');
+        doc.roundedRect(margin, currentY, contentWidth, 20, 3).fill('#0F172A');
         doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold')
-          .text('NETWORK RECONCILIATION & EXECUTION METRICS', margin + 8, currentY + 5);
-        currentY += 22;
+          .text('SECTION 3: NETWORK RECONCILIATION & EXECUTION METRICS', margin + 10, currentY + 6);
+        currentY += 24;
 
         const tableY = currentY;
         const tableH = 46;
         doc.roundedRect(margin, tableY, contentWidth, tableH, 4).fill('#F8FAFC');
-        doc.roundedRect(margin, tableY, contentWidth, tableH, 4).lineWidth(0.6).stroke('#CBD5E1');
+        doc.roundedRect(margin, tableY, contentWidth, tableH, 4).lineWidth(0.8).stroke('#CBD5E1');
 
         const metrics = [
           { label: 'Level 1 Contacts', value: totalL1 },
           { label: 'Level 2 Contacts', value: totalL2 },
           { label: 'Level 3 Contacts', value: totalL3 },
-          { label: 'Total Unique Discovered', value: totalUnique },
+          { label: 'Total Unique Contacts', value: totalUnique },
           { label: 'Circular Loops Stopped', value: loopsAvoided },
         ];
 
         const metricW = (contentWidth - 16) / metrics.length;
         metrics.forEach((m, idx) => {
           const mX = margin + 8 + idx * metricW;
-          doc.fillColor('#64748B').fontSize(6.5).font('Helvetica-Bold')
-            .text(m.label, mX, tableY + 8, { width: metricW - 4, align: 'center' });
+          doc.fillColor('#64748B').fontSize(6.8).font('Helvetica-Bold')
+            .text(m.label, mX, tableY + 9, { width: metricW - 4, align: 'center' });
           doc.fillColor('#0F172A').fontSize(11).font('Helvetica-Bold')
-            .text(String(m.value), mX, tableY + 22, { width: metricW - 4, align: 'center' });
+            .text(String(m.value), mX, tableY + 23, { width: metricW - 4, align: 'center' });
         });
 
         currentY += tableH + 16;
 
-        // --- 6. FOOTER APPLIED TO ALL BUFFERED PAGES ---
+        // ==========================================
+        // 6. RUNNING FOOTER ON EVERY PAGE
+        // ==========================================
         const pageRange = doc.bufferedPageRange();
         for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
           doc.switchToPage(i);
 
           const footerY = pageHeight - margin + 6;
-          doc.rect(margin, footerY - 14, contentWidth, 0.5).fill('#CBD5E1');
+          doc.rect(margin, footerY - 12, contentWidth, 0.6).fill('#CBD5E1');
 
           doc.fillColor('#94A3B8').fontSize(7).font('Helvetica')
-            .text('Bharat API Cloud  |  Confidential Advance Mobile Intelligence  |  For Authorized Enterprise Verification Only', margin, footerY);
+            .text('Bharat API Cloud  |  Confidential Enterprise Intelligence  |  Authorized Verification Only', margin, footerY);
 
           doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold')
             .text(`Page ${i + 1} of ${pageRange.count}`, margin, footerY, { align: 'right', width: contentWidth });
