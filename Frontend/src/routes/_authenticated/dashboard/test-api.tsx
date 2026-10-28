@@ -2643,87 +2643,10 @@ function TestApiPage() {
           {/* Service Selector Tabs & Environment Notice */}
           <div className="rounded-xl border border-border bg-card/60 p-4 text-xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-              {/* Quick Switch Pills */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold text-foreground text-xs shrink-0 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" /> Popular Services:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleServiceChange("mobile_smart")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    selectedService === "mobile_smart"
-                      ? "bg-sky-500 text-white shadow-md ring-2 ring-sky-500/50"
-                      : "bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20"
-                  }`}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  ⚡ Mobile Smart Intelligence (New)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleServiceChange("mobile_advance")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    selectedService === "mobile_advance"
-                      ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
-                      : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
-                  }`}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  Mobile Advance Lookup
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleServiceChange("mobile_intelligence")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    selectedService === "mobile_intelligence"
-                      ? "bg-purple-500 text-white shadow-md ring-2 ring-purple-500/50"
-                      : "bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
-                  }`}
-                >
-                  <Smartphone className="h-3 w-3" />
-                  Mobile Intelligence
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleServiceChange("transunion")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    selectedService === "transunion"
-                      ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
-                      : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
-                  }`}
-                >
-                  <ShieldCheck className="h-3 w-3" />
-                  TransUnion CIBIL
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleServiceChange("pan")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    selectedService === "pan"
-                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/50"
-                      : "bg-secondary/60 border border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <CreditCard className="h-3 w-3" />
-                  PAN V2
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleServiceChange("bank_v2")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    selectedService === "bank_v2"
-                      ? "bg-blue-500 text-white shadow-md ring-2 ring-blue-500/50"
-                      : "bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
-                  }`}
-                >
-                  <Landmark className="h-3 w-3" />
-                  Bank V2
-                </button>
-              </div>
-
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Gateway Status:</span>
+                <span className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                  Gateway Status:
+                </span>
                 {isServiceRevoked ? (
                   <span className="rounded px-2 py-0.5 font-bold uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" /> ACCESS REVOKED
@@ -2733,6 +2656,13 @@ function TestApiPage() {
                     ONLINE · LIVE
                   </span>
                 )}
+              </div>
+
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="text-[11px] font-medium">Hit Price:</span>
+                <span className="rounded bg-primary/10 border border-primary/20 px-2 py-0.5 font-semibold text-primary font-mono text-[11px]">
+                  ₹{getServicePrice(selectedService).toFixed(2)}
+                </span>
               </div>
             </div>
 
