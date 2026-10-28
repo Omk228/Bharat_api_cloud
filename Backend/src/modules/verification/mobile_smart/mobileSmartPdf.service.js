@@ -53,10 +53,9 @@ export class MobileSmartPdfService {
         const clientRef = reportData.client_ref_num || 'N/A';
         const isSuccess = (reportData.status || 'success').toLowerCase() === 'success';
 
-        let totalAlternates = 0;
-        cibilContacts.forEach((c) => {
-          totalAlternates += (c.alternate_numbers?.length || 0);
-        });
+        const directAlts = summary.direct_alternates_count ?? cibilContacts.reduce((s, c) => s + (c.level_1_alternates?.length || c.alternate_numbers?.length || 0), 0);
+        const secondaryAlts = summary.secondary_alternates_count ?? cibilContacts.reduce((s, c) => s + (c.secondary_alternates?.length || 0), 0);
+        const totalAlternates = summary.total_alternates_discovered ?? (directAlts + secondaryAlts);
 
         const dateStr = new Date().toLocaleString('en-IN', {
           timeZone: 'Asia/Kolkata',
@@ -142,8 +141,8 @@ export class MobileSmartPdfService {
         const kpiItems = [
           { label: 'ACTIVE LOANS', val: `${activeLoans.length} Active`, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
           { label: 'CLOSED LOANS', val: `${closedLoans.length} Closed`, color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
-          { label: 'CIBIL NUMBERS', val: `${cibilContacts.length} Discovered`, color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-          { label: 'ALTERNATE NUMBERS', val: `${totalAlternates} Discovered`, color: '#7C3AED', bg: '#FAF5FF', border: '#DDD6FE' },
+          { label: 'CIBIL NUMBERS', val: `${cibilContacts.length} Linked`, color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+          { label: 'ALTERNATES (L1 + L2)', val: `${totalAlternates} (${directAlts} L1 + ${secondaryAlts} L2)`, color: '#7C3AED', bg: '#FAF5FF', border: '#DDD6FE' },
         ];
 
         kpiItems.forEach((kpi, idx) => {
@@ -153,19 +152,19 @@ export class MobileSmartPdfService {
 
           doc.fillColor('#64748B').fontSize(6.5).font('Helvetica-Bold')
             .text(kpi.label, kpiX + 8, currentY + 8, { width: kpiWidth - 16 });
-          doc.fillColor(kpi.color).fontSize(9.5).font('Helvetica-Bold')
+          doc.fillColor(kpi.color).fontSize(9.0).font('Helvetica-Bold')
             .text(kpi.val, kpiX + 8, currentY + 22, { width: kpiWidth - 16 });
         });
 
         currentY += 52;
 
         // ==========================================
-        // 3. SECTION 1: CIBIL NUMBERS & ALTERNATES
+        // 3. SECTION 1: CIBIL NUMBERS & MULTI-HOP ALTERNATES
         // ==========================================
         ensureSpace(70);
         doc.roundedRect(margin, currentY, contentWidth, 20, 3).fill('#0F172A');
         doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold')
-          .text(`SECTION 1: CIBIL PHONE NUMBERS & TELECOM ALTERNATES (${cibilContacts.length} Contacts)`, margin + 10, currentY + 6);
+          .text(`SECTION 1: CIBIL PHONE NUMBERS & MULTI-HOP ALTERNATE NETWORK (${cibilContacts.length} Contacts, ${totalAlternates} Total Alternates)`, margin + 10, currentY + 6);
         currentY += 26;
 
         if (cibilContacts.length === 0) {
@@ -175,23 +174,25 @@ export class MobileSmartPdfService {
             .text('No telephone numbers discovered in CIBIL credit records.', margin + 12, currentY + 8);
           currentY += 32;
         } else {
-          cibilContacts.forEach((contact, idx) => {
-            const alts = Array.isArray(contact.alternate_numbers) ? contact.alternate_numbers : [];
+          cibilContacts.forEach((contact) => {
+            const l1List = Array.isArray(contact.level_1_alternates) && contact.level_1_alternates.length > 0
+              ? contact.level_1_alternates
+              : (Array.isArray(contact.alternate_numbers) ? contact.alternate_numbers.map((n) => ({ phone: n, secondary_alternates: [] })) : []);
+
             const isPrimary = Boolean(contact.is_primary || contact.phone === primaryPhone);
             const contactName = contact.name || targetName || 'Registered Contact';
 
-            // Calculate card height dynamically
-            let altsText = '';
-            let altsH = 0;
-            if (alts.length > 0) {
-              altsText = `Discovered Alternates (${alts.length}):  ${alts.map((n) => `+91 ${n}`).join('    |    ')}`;
-              doc.fontSize(7.5).font('Helvetica-Bold');
-              altsH = Math.max(14, doc.heightOfString(altsText, { width: contentWidth - 28 }));
+            // Calculate total L2 items for this contact
+            const l2Count = l1List.reduce((sum, item) => sum + (Array.isArray(item.secondary_alternates) ? item.secondary_alternates.length : 0), 0);
+
+            // Compute dynamic card height
+            let cardHeight = 28;
+            if (l1List.length === 0) {
+              cardHeight += 18;
             } else {
-              altsH = 12;
+              cardHeight += (l1List.length * 18) + (l2Count * 16) + 8;
             }
 
-            const cardHeight = 8 + 16 + 4 + altsH + 8;
             ensureSpace(cardHeight + 6);
 
             // Card background & border
@@ -217,33 +218,74 @@ export class MobileSmartPdfService {
 
             // Name
             doc.fillColor('#334155').fontSize(8).font('Helvetica')
-              .text(`Telecom Name: ${contactName}`, leftX + 220, rowY + 3, { width: 170, ellipsis: true });
+              .text(`Telecom Name: ${contactName}`, leftX + 215, rowY + 3, { width: 155, ellipsis: true });
 
             // Alternates count badge on right
-            const badgeW = 120;
+            const badgeW = 138;
             const badgeH = 14;
             const badgeX = margin + contentWidth - badgeW - 10;
-            const altColor = alts.length > 0 ? '#15803D' : '#64748B';
-            const altBg = alts.length > 0 ? '#DCFCE7' : '#F1F5F9';
-            const altBorder = alts.length > 0 ? '#86EFAC' : '#CBD5E1';
+            const hasAlts = (l1List.length + l2Count) > 0;
+            const altColor = hasAlts ? '#15803D' : '#64748B';
+            const altBg = hasAlts ? '#DCFCE7' : '#F1F5F9';
+            const altBorder = hasAlts ? '#86EFAC' : '#CBD5E1';
 
             doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).fill(altBg);
             doc.roundedRect(badgeX, rowY, badgeW, badgeH, 3).lineWidth(0.6).stroke(altBorder);
             doc.fillColor(altColor).fontSize(6.8).font('Helvetica-Bold')
-              .text(alts.length > 0 ? `${alts.length} ALTERNATE(S) FOUND` : 'NO ALTERNATES', badgeX, rowY + 3, {
+              .text(hasAlts ? `${l1List.length} DIRECT  |  ${l2Count} ALT-OF-ALT` : 'NO ALTERNATES', badgeX, rowY + 3, {
                 width: badgeW,
                 align: 'center',
               });
 
-            rowY += 19;
+            rowY += 21;
 
-            // Row 2: Alternates Numbers preview
-            if (alts.length > 0) {
-              doc.fillColor('#1E40AF').fontSize(7.5).font('Helvetica-Bold')
-                .text(altsText, leftX, rowY, { width: contentWidth - 28, lineBreak: true });
-            } else {
+            // Render Level 1 & Level 2 Alternates hierarchy
+            if (l1List.length === 0) {
               doc.fillColor('#94A3B8').fontSize(7.2).font('Helvetica-Oblique')
                 .text('No alternate mobile numbers discovered for this contact in telecom records.', leftX, rowY);
+            } else {
+              l1List.forEach((alt1) => {
+                // Level 1 Row
+                const l1BadgeW = 54;
+                doc.roundedRect(leftX, rowY, l1BadgeW, 13, 2).fill('#ECFDF5');
+                doc.roundedRect(leftX, rowY, l1BadgeW, 13, 2).lineWidth(0.5).stroke('#A7F3D0');
+                doc.fillColor('#059669').fontSize(6.5).font('Helvetica-Bold')
+                  .text('L1 DIRECT', leftX, rowY + 3, { width: l1BadgeW, align: 'center' });
+
+                doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold')
+                  .text(`+91 ${alt1.phone}`, leftX + l1BadgeW + 6, rowY + 2);
+
+                const alt1Label = alt1.name
+                  ? `Name: ${alt1.name}  (Direct Alternate of ${contact.phone})`
+                  : `(Direct Alternate of ${contact.phone})`;
+                doc.fillColor('#475569').fontSize(7.2).font('Helvetica')
+                  .text(alt1Label, leftX + l1BadgeW + 90, rowY + 3, { width: contentWidth - (l1BadgeW + 110), ellipsis: true });
+
+                rowY += 17;
+
+                // Level 2 (Alternate of Alternate) Rows indented
+                const secondaries = Array.isArray(alt1.secondary_alternates) ? alt1.secondary_alternates : [];
+                secondaries.forEach((alt2) => {
+                  const l2X = leftX + 14;
+                  doc.fillColor('#6366F1').fontSize(8).font('Helvetica-Bold').text('↳', l2X, rowY + 2);
+
+                  const l2BadgeW = 72;
+                  doc.roundedRect(l2X + 10, rowY, l2BadgeW, 13, 2).fill('#EEF2FF');
+                  doc.roundedRect(l2X + 10, rowY, l2BadgeW, 13, 2).lineWidth(0.5).stroke('#C7D2FE');
+                  doc.fillColor('#4F46E5').fontSize(6.5).font('Helvetica-Bold')
+                    .text('L2 ALT OF ALT', l2X + 10, rowY + 3, { width: l2BadgeW, align: 'center' });
+
+                  doc.fillColor('#1E1B4B').fontSize(7.8).font('Helvetica-Bold')
+                    .text(`+91 ${alt2.phone}`, l2X + l2BadgeW + 16, rowY + 2);
+
+                  const alt2NamePart = alt2.name ? `Name: ${alt2.name}  ·  ` : '';
+                  const alt2Label = `${alt2NamePart}Alternate of ${alt1.phone}${alt2.address ? `  ·  ${alt2.address.slice(0, 30)}...` : ''}`;
+                  doc.fillColor('#64748B').fontSize(7).font('Helvetica')
+                    .text(alt2Label, l2X + l2BadgeW + 100, rowY + 3, { width: contentWidth - (l2X + l2BadgeW + 120), ellipsis: true });
+
+                  rowY += 16;
+                });
+              });
             }
 
             currentY += cardHeight + 6;

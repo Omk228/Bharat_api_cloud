@@ -9185,9 +9185,13 @@ function TestApiPage() {
                                   </div>
 
                                   <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3 text-center">
-                                    <span className="text-[10px] font-bold text-purple-400 block uppercase tracking-wider">Alternates Found</span>
-                                    <span className="text-xl font-bold text-purple-300 mt-1 block">{summary?.total_alternates_discovered || 0}</span>
-                                    <span className="text-[10px] text-muted-foreground">Discovered Contacts</span>
+                                    <span className="text-[10px] font-bold text-purple-400 block uppercase tracking-wider">Alternates (L1 + L2)</span>
+                                    <span className="text-xl font-bold text-purple-300 mt-1 block">
+                                      {summary?.total_alternates_discovered ?? (summary?.direct_alternates_count ? (summary.direct_alternates_count + (summary.secondary_alternates_count || 0)) : (summary?.total_alternates_discovered || 0))}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {summary?.direct_alternates_count || 0} Direct · {summary?.secondary_alternates_count || 0} 2nd-Hop
+                                    </span>
                                   </div>
                                 </div>
 
@@ -9195,25 +9199,30 @@ function TestApiPage() {
                                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                                   <div className="flex items-center justify-between border-b border-border pb-2.5">
                                     <h4 className="font-semibold text-xs text-foreground flex items-center gap-1.5">
-                                      <Smartphone className="h-4 w-4 text-sky-400" /> CIBIL Linked Numbers & Discovered Alternates ({cibilContacts.length})
+                                      <Smartphone className="h-4 w-4 text-sky-400" /> CIBIL Linked Numbers & Multi-Hop Alternates ({cibilContacts.length})
                                     </h4>
                                   </div>
 
                                   {cibilContacts.length === 0 ? (
                                     <p className="text-xs text-muted-foreground italic py-2">No phone numbers discovered in CIBIL credit records.</p>
                                   ) : (
-                                    <div className="space-y-2.5">
+                                    <div className="space-y-3">
                                       {cibilContacts.map((contact: any, idx: number) => {
-                                        const alts = Array.isArray(contact.alternate_numbers) ? contact.alternate_numbers : [];
+                                        const l1List = Array.isArray(contact.level_1_alternates) && contact.level_1_alternates.length > 0
+                                          ? contact.level_1_alternates
+                                          : (Array.isArray(contact.alternate_numbers) ? contact.alternate_numbers.map((n: string) => ({ phone: n, secondary_alternates: [] })) : []);
                                         const isPrimary = Boolean(contact.is_primary || contact.phone === cleanPhone);
+                                        const l2Count = l1List.reduce((sum: number, item: any) => sum + (Array.isArray(item.secondary_alternates) ? item.secondary_alternates.length : 0), 0);
+                                        const hasAnyAlts = (l1List.length + l2Count) > 0;
 
                                         return (
                                           <div
                                             key={idx}
-                                            className={`rounded-lg border p-3 text-xs space-y-2 ${
+                                            className={`rounded-lg border p-3.5 text-xs space-y-3 ${
                                               isPrimary ? "border-sky-500/30 bg-sky-500/5" : "border-border bg-background/50"
                                             }`}
                                           >
+                                            {/* Contact Header */}
                                             <div className="flex flex-wrap items-center justify-between gap-2">
                                               <div className="flex items-center gap-2">
                                                 <span className="rounded bg-background px-2.5 py-1 font-mono font-bold text-foreground border border-border shadow-xs">
@@ -9232,23 +9241,73 @@ function TestApiPage() {
                                               </div>
 
                                               <span className={`rounded px-2 py-0.5 font-semibold text-[10px] ${
-                                                alts.length > 0 ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-secondary text-muted-foreground"
+                                                hasAnyAlts ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-secondary text-muted-foreground"
                                               }`}>
-                                                {alts.length > 0 ? `${alts.length} ALTERNATE(S) DISCOVERED` : "NO ALTERNATES"}
+                                                {hasAnyAlts ? `${l1List.length} DIRECT · ${l2Count} ALT-OF-ALT` : "NO ALTERNATES"}
                                               </span>
                                             </div>
 
-                                            {alts.length > 0 ? (
-                                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                                <span className="text-[11px] text-muted-foreground font-medium">Alternates:</span>
-                                                {alts.map((alt: string, aIdx: number) => (
-                                                  <span
-                                                    key={aIdx}
-                                                    className="inline-flex items-center rounded-md bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 font-mono text-[11px] font-semibold text-sky-300"
-                                                  >
-                                                    +91 {alt}
-                                                  </span>
-                                                ))}
+                                            {/* Level 1 & Level 2 Hierarchical Alternates */}
+                                            {l1List.length > 0 ? (
+                                              <div className="space-y-2.5 pt-2 border-t border-border/50">
+                                                {l1List.map((alt1: any, aIdx: number) => {
+                                                  const alt1Phone = typeof alt1 === "string" ? alt1 : alt1.phone;
+                                                  const alt1Name = typeof alt1 === "object" ? alt1.name : null;
+                                                  const l2List = typeof alt1 === "object" && Array.isArray(alt1.secondary_alternates) ? alt1.secondary_alternates : [];
+
+                                                  return (
+                                                    <div key={aIdx} className="space-y-1.5 pl-1">
+                                                      {/* Level 1 Direct Alternate */}
+                                                      <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 font-mono text-xs font-bold text-emerald-400 shadow-2xs">
+                                                          <span className="text-[9px] uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-sans font-extrabold">L1 Direct</span>
+                                                          +91 {alt1Phone}
+                                                        </span>
+                                                        {alt1Name && (
+                                                          <span className="text-[11px] text-muted-foreground">
+                                                            · Name: <span className="font-semibold text-foreground">{alt1Name}</span>
+                                                          </span>
+                                                        )}
+                                                        {l2List.length > 0 && (
+                                                          <span className="rounded bg-sky-500/10 border border-sky-500/25 px-1.5 py-0.5 text-[10px] font-semibold text-sky-400">
+                                                            {l2List.length} Alt-of-Alt
+                                                          </span>
+                                                        )}
+                                                      </div>
+
+                                                      {/* Level 2 Alternates of this Alternate */}
+                                                      {l2List.length > 0 && (
+                                                        <div className="ml-5 pl-3 border-l-2 border-sky-500/30 space-y-1.5 pt-1">
+                                                          {l2List.map((alt2: any, bIdx: number) => {
+                                                            const alt2Phone = typeof alt2 === "string" ? alt2 : alt2.phone;
+                                                            const alt2Name = typeof alt2 === "object" ? alt2.name : null;
+                                                            const alt2Addr = typeof alt2 === "object" ? alt2.address : null;
+
+                                                            return (
+                                                              <div key={bIdx} className="flex flex-wrap items-center gap-2 text-xs">
+                                                                <span className="text-sky-400 font-bold">↳</span>
+                                                                <span className="inline-flex items-center gap-1 rounded bg-sky-500/10 border border-sky-500/25 px-2 py-0.5 font-mono text-[11px] font-semibold text-sky-300">
+                                                                  <span className="text-[9px] uppercase tracking-wider bg-sky-500/20 px-1 py-0.2 rounded font-sans text-sky-400 font-bold">L2 Alt of Alt</span>
+                                                                  +91 {alt2Phone}
+                                                                </span>
+                                                                {alt2Name && (
+                                                                  <span className="text-[11px] text-muted-foreground">
+                                                                    · Name: <span className="font-medium text-foreground">{alt2Name}</span>
+                                                                  </span>
+                                                                )}
+                                                                {alt2Addr && (
+                                                                  <span className="text-[10px] text-muted-foreground truncate max-w-[320px]" title={alt2Addr}>
+                                                                    · {alt2Addr}
+                                                                  </span>
+                                                                )}
+                                                              </div>
+                                                            );
+                                                          })}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  );
+                                                })}
                                               </div>
                                             ) : (
                                               <p className="text-[11px] text-muted-foreground/75 italic">

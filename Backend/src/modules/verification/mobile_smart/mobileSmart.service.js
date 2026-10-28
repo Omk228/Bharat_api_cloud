@@ -60,30 +60,60 @@ export class MobileSmartService {
   }
 
   /**
-   * Helper to extract clean 10-digit Indian mobile numbers from an Intelligence response
+   * Helper to extract clean 10-digit Indian mobile numbers and contact details from an Intelligence response
    */
-  static extractAlternateNumbers(intelRes, excludePhone) {
+  static extractAlternateDetails(intelRes, sourcePhone, excludeSet = new Set()) {
     if (!intelRes) return [];
     const data = intelRes?.data || {};
     const result = intelRes?.result || {};
     const primary = data?.primary_result || result || {};
     const records = Array.isArray(data?.results) ? data.results : (Array.isArray(result?.records) ? result.records : []);
 
-    const altSources = [
-      result?.alt,
-      result?.alt_mobile,
-      primary?.alt,
-      primary?.mobile,
-      ...records.map((r) => r?.alt),
-      ...records.map((r) => r?.mobile),
-    ].filter(Boolean).join(', ');
+    const discoveredMap = new Map();
 
-    return Array.from(new Set(
-      altSources
+    const processCandidate = (rawNum, candName, candAddress) => {
+      if (!rawNum) return;
+      const cleanList = String(rawNum)
         .split(/[,\s/|]+/)
         .map((n) => n.replace(/\D/g, '').slice(-10))
-        .filter((n) => /^[6-9]\d{9}$/.test(n) && n !== excludePhone)
-    ));
+        .filter((n) => /^[6-9]\d{9}$/.test(n));
+
+      for (const num of cleanList) {
+        if (num === sourcePhone || excludeSet.has(num)) continue;
+        if (!discoveredMap.has(num)) {
+          discoveredMap.set(num, {
+            phone: num,
+            name: candName || null,
+            address: candAddress || null,
+            alternate_of: sourcePhone,
+          });
+        } else {
+          const existing = discoveredMap.get(num);
+          if (!existing.name && candName) existing.name = candName;
+          if (!existing.address && candAddress) existing.address = candAddress;
+        }
+      }
+    };
+
+    processCandidate(primary?.alt, primary?.name, primary?.address);
+    processCandidate(primary?.mobile, primary?.name, primary?.address);
+    processCandidate(result?.alt, result?.name, result?.address);
+    processCandidate(result?.alt_mobile, result?.name, result?.address);
+
+    for (const rec of records) {
+      processCandidate(rec?.alt, rec?.name, rec?.address);
+      processCandidate(rec?.mobile, rec?.name, rec?.address);
+    }
+
+    return Array.from(discoveredMap.values());
+  }
+
+  /**
+   * Backward-compatible helper to extract flat array of clean 10-digit Indian mobile numbers
+   */
+  static extractAlternateNumbers(intelRes, excludePhone) {
+    const details = this.extractAlternateDetails(intelRes, excludePhone);
+    return details.map((d) => d.phone);
   }
 
   /**
@@ -161,8 +191,8 @@ export class MobileSmartService {
     }
 
     // 3. Cache lookup
-    const cacheKey = `${cleanPhone}_${cleanPan}`;
-    const cachedResult = await CacheService.getVerification('mobile_smart', cacheKey);
+    const cacheKey = `v2_${cleanPhone}_${cleanPan}`;
+    const cachedResult = await CacheService.getVerification('mobile_smart_v2', cacheKey);
     if (cachedResult && cachedResult.status === 'success') {
       const durationMs = Date.now() - startTime;
       console.log(`⚡ [MOBILE SMART CACHE HIT] Returned from Cache in ${durationMs}ms: phone=${cleanPhone}, pan=${cleanPan}`);
@@ -280,45 +310,125 @@ export class MobileSmartService {
     const cibilPhoneList = Array.from(cibilPhonesSet);
     console.log(`📱 [MOBILE SMART] Step 2: Found ${cibilPhoneList.length} CIBIL phone numbers: ${cibilPhoneList.join(', ')}`);
 
-    // 5. STEP B: Run Mobile Intelligence for each CIBIL Phone Number
-    console.log(`🔎 [MOBILE SMART] Step 3: Querying Mobile Intelligence for discovered phone numbers...`);
-    const intelPromises = cibilPhoneList.map(async (ph) => {
-      try {
-        const intelRes = await MobileIntelligenceService.searchMobileIntelligence({
-          phone: ph,
-          apiClient: null, // Zero internal charge / zero duplicate audit
-        });
+    // 5. STEP B: Run Multi-Hop Mobile Intelligence Discovery
+    // Level 1: Find direct alternate numbers for each CIBIL phone number
+    console.log(`🔎 [MOBILE SMART] Step 3: Querying Mobile Intelligence (Level 1: Direct Alternates) for ${cibilPhoneList.length} phones...`);
 
-        const alternates = MobileSmartService.extractAlternateNumbers(intelRes, ph);
-        const contactName = intelRes?.data?.primary_result?.name || intelRes?.result?.name || null;
+    const cibilContacts = await Promise.all(
+      cibilPhoneList.map(async (ph) => {
+        try {
+          const intelRes = await MobileIntelligenceService.searchMobileIntelligence({
+            phone: ph,
+            apiClient: null, // Zero internal charge / zero duplicate audit
+          });
 
-        return {
-          phone: ph,
-          is_primary: ph === cleanPhone,
-          name: contactName,
-          alternate_numbers: alternates,
-          alternate_count: alternates.length,
-          status: intelRes?.status === 'success' ? 'success' : 'no_records',
-        };
-      } catch (err) {
-        console.warn(`⚠️ [MOBILE SMART] Intelligence query failed for ${ph}:`, err.message);
-        return {
-          phone: ph,
-          is_primary: ph === cleanPhone,
-          name: null,
-          alternate_numbers: [],
-          alternate_count: 0,
-          status: 'error',
-        };
-      }
-    });
+          // Level 1 alternates for this CIBIL phone (excluding all CIBIL phones to avoid cycles)
+          const level1Alternates = MobileSmartService.extractAlternateDetails(intelRes, ph, cibilPhonesSet);
+          const contactName = intelRes?.data?.primary_result?.name || intelRes?.result?.name || null;
 
-    const cibilContacts = await Promise.all(intelPromises);
+          return {
+            phone: ph,
+            is_primary: ph === cleanPhone,
+            name: contactName,
+            status: intelRes?.status === 'success' ? 'success' : 'no_records',
+            level_1_alternates: level1Alternates,
+          };
+        } catch (err) {
+          console.warn(`⚠️ [MOBILE SMART] Level 1 intelligence query failed for ${ph}:`, err.message);
+          return {
+            phone: ph,
+            is_primary: ph === cleanPhone,
+            name: null,
+            status: 'error',
+            level_1_alternates: [],
+          };
+        }
+      })
+    );
 
-    let totalAlternatesDiscovered = 0;
+    // Build set of all discovered Level 1 numbers across all contacts
+    const allL1Phones = new Set();
     cibilContacts.forEach((c) => {
-      totalAlternatesDiscovered += c.alternate_count;
+      c.level_1_alternates.forEach((alt1) => allL1Phones.add(alt1.phone));
     });
+
+    console.log(`🔎 [MOBILE SMART] Step 4: Discovered ${allL1Phones.size} Level 1 alternates. Querying Level 2 (Alternate of Alternate)...`);
+
+    // Level 2 queries: Query each unique Level 1 phone to find ITS alternate numbers ("alternate ka bhi alternate")
+    const l2QueryMap = new Map();
+    const uniqueL1Array = Array.from(allL1Phones);
+
+    await Promise.all(
+      uniqueL1Array.map(async (alt1Phone) => {
+        try {
+          const l2Res = await MobileIntelligenceService.searchMobileIntelligence({
+            phone: alt1Phone,
+            apiClient: null,
+          });
+          l2QueryMap.set(alt1Phone, l2Res);
+        } catch (err) {
+          console.warn(`⚠️ [MOBILE SMART] Level 2 intelligence query failed for ${alt1Phone}:`, err.message);
+          l2QueryMap.set(alt1Phone, null);
+        }
+      })
+    );
+
+    // Populate each Level 1 alternate with its Level 2 secondary alternates
+    let totalDirectAlternates = 0;
+    let totalSecondaryAlternates = 0;
+    const allDiscoveredSet = new Set(cibilPhoneList);
+    const globalLevel1Set = new Set();
+    const globalLevel2Set = new Set();
+
+    cibilContacts.forEach((contact) => {
+      const contactDirectList = [];
+      const contactSecondaryList = [];
+
+      contact.level_1_alternates.forEach((alt1) => {
+        allDiscoveredSet.add(alt1.phone);
+        globalLevel1Set.add(alt1.phone);
+        contactDirectList.push(alt1.phone);
+
+        const l2Res = l2QueryMap.get(alt1.phone);
+        if (l2Res) {
+          // If alt1 didn't have a name, populate from its own primary lookup
+          const alt1PrimaryName = l2Res?.data?.primary_result?.name || l2Res?.result?.name;
+          if (!alt1.name && alt1PrimaryName) {
+            alt1.name = alt1PrimaryName;
+          }
+
+          // Exclude the CIBIL phone and alt1 itself so we don't loop back
+          const excludeSetForAlt2 = new Set([...cibilPhonesSet, alt1.phone]);
+          const secondaryList = MobileSmartService.extractAlternateDetails(l2Res, alt1.phone, excludeSetForAlt2);
+
+          alt1.secondary_alternates = secondaryList;
+          alt1.secondary_count = secondaryList.length;
+
+          secondaryList.forEach((alt2) => {
+            allDiscoveredSet.add(alt2.phone);
+            globalLevel2Set.add(alt2.phone);
+            contactSecondaryList.push(alt2);
+          });
+        } else {
+          alt1.secondary_alternates = [];
+          alt1.secondary_count = 0;
+        }
+      });
+
+      // Maintain backward-compatible fields as well as new rich hierarchical fields
+      contact.alternate_numbers = contactDirectList;
+      contact.alternate_count = contactDirectList.length;
+      contact.direct_alternate_count = contactDirectList.length;
+      contact.secondary_alternates = contactSecondaryList;
+      contact.secondary_alternate_count = contactSecondaryList.length;
+      contact.total_alternate_count = contactDirectList.length + contactSecondaryList.length;
+
+      totalDirectAlternates += contact.direct_alternate_count;
+      totalSecondaryAlternates += contact.secondary_alternate_count;
+    });
+
+    const totalAlternatesDiscovered = totalDirectAlternates + totalSecondaryAlternates;
+    console.log(`✅ [MOBILE SMART] Multi-Hop Discovery Complete: ${totalDirectAlternates} Direct (L1) + ${totalSecondaryAlternates} Secondary (L2) = ${totalAlternatesDiscovered} Total Alternates`);
 
     // 6. STEP C: Generate High-Fidelity Mobile Smart PDF Report
     const reportToken = `ms_${crypto.randomBytes(10).toString('hex')}`;
@@ -339,6 +449,8 @@ export class MobileSmartService {
         closed_loans_count: closedLoans.length,
         total_loans_count: tradelinesFull.length,
         cibil_numbers_count: cibilContacts.length,
+        direct_alternates_count: totalDirectAlternates,
+        secondary_alternates_count: totalSecondaryAlternates,
         total_alternates_discovered: totalAlternatesDiscovered,
       },
       data: {
@@ -361,6 +473,9 @@ export class MobileSmartService {
           closed_loans: closedLoans,
         },
         cibil_contacts: cibilContacts,
+        all_discovered_numbers: Array.from(allDiscoveredSet),
+        level_1_alternates: Array.from(globalLevel1Set),
+        level_2_alternates: Array.from(globalLevel2Set),
       },
     };
 
@@ -409,7 +524,7 @@ export class MobileSmartService {
     // 8. Cache response for 24 hours
     const cachePayload = { ...finalResponse };
     delete cachePayload._pdfBuffer;
-    CacheService.setVerification('mobile_smart', cacheKey, cachePayload, 86400).catch((err) => {
+    CacheService.setVerification('mobile_smart_v2', cacheKey, cachePayload, 86400).catch((err) => {
       console.warn('Cache write error for mobile smart:', err.message);
     });
 
