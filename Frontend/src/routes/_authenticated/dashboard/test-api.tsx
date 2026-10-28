@@ -2643,162 +2643,83 @@ function TestApiPage() {
           {/* Service Selector Tabs & Environment Notice */}
           <div className="rounded-xl border border-border bg-card/60 p-4 text-xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-              {/* Service Switcher and Active Service Header */}
-              <div className="flex flex-col gap-2.5 w-full">
-                {/* Quick Switch Pills */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-foreground text-xs shrink-0 flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" /> Popular Services:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleServiceChange("mobile_smart")}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                      selectedService === "mobile_smart"
-                        ? "bg-sky-500 text-white shadow-md ring-2 ring-sky-500/50"
-                        : "bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20"
-                    }`}
-                  >
-                    <Sparkles className="h-3 w-3" />
-                    ⚡ Mobile Smart Intelligence (New)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleServiceChange("mobile_advance")}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                      selectedService === "mobile_advance"
-                        ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
-                        : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
-                    }`}
-                  >
-                    <Sparkles className="h-3 w-3" />
-                    Mobile Advance Lookup
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleServiceChange("mobile_intelligence")}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                      selectedService === "mobile_intelligence"
-                        ? "bg-purple-500 text-white shadow-md ring-2 ring-purple-500/50"
-                        : "bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
-                    }`}
-                  >
-                    <Smartphone className="h-3 w-3" />
-                    Mobile Intelligence
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleServiceChange("transunion")}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                      selectedService === "transunion"
-                        ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
-                        : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
-                    }`}
-                  >
-                    <ShieldCheck className="h-3 w-3" />
-                    TransUnion CIBIL
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleServiceChange("pan")}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                      selectedService === "pan"
-                        ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/50"
-                        : "bg-secondary/60 border border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <CreditCard className="h-3 w-3" />
-                    PAN V2
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleServiceChange("bank_v2")}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                      selectedService === "bank_v2"
-                        ? "bg-blue-500 text-white shadow-md ring-2 ring-blue-500/50"
-                        : "bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
-                    }`}
-                  >
-                    <Landmark className="h-3 w-3" />
-                    Bank V2
-                  </button>
-                </div>
-
-                {/* Dropdown Selector for All 40+ APIs */}
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  <span className="font-semibold text-foreground flex items-center gap-1.5 shrink-0">
-                    Switch Service:
-                  </span>
-                  <select
-                    value={selectedService}
-                    onChange={(e) => handleServiceChange(e.target.value as any)}
-                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/50 focus:border-primary focus:outline-none transition-colors cursor-pointer max-w-md w-full sm:w-auto"
-                  >
-                    <optgroup label="🌟 Featured & New">
-                      <option value="mobile_smart">⚡ Mobile Smart Intelligence (₹20.00)</option>
-                      <option value="mobile_advance">⚡ Mobile Advance Lookup (₹15.00)</option>
-                      <option value="mobile_intelligence">Mobile Intelligence (₹10.00)</option>
-                      <option value="transunion">TransUnion CIBIL Score Hybrid (₹75.00)</option>
-                    </optgroup>
-                    <optgroup label="💳 Identity & KYC">
-                      <option value="pan">PAN Details V2 (/srv2/validation/pan)</option>
-                      <option value="pan_plus">PAN Details Plus (/srv2/validation/pan/plus)</option>
-                      <option value="aadhaar">Aadhaar Fetch Without OTP (/srv3/verification/aadhar)</option>
-                      <option value="digilocker">DigiLocker Digital KYC (/srv2/validation/digilocker-digital-kyc)</option>
-                      <option value="voter_id">Voter ID (/api/v1/verify/voter-id)</option>
-                    </optgroup>
-                    <optgroup label="🏢 Corporate & GST">
-                      <option value="gst_authenticated_advance">GST Authenticated Advance (/api/v1/verify/gst-authenticated-advance)</option>
-                      <option value="din_to_pan">DIN to PAN (/api/v1/verify/din-to-pan)</option>
-                      <option value="contact_to_gst">Contact to GST (/api/v1/verify/contact-to-gst)</option>
-                      <option value="cin_to_pan">CIN to PAN (/api/v1/verify/cin-to-pan)</option>
-                      <option value="pan_to_cin">PAN to CIN (/api/v1/verify/pan-to-cin)</option>
-                      <option value="gst_to_contact">GST to Contact Details (/api/v1/verify/gst-to-contact)</option>
-                      <option value="pan_to_gst">PAN to GST (/api/v1/verify/pan-to-gst)</option>
-                      <option value="tan_lookup">TAN Lookup (/api/v1/verify/tan-lookup)</option>
-                      <option value="tan_to_company">TAN to Company (/api/v1/verify/tan-to-company)</option>
-                      <option value="itr_check">ITR Filling Verification (/api/v1/verify/itr-check)</option>
-                    </optgroup>
-                    <optgroup label="🏦 Banking & Bureau">
-                      <option value="bank_v2">Bank Account Validation V2 (/api/v1/bank/account-validation)</option>
-                      <option value="bank">Bank Penny Less V2 (/srv1/beneficiary)</option>
-                      <option value="bank_validation">Bank Account Validation (/api/v1/validate_bank_account)</option>
-                      <option value="ifsc">IFSC Lookup (/bank/ifsc/&#123;ifsc&#125;)</option>
-                      <option value="mobile_to_bank">Mobile To Bank Advance (/srv3/mobile-to-bank/advance)</option>
-                      <option value="statement_analyzer">Statement Analyzer PDF (/api/v1/statement-analyzer)</option>
-                      <option value="crif">CRIF High Mark Credit Report V4 (/crif/Credit-ScoreV4)</option>
-                      <option value="experian">Experian Credit Report (/srv2/credit-report/experian)</option>
-                    </optgroup>
-                    <optgroup label="📱 Telecom & Utilities">
-                      <option value="mobile_operator">Mobile Operator Check (/api/v1/verify/operator-circle)</option>
-                      <option value="dth_operator">DTH Operator Check (/api/v1/verify/dth-operator)</option>
-                      <option value="dth_advance">DTH Operator Advance (/api/v1/verify/dth-advance)</option>
-                      <option value="mobile_upi">Mobile to UPI Lookup (/srv2/mobile-upi-lookup/enhanced)</option>
-                      <option value="name_finder">Mobile to Name Finder (/srv2/mobile-name-finder)</option>
-                      <option value="uan">Mobile to Universal Account Number (UAN) (/srv3/uan-mobile)</option>
-                      <option value="uan_direct">UAN Employment History (/srv3/uan-direct)</option>
-                      <option value="prefill">Mobile to Prefill (/srv4/credit-report/prefill)</option>
-                    </optgroup>
-                    <optgroup label="🌐 Digital Footprint & Tools">
-                      <option value="work_email">Work Email Verifier (/api/v1/verify/work-email)</option>
-                      <option value="work_email_plus">Work Email Verifier Plus (/api/v1/verify/work-email-plus)</option>
-                      <option value="domain_age">Domain Age (/dosvak/domain-age)</option>
-                      <option value="vehicle_rc">Vehicle RC (/api/v1/verify/vehicle-rc)</option>
-                      <option value="ip_lookup">Requester IP Lookup (/check)</option>
-                      <option value="reverse_geocode">Reverse Geocoding (/reverse)</option>
-                    </optgroup>
-                  </select>
-
-                  <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm">
-                    {selectedService === "mobile_smart" && <Sparkles className="h-3.5 w-3.5 text-sky-400" />}
-                    {selectedService === "mobile_advance" && <Sparkles className="h-3.5 w-3.5 text-amber-400" />}
-                    {selectedService === "mobile_intelligence" && <Smartphone className="h-3.5 w-3.5 text-purple-400" />}
-                    {selectedService === "transunion" && <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />}
-                    {selectedService === "pan" && <CreditCard className="h-3.5 w-3.5 text-primary" />}
-                    {selectedService === "bank_v2" && <Landmark className="h-3.5 w-3.5 text-sky-400" />}
-                    <span className="text-muted-foreground font-mono">{currentEndpoint}</span>
-                  </div>
-                </div>
+              {/* Quick Switch Pills */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-foreground text-xs shrink-0 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" /> Popular Services:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleServiceChange("mobile_smart")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    selectedService === "mobile_smart"
+                      ? "bg-sky-500 text-white shadow-md ring-2 ring-sky-500/50"
+                      : "bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20"
+                  }`}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  ⚡ Mobile Smart Intelligence (New)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleServiceChange("mobile_advance")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    selectedService === "mobile_advance"
+                      ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
+                      : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                  }`}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Mobile Advance Lookup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleServiceChange("mobile_intelligence")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    selectedService === "mobile_intelligence"
+                      ? "bg-purple-500 text-white shadow-md ring-2 ring-purple-500/50"
+                      : "bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+                  }`}
+                >
+                  <Smartphone className="h-3 w-3" />
+                  Mobile Intelligence
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleServiceChange("transunion")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    selectedService === "transunion"
+                      ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
+                      : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                  }`}
+                >
+                  <ShieldCheck className="h-3 w-3" />
+                  TransUnion CIBIL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleServiceChange("pan")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    selectedService === "pan"
+                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/50"
+                      : "bg-secondary/60 border border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <CreditCard className="h-3 w-3" />
+                  PAN V2
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleServiceChange("bank_v2")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    selectedService === "bank_v2"
+                      ? "bg-blue-500 text-white shadow-md ring-2 ring-blue-500/50"
+                      : "bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                  }`}
+                >
+                  <Landmark className="h-3 w-3" />
+                  Bank V2
+                </button>
               </div>
 
               <div className="flex items-center gap-2">
