@@ -196,8 +196,7 @@ export class TransunionVerificationService {
       // White-label upstream response by replacing direct provider URLs
       const outData = upstreamResult.data || upstreamResult;
       
-      // Save report data for PDF generation
-      await this.saveReport(reportToken, {
+      const reportPayload = {
         forename: cleanForename,
         surname: cleanSurname,
         phone_number: cleanPhone,
@@ -205,9 +204,14 @@ export class TransunionVerificationService {
         gender: cleanGender,
         date_of_birth: cleanDob,
         ...outData,
-      });
+      };
+
+      // Save report data for PDF generation
+      await this.saveReport(reportToken, reportPayload);
 
       finalResponse = {
+        _reportToken: reportToken,
+        _reportData: reportPayload,
         http_response_code: 200,
         result_code: 101,
         request_id: requestId,

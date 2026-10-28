@@ -1497,6 +1497,86 @@ export const apiClient = {
     return res.blob();
   },
 
+  async verifyMobileSmart(data: {
+    forename?: string | undefined;
+    surname?: string | undefined;
+    first_name?: string | undefined;
+    last_name?: string | undefined;
+    name?: string | undefined;
+    phone?: string | undefined;
+    phone_number?: string | undefined;
+    mobile?: string | undefined;
+    pan?: string | undefined;
+    pan_id?: string | undefined;
+    gender?: string | undefined;
+    dob?: string | undefined;
+    date_of_birth?: string | undefined;
+    client_ref_num?: string | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
+  }): Promise<Record<string, unknown>> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${host}/api/v1/verify/mobile-smart`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        ...data,
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.json();
+  },
+
+  async downloadMobileSmartPdf(data: {
+    forename?: string | undefined;
+    surname?: string | undefined;
+    first_name?: string | undefined;
+    last_name?: string | undefined;
+    phone?: string | undefined;
+    phone_number?: string | undefined;
+    pan?: string | undefined;
+    pan_id?: string | undefined;
+    client_ref_num?: string | undefined;
+    api_id?: string | undefined;
+    api_key?: string | undefined;
+    token_id?: string | undefined;
+  }): Promise<Blob> {
+    const host = API_BASE.replace('/api/v1', '');
+    const effectiveApiId = data?.api_id || DEFAULT_API_ID;
+    const effectiveApiKey = data?.api_key || DEFAULT_API_KEY;
+    const effectiveTokenId = data?.token_id || DEFAULT_TOKEN_ID;
+
+    const res = await fetch(`${host}/api/v1/verify/mobile-smart?format=pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Id': effectiveApiId,
+        'X-Api-Key': effectiveApiKey,
+        'X-Token-Id': effectiveTokenId,
+      },
+      body: JSON.stringify({
+        ...data,
+        format: 'pdf',
+        api_id: effectiveApiId,
+        api_key: effectiveApiKey,
+        token_id: effectiveTokenId,
+      }),
+    });
+    return res.blob();
+  },
+
   async verifyPanToGst(data: {
     pan: string;
     client_ref_num?: string | undefined;

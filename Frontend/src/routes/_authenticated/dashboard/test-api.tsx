@@ -491,6 +491,7 @@ function TestApiPage() {
     if (serviceKey === "gst_to_contact" || serviceKey === "gst-to-contact") return 5.90;
     if (serviceKey === "pan_to_gst" || serviceKey === "pan-to-gst") return 3.54;
     if (serviceKey === "mobile_advance" || serviceKey === "mobile-advance" || serviceKey === "mobile_advance_lookup" || serviceKey === "mobile-advance-lookup" || serviceKey === "api_mobile_advance_lookup") return 15.0;
+    if (serviceKey === "mobile_smart" || serviceKey === "mobile-smart" || serviceKey === "api_mobile_smart") return 20.0;
     if (serviceKey === "mobile_intelligence" || serviceKey === "mobile-intelligence") return 2.0;
     if (serviceKey === "dth_advance" || serviceKey === "dth-advance" || serviceKey === "dth_operator_advance" || serviceKey === "dth-operator-advance" || serviceKey === "dth_info") return 2.5;
     if (serviceKey === "dth_operator" || serviceKey === "dth-operator" || serviceKey === "dth_check" || serviceKey === "dth-check" || serviceKey === "dth-operator-check" || serviceKey === "dth") return 2.0;
