@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Terminal,
   Copy,
@@ -249,7 +249,7 @@ export type ApiResponseEnvelope = {
 };
 
 export type TestApiSearch = {
-  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | "mobile_advance" | undefined;
+  service?: "pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | "mobile_advance" | "mobile_smart" | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
@@ -279,6 +279,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
         ? "gst_to_contact"
         : search["service"] === "pan_to_gst" || search["service"] === "pan-to-gst" || search["service"] === "pan_gst" || search["service"] === "gstin_by_pan"
         ? "pan_to_gst"
+        : search["service"] === "mobile_smart" || search["service"] === "mobile-smart" || search["service"] === "api_mobile_smart"
+        ? "mobile_smart"
         : search["service"] === "mobile_advance" || search["service"] === "mobile-advance" || search["service"] === "mobile_advance_lookup" || search["service"] === "mobile-advance-lookup"
         ? "mobile_advance"
         : search["service"] === "mobile_intelligence" || search["service"] === "mobile-intelligence" || search["service"] === "caller_intelligence"
@@ -350,7 +352,16 @@ export const Route = createFileRoute("/_authenticated/dashboard/test-api")({
 function TestApiPage() {
   const queryClient = useQueryClient();
   const searchParams = Route.useSearch();
-  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | "mobile_advance">(
+  const navigate = useNavigate();
+
+  const handleServiceChange = (serviceKey: any) => {
+    setSelectedService(serviceKey);
+    navigate({
+      to: "/dashboard/test-api",
+      search: { service: serviceKey },
+    });
+  };
+  const [selectedService, setSelectedService] = useState<"pan" | "pan_plus" | "pan_to_gst" | "gst_to_contact" | "cin_to_pan" | "pan_to_cin" | "itr_check" | "tan_lookup" | "tan_to_company" | "vehicle_rc" | "voter_id" | "contact_to_gst" | "din_to_pan" | "gst_authenticated_advance" | "aadhaar" | "digilocker" | "bank" | "bank_validation" | "bank_v2" | "prefill" | "name_finder" | "ip_lookup" | "reverse_geocode" | "uan" | "uan_direct" | "domain_age" | "mobile_upi" | "ifsc" | "mobile_to_bank" | "statement_analyzer" | "transunion" | "experian" | "crif" | "work_email" | "work_email_plus" | "mobile_operator" | "dth_operator" | "dth_advance" | "mobile_intelligence" | "mobile_advance" | "mobile_smart">(
     searchParams.service === "gst_authenticated_advance"
       ? "gst_authenticated_advance"
       : searchParams.service === "din_to_pan"
@@ -375,6 +386,8 @@ function TestApiPage() {
       ? "gst_to_contact"
       : searchParams.service === "pan_to_gst"
       ? "pan_to_gst"
+      : searchParams.service === "mobile_smart"
+      ? "mobile_smart"
       : searchParams.service === "mobile_advance"
       ? "mobile_advance"
       : searchParams.service === "mobile_intelligence"
@@ -649,6 +662,15 @@ function TestApiPage() {
   const [mobileAdvanceFirstName, setMobileAdvanceFirstName] = useState("");
   const [mobileAdvanceLastName, setMobileAdvanceLastName] = useState("");
   const [mobileAdvanceClientRef, setMobileAdvanceClientRef] = useState("");
+
+  // Mobile Smart fields (Composite of TransUnion & Mobile Intelligence)
+  const [mobileSmartForename, setMobileSmartForename] = useState("");
+  const [mobileSmartSurname, setMobileSmartSurname] = useState("");
+  const [mobileSmartPhone, setMobileSmartPhone] = useState("");
+  const [mobileSmartPan, setMobileSmartPan] = useState("");
+  const [mobileSmartGender, setMobileSmartGender] = useState("Male");
+  const [mobileSmartDob, setMobileSmartDob] = useState("");
+  const [mobileSmartClientRef, setMobileSmartClientRef] = useState("");
 
   // DTH Operator Advance fields
   const [dthAdvanceNumber, setDthAdvanceNumber] = useState("");
@@ -1087,6 +1109,19 @@ function TestApiPage() {
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
         }
+      : selectedService === "mobile_smart"
+      ? {
+          forename: mobileSmartForename.trim() || "<Forename>",
+          surname: mobileSmartSurname.trim() || "<Surname>",
+          phone_number: mobileSmartPhone.trim() || "<10-digit Phone>",
+          pan_id: mobileSmartPan.trim().toUpperCase() || "<10-char PAN>",
+          ...(mobileSmartGender ? { gender: mobileSmartGender } : {}),
+          ...(mobileSmartDob.trim() ? { date_of_birth: mobileSmartDob.trim() } : {}),
+          ...(mobileSmartClientRef.trim() ? { client_ref_num: mobileSmartClientRef.trim() } : {}),
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        }
       : selectedService === "mobile_advance"
       ? {
           phone: mobileAdvancePhone.trim() || "<10-digit Phone>",
@@ -1474,6 +1509,22 @@ function TestApiPage() {
         return;
       }
     }
+    if (selectedService === "mobile_smart") {
+      if (!mobileSmartForename.trim() || !mobileSmartSurname.trim()) {
+        toast.error("Please enter both Forename and Surname for Mobile Smart.");
+        return;
+      }
+      const cleanMob = mobileSmartPhone.trim().replace(/\D/g, "");
+      if (!cleanMob || (cleanMob.length !== 10 && cleanMob.length !== 12)) {
+        toast.error("Please enter a valid 10-digit Indian mobile number.");
+        return;
+      }
+      const cleanPan = mobileSmartPan.trim().toUpperCase();
+      if (!cleanPan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+        toast.error("Please enter a valid 10-character PAN (e.g. ABCDE1234F).");
+        return;
+      }
+    }
     if (selectedService === "mobile_advance") {
       const cleanMob = mobileAdvancePhone.trim().replace(/\D/g, "");
       if (!cleanMob || (cleanMob.length !== 10 && cleanMob.length !== 12)) {
@@ -1753,6 +1804,19 @@ function TestApiPage() {
         rawData = await apiClient.verifyPanToGst({
           pan: panToGstNumber.trim().toUpperCase(),
           client_ref_num: panToGstClientRef.trim() || undefined,
+          api_id: effectiveApiId,
+          api_key: effectiveApiKey,
+          token_id: effectiveTokenId,
+        });
+      } else if (selectedService === "mobile_smart") {
+        rawData = await apiClient.verifyMobileSmart({
+          forename: mobileSmartForename.trim(),
+          surname: mobileSmartSurname.trim(),
+          phone_number: mobileSmartPhone.trim().replace(/\D/g, ""),
+          pan_id: mobileSmartPan.trim().toUpperCase(),
+          gender: mobileSmartGender || undefined,
+          date_of_birth: mobileSmartDob.trim() || undefined,
+          client_ref_num: mobileSmartClientRef.trim() || undefined,
           api_id: effectiveApiId,
           api_key: effectiveApiKey,
           token_id: effectiveTokenId,
@@ -2252,6 +2316,8 @@ function TestApiPage() {
       ? "/api/v1/verify/gst-to-contact"
       : selectedService === "pan_to_gst"
       ? "/api/v1/verify/pan-to-gst"
+      : selectedService === "mobile_smart"
+      ? "/api/v1/verify/mobile-smart"
       : selectedService === "mobile_advance"
       ? "/api/v1/verify/mobile-advance-lookup"
       : selectedService === "mobile_intelligence"
@@ -2333,6 +2399,8 @@ function TestApiPage() {
       ? "GST to Contact Details"
       : selectedService === "pan_to_gst"
       ? "PAN to GST"
+      : selectedService === "mobile_smart"
+      ? "Mobile Smart Intelligence"
       : selectedService === "mobile_advance"
       ? "Mobile Advance Lookup"
       : selectedService === "mobile_intelligence"
@@ -2428,6 +2496,8 @@ function TestApiPage() {
                   ? "Direct live GST to Contact Details gateway: retrieve official registered contact details (mobile numbers, email addresses, authorized signatories, and principal place of business) from an Indian GSTIN powered by Bharat API Cloud."
                   : selectedService === "pan_to_gst"
                   ? "Direct live PAN to GST gateway: retrieve all Goods and Services Tax Identification Numbers (GSTIN) and registration details registered under an Indian business or individual PAN powered by Bharat API Cloud."
+                  : selectedService === "mobile_smart"
+                  ? "Direct live Mobile Smart Intelligence gateway: unified CIBIL credit loan portfolio analysis & telecom alternate network intelligence suite powered by Bharat API Cloud."
                   : selectedService === "mobile_advance"
                   ? "Direct live Mobile Advance Lookup gateway: unified composite engine combining real-time telecom caller intelligence, carrier, circle, and spam signals with verified identity records, PAN, and registered addresses powered by Bharat API Cloud."
                   : selectedService === "mobile_intelligence"
@@ -2507,6 +2577,8 @@ function TestApiPage() {
                       ? "gst-to-contact"
                       : selectedService === "pan_to_gst"
                       ? "pan-to-gst"
+                      : selectedService === "mobile_smart"
+                      ? "mobile-smart"
                       : selectedService === "mobile_advance"
                       ? "mobile-advance-lookup"
                       : selectedService === "mobile_intelligence"
@@ -2571,94 +2643,161 @@ function TestApiPage() {
           {/* Service Selector Tabs & Environment Notice */}
           <div className="rounded-xl border border-border bg-card/60 p-4 text-xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-              {/* Active Service Display (Opened via Test in Console) */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  Active Service:
-                </span>
-                <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
-                  {selectedService === "gst_authenticated_advance" && <Building2 className="h-4 w-4 text-teal-400" />}
-                  {selectedService === "din_to_pan" && <Users className="h-4 w-4 text-indigo-400" />}
-                  {selectedService === "contact_to_gst" && <Building2 className="h-4 w-4 text-cyan-400" />}
-                  {selectedService === "cin_to_pan" && <Building className="h-4 w-4 text-blue-400" />}
-                  {selectedService === "pan_to_cin" && <Building className="h-4 w-4 text-violet-400" />}
-                  {selectedService === "itr_check" && <FileCheck className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "tan_lookup" && <Search className="h-4 w-4 text-amber-400" />}
-                  {selectedService === "tan_to_company" && <Building2 className="h-4 w-4 text-orange-400" />}
-                  {selectedService === "vehicle_rc" && <Car className="h-4 w-4 text-sky-400" />}
-                  {selectedService === "voter_id" && <Vote className="h-4 w-4 text-indigo-400" />}
-                  {selectedService === "gst_to_contact" && <Building2 className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "pan_to_gst" && <CreditCard className="h-4 w-4 text-primary" />}
-                  {selectedService === "mobile_advance" && <Sparkles className="h-4 w-4 text-amber-400" />}
-                  {selectedService === "mobile_intelligence" && <Smartphone className="h-4 w-4 text-purple-400" />}
-                  {selectedService === "dth_advance" && <Tv className="h-4 w-4 text-amber-400" />}
-                  {selectedService === "dth_operator" && <Tv className="h-4 w-4 text-amber-400" />}
-                  {selectedService === "mobile_operator" && <Smartphone className="h-4 w-4 text-sky-400" />}
-                  {selectedService === "bank_v2" && <Landmark className="h-4 w-4 text-sky-400" />}
-                  {selectedService === "work_email_plus" && <Mail className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "work_email" && <Mail className="h-4 w-4 text-violet-400" />}
-                  {selectedService === "statement_analyzer" && <FileSpreadsheet className="h-4 w-4 text-indigo-400" />}
-                  {selectedService === "transunion" && <ShieldCheck className="h-4 w-4 text-amber-400" />}
-                  {selectedService === "experian" && <ShieldCheck className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "crif" && <ShieldCheck className="h-4 w-4 text-rose-400" />}
-                  {selectedService === "ifsc" && <Landmark className="h-4 w-4 text-blue-400" />}
-                  {selectedService === "mobile_to_bank" && <Building2 className="h-4 w-4 text-blue-400" />}
-                  {selectedService === "digilocker" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "mobile_upi" && <Smartphone className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "domain_age" && <Globe className="h-4 w-4 text-indigo-400" />}
-                  {selectedService === "pan_plus" && <CreditCard className="h-4 w-4 text-sky-400" />}
-                  {selectedService === "pan" && <CreditCard className="h-4 w-4 text-primary" />}
-                  {selectedService === "aadhaar" && <Fingerprint className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "bank" && <Landmark className="h-4 w-4 text-blue-400" />}
-                  {selectedService === "bank_validation" && <Landmark className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "uan" && <Briefcase className="h-4 w-4 text-indigo-400" />}
-                  {selectedService === "uan_direct" && <Briefcase className="h-4 w-4 text-purple-400" />}
-                  {selectedService === "prefill" && <Smartphone className="h-4 w-4 text-emerald-400" />}
-                  {selectedService === "name_finder" && <Phone className="h-4 w-4 text-amber-400" />}
-                  {selectedService === "ip_lookup" && <Globe className="h-4 w-4 text-cyan-400" />}
-                  {selectedService === "reverse_geocode" && <Compass className="h-4 w-4 text-teal-400" />}
-                  <span>
-                    {selectedService === "gst_authenticated_advance" && "GST Authenticated Advance (/api/v1/verify/gst-authenticated-advance)"}
-                    {selectedService === "din_to_pan" && "DIN to PAN (/api/v1/verify/din-to-pan)"}
-                    {selectedService === "contact_to_gst" && "Contact To GST (/api/v1/verify/contact-to-gst)"}
-                    {selectedService === "cin_to_pan" && "CIN to PAN (/api/v1/verify/cin-to-pan)"}
-                    {selectedService === "pan_to_cin" && "PAN to CIN (/api/v1/verify/pan-to-cin)"}
-                    {selectedService === "itr_check" && "ITR filling verification (/api/v1/verify/itr-check)"}
-                    {selectedService === "tan_lookup" && "TAN Lookup (/api/v1/verify/tan-lookup)"}
-                    {selectedService === "tan_to_company" && "TAN to Company (/api/v1/verify/tan-to-company)"}
-                    {selectedService === "vehicle_rc" && "Vehicle RC (/api/v1/verify/vehicle-rc)"}
-                    {selectedService === "voter_id" && "Voter ID (/api/v1/verify/voter-id)"}
-                    {selectedService === "gst_to_contact" && "GST to Contact Details (/api/v1/verify/gst-to-contact)"}
-                    {selectedService === "pan_to_gst" && "PAN to GST (/api/v1/verify/pan-to-gst)"}
-                    {selectedService === "mobile_advance" && "Mobile Advance Lookup (/api/v1/verify/mobile-advance-lookup)"}
-                    {selectedService === "mobile_intelligence" && "Mobile Intelligence (/api/v1/verify/mobile-intelligence)"}
-                    {selectedService === "dth_advance" && "DTH operator advance (/api/v1/verify/dth-advance)"}
-                    {selectedService === "dth_operator" && "DTH operator check (/api/v1/verify/dth-operator)"}
-                    {selectedService === "mobile_operator" && "Mobile Operator Check (/api/v1/verify/operator-circle)"}
-                    {selectedService === "bank_v2" && "Bank Account Validation V2 (/api/v1/bank/account-validation)"}
-                    {selectedService === "work_email_plus" && "Work Email Verifier Plus (/api/v1/verify/work-email-plus)"}
-                    {selectedService === "work_email" && "Work Email Verifier (/api/v1/verify/work-email)"}
-                    {selectedService === "statement_analyzer" && "Statement Analyzer PDF (Srv2) (/api/v1/statement-analyzer)"}
-                    {selectedService === "transunion" && "TransUnion CIBIL Score Hybrid (/srv5/transunion-Score-Hybrid)"}
-                    {selectedService === "experian" && "Experian Credit Report (Srv2) (/srv2/credit-report/experian)"}
-                    {selectedService === "crif" && "Crif High Mark Credit Report V4 (/crif/Credit-ScoreV4)"}
-                    {selectedService === "ifsc" && "IFSC lookup (/bank/ifsc/{ifsc})"}
-                    {selectedService === "mobile_to_bank" && "Mobile To Bank Advance (/srv3/mobile-to-bank/advance)"}
-                    {selectedService === "digilocker" && "DigiLocker Digital KYC (/srv2/validation/digilocker-digital-kyc)"}
-                    {selectedService === "mobile_upi" && "Mobile to UPI Lookup (/srv2/mobile-upi-lookup/enhanced)"}
-                    {selectedService === "domain_age" && "Domain Age (/dosvak/domain-age)"}
-                    {selectedService === "pan_plus" && "Pan Details Plus (/srv2/validation/pan/plus)"}
-                    {selectedService === "pan" && "Pan Details V2 (/srv2/validation/pan)"}
-                    {selectedService === "aadhaar" && "Aadhar Fetch - Without OTP (/srv3/verification/aadhar)"}
-                    {selectedService === "bank" && "Bank Verification - Penny Less V2 (/srv1/beneficiary)"}
-                    {selectedService === "bank_validation" && "Bank Account Validation (/api/v1/validate_bank_account)"}
-                    {selectedService === "uan" && "Mobile to UAN V2 (/srv3/uan-mobile)"}
-                    {selectedService === "uan_direct" && "UAN to Employment History V2 (/srv3/uan-direct)"}
-                    {selectedService === "prefill" && "Mobile to Prefill (/srv4/credit-report/prefill)"}
-                    {selectedService === "name_finder" && "Mobile To Name Finder (/srv2/mobile-name-finder)"}
-                    {selectedService === "ip_lookup" && "Requester IP Lookup (/check)"}
-                    {selectedService === "reverse_geocode" && "Reverse Geocoding (/reverse)"}
+              {/* Service Switcher and Active Service Header */}
+              <div className="flex flex-col gap-2.5 w-full">
+                {/* Quick Switch Pills */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-foreground text-xs shrink-0 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> Popular Services:
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => handleServiceChange("mobile_smart")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedService === "mobile_smart"
+                        ? "bg-sky-500 text-white shadow-md ring-2 ring-sky-500/50"
+                        : "bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20"
+                    }`}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    ⚡ Mobile Smart Intelligence (New)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleServiceChange("mobile_advance")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedService === "mobile_advance"
+                        ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
+                        : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                    }`}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Mobile Advance Lookup
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleServiceChange("mobile_intelligence")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedService === "mobile_intelligence"
+                        ? "bg-purple-500 text-white shadow-md ring-2 ring-purple-500/50"
+                        : "bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20"
+                    }`}
+                  >
+                    <Smartphone className="h-3 w-3" />
+                    Mobile Intelligence
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleServiceChange("transunion")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedService === "transunion"
+                        ? "bg-amber-500 text-black shadow-md ring-2 ring-amber-500/50"
+                        : "bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                    }`}
+                  >
+                    <ShieldCheck className="h-3 w-3" />
+                    TransUnion CIBIL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleServiceChange("pan")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedService === "pan"
+                        ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/50"
+                        : "bg-secondary/60 border border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <CreditCard className="h-3 w-3" />
+                    PAN V2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleServiceChange("bank_v2")}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedService === "bank_v2"
+                        ? "bg-blue-500 text-white shadow-md ring-2 ring-blue-500/50"
+                        : "bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                    }`}
+                  >
+                    <Landmark className="h-3 w-3" />
+                    Bank V2
+                  </button>
+                </div>
+
+                {/* Dropdown Selector for All 40+ APIs */}
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5 shrink-0">
+                    Switch Service:
+                  </span>
+                  <select
+                    value={selectedService}
+                    onChange={(e) => handleServiceChange(e.target.value as any)}
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:border-primary/50 focus:border-primary focus:outline-none transition-colors cursor-pointer max-w-md w-full sm:w-auto"
+                  >
+                    <optgroup label="🌟 Featured & New">
+                      <option value="mobile_smart">⚡ Mobile Smart Intelligence (₹20.00)</option>
+                      <option value="mobile_advance">⚡ Mobile Advance Lookup (₹15.00)</option>
+                      <option value="mobile_intelligence">Mobile Intelligence (₹10.00)</option>
+                      <option value="transunion">TransUnion CIBIL Score Hybrid (₹75.00)</option>
+                    </optgroup>
+                    <optgroup label="💳 Identity & KYC">
+                      <option value="pan">PAN Details V2 (/srv2/validation/pan)</option>
+                      <option value="pan_plus">PAN Details Plus (/srv2/validation/pan/plus)</option>
+                      <option value="aadhaar">Aadhaar Fetch Without OTP (/srv3/verification/aadhar)</option>
+                      <option value="digilocker">DigiLocker Digital KYC (/srv2/validation/digilocker-digital-kyc)</option>
+                      <option value="voter_id">Voter ID (/api/v1/verify/voter-id)</option>
+                    </optgroup>
+                    <optgroup label="🏢 Corporate & GST">
+                      <option value="gst_authenticated_advance">GST Authenticated Advance (/api/v1/verify/gst-authenticated-advance)</option>
+                      <option value="din_to_pan">DIN to PAN (/api/v1/verify/din-to-pan)</option>
+                      <option value="contact_to_gst">Contact to GST (/api/v1/verify/contact-to-gst)</option>
+                      <option value="cin_to_pan">CIN to PAN (/api/v1/verify/cin-to-pan)</option>
+                      <option value="pan_to_cin">PAN to CIN (/api/v1/verify/pan-to-cin)</option>
+                      <option value="gst_to_contact">GST to Contact Details (/api/v1/verify/gst-to-contact)</option>
+                      <option value="pan_to_gst">PAN to GST (/api/v1/verify/pan-to-gst)</option>
+                      <option value="tan_lookup">TAN Lookup (/api/v1/verify/tan-lookup)</option>
+                      <option value="tan_to_company">TAN to Company (/api/v1/verify/tan-to-company)</option>
+                      <option value="itr_check">ITR Filling Verification (/api/v1/verify/itr-check)</option>
+                    </optgroup>
+                    <optgroup label="🏦 Banking & Bureau">
+                      <option value="bank_v2">Bank Account Validation V2 (/api/v1/bank/account-validation)</option>
+                      <option value="bank">Bank Penny Less V2 (/srv1/beneficiary)</option>
+                      <option value="bank_validation">Bank Account Validation (/api/v1/validate_bank_account)</option>
+                      <option value="ifsc">IFSC Lookup (/bank/ifsc/&#123;ifsc&#125;)</option>
+                      <option value="mobile_to_bank">Mobile To Bank Advance (/srv3/mobile-to-bank/advance)</option>
+                      <option value="statement_analyzer">Statement Analyzer PDF (/api/v1/statement-analyzer)</option>
+                      <option value="crif">CRIF High Mark Credit Report V4 (/crif/Credit-ScoreV4)</option>
+                      <option value="experian">Experian Credit Report (/srv2/credit-report/experian)</option>
+                    </optgroup>
+                    <optgroup label="📱 Telecom & Utilities">
+                      <option value="mobile_operator">Mobile Operator Check (/api/v1/verify/operator-circle)</option>
+                      <option value="dth_operator">DTH Operator Check (/api/v1/verify/dth-operator)</option>
+                      <option value="dth_advance">DTH Operator Advance (/api/v1/verify/dth-advance)</option>
+                      <option value="mobile_upi">Mobile to UPI Lookup (/srv2/mobile-upi-lookup/enhanced)</option>
+                      <option value="name_finder">Mobile to Name Finder (/srv2/mobile-name-finder)</option>
+                      <option value="uan">Mobile to Universal Account Number (UAN) (/srv3/uan-mobile)</option>
+                      <option value="uan_direct">UAN Employment History (/srv3/uan-direct)</option>
+                      <option value="prefill">Mobile to Prefill (/srv4/credit-report/prefill)</option>
+                    </optgroup>
+                    <optgroup label="🌐 Digital Footprint & Tools">
+                      <option value="work_email">Work Email Verifier (/api/v1/verify/work-email)</option>
+                      <option value="work_email_plus">Work Email Verifier Plus (/api/v1/verify/work-email-plus)</option>
+                      <option value="domain_age">Domain Age (/dosvak/domain-age)</option>
+                      <option value="vehicle_rc">Vehicle RC (/api/v1/verify/vehicle-rc)</option>
+                      <option value="ip_lookup">Requester IP Lookup (/check)</option>
+                      <option value="reverse_geocode">Reverse Geocoding (/reverse)</option>
+                    </optgroup>
+                  </select>
+
+                  <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm">
+                    {selectedService === "mobile_smart" && <Sparkles className="h-3.5 w-3.5 text-sky-400" />}
+                    {selectedService === "mobile_advance" && <Sparkles className="h-3.5 w-3.5 text-amber-400" />}
+                    {selectedService === "mobile_intelligence" && <Smartphone className="h-3.5 w-3.5 text-purple-400" />}
+                    {selectedService === "transunion" && <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />}
+                    {selectedService === "pan" && <CreditCard className="h-3.5 w-3.5 text-primary" />}
+                    {selectedService === "bank_v2" && <Landmark className="h-3.5 w-3.5 text-sky-400" />}
+                    <span className="text-muted-foreground font-mono">{currentEndpoint}</span>
+                  </div>
                 </div>
               </div>
 
@@ -3574,6 +3713,160 @@ function TestApiPage() {
                       <p className="text-[11px] text-muted-foreground">
                         👉 Real-time retrieval of all Goods and Services Tax Identification Numbers (GSTIN) registered under the specified business or individual PAN.
                       </p>
+                    </>
+                  ) : selectedService === "mobile_smart" ? (
+                    <>
+                      {/* Name fields */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-semibold text-foreground flex items-center gap-1">
+                              Forename <span className="text-sky-400">*</span>
+                            </span>
+                            <span className="text-[10px] font-semibold text-sky-400">Required</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={mobileSmartForename}
+                            onChange={(e) => setMobileSmartForename(e.target.value)}
+                            placeholder="e.g. Indrajit"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/50 focus:border-sky-400"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-semibold text-foreground flex items-center gap-1">
+                              Surname <span className="text-sky-400">*</span>
+                            </span>
+                            <span className="text-[10px] font-semibold text-sky-400">Required</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={mobileSmartSurname}
+                            onChange={(e) => setMobileSmartSurname(e.target.value)}
+                            placeholder="e.g. Basak"
+                            autoComplete="off"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground/50 focus:border-sky-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Mobile Number */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <Smartphone className="h-3.5 w-3.5 text-sky-400" /> Primary Mobile Number *
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">10-digit Indian Number</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={mobileSmartPhone}
+                            onChange={(e) => setMobileSmartPhone(e.target.value.trim())}
+                            placeholder="e.g. 9883744176"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs font-semibold tracking-wide outline-none placeholder:text-muted-foreground/50 placeholder:font-normal focus:border-sky-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Sample Button */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMobileSmartForename("Indrajit");
+                            setMobileSmartSurname("Basak");
+                            setMobileSmartPhone("9883744176");
+                            setMobileSmartPan("BMYPB3952L");
+                            setMobileSmartGender("Male");
+                            setMobileSmartDob("1988-06-12");
+                          }}
+                          className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-400 hover:bg-sky-500/20 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <Sparkles className="h-3 w-3" /> Use Verified Sample (Indrajit Basak)
+                        </button>
+                      </div>
+
+                      {/* PAN Card */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <CreditCard className="h-3.5 w-3.5 text-sky-400" /> PAN Card Number *
+                          </span>
+                          <span className="text-[10px] font-semibold text-sky-400">10-character PAN</span>
+                        </div>
+                        <input
+                          type="text"
+                          maxLength={10}
+                          value={mobileSmartPan}
+                          onChange={(e) => setMobileSmartPan(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+                          placeholder="e.g. BMYPB3952L"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono font-semibold uppercase tracking-wider outline-none placeholder:text-muted-foreground/50 focus:border-sky-400"
+                        />
+                      </div>
+
+                      {/* Gender & DOB */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Gender</span>
+                          </div>
+                          <select
+                            value={mobileSmartGender}
+                            onChange={(e) => setMobileSmartGender(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-sky-400"
+                          >
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Transgender">Transgender</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span className="font-medium text-foreground">Date of Birth</span>
+                            <span className="text-[10px] text-muted-foreground">YYYY-MM-DD</span>
+                          </div>
+                          <input
+                            type="date"
+                            value={mobileSmartDob}
+                            onChange={(e) => setMobileSmartDob(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-sky-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Client Ref */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-foreground">Client Reference</span>
+                          <span className="text-[10px] text-muted-foreground">Optional</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={mobileSmartClientRef}
+                          onChange={(e) => setMobileSmartClientRef(e.target.value.trim())}
+                          placeholder="e.g. MS_REF_001"
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none placeholder:text-muted-foreground/50 focus:border-sky-400"
+                        />
+                      </div>
+
+                      <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3 text-xs text-muted-foreground space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-foreground">Pricing:</span>
+                          <span className="font-bold text-sky-400">₹{getServicePrice("mobile_smart").toFixed(2)} + 18% GST (₹23.60 / Request)</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+                          Composite intelligence: runs TransUnion CIBIL credit report to discover active & closed loan accounts, identifies all CIBIL telephone numbers, and queries Mobile Intelligence for each number to reveal alternate phone contacts with high-fidelity PDF reporting.
+                        </p>
+                      </div>
                     </>
                   ) : selectedService === "mobile_advance" ? (
                     <>
@@ -8777,6 +9070,291 @@ function TestApiPage() {
                                     <p className="mt-1 text-[11px]">No active GST identification numbers found for PAN {panNum}.</p>
                                   </div>
                                 )}
+                              </div>
+                            );
+                          })()
+                        ) : selectedService === "mobile_smart" ? (
+                          (() => {
+                            const rawResp: any = responseJson as any;
+                            const msData: any = rawResp?.data || rawResp || {};
+                            const summary: any = rawResp?.summary || {};
+                            const borrower: any = msData?.borrower || summary || {};
+                            const loansSummary: any = msData?.loans_summary || {};
+                            const activeLoans: any[] = Array.isArray(loansSummary?.active_loans) ? loansSummary.active_loans : [];
+                            const closedLoans: any[] = Array.isArray(loansSummary?.closed_loans) ? loansSummary.closed_loans : [];
+                            const cibilContacts: any[] = Array.isArray(msData?.cibil_contacts) ? msData.cibil_contacts : [];
+                            const pdfBase64: string = msData?.pdf_report?.base64 || "";
+
+                            const targetName = borrower?.name || summary?.name || "Verified Subject";
+                            const rawPan = borrower?.pan || summary?.pan || "";
+                            const maskedPan = rawPan.length === 10 ? `${rawPan.slice(0, 5)}XXXX${rawPan.slice(-1)}` : (rawPan || "—");
+                            const targetPhone = borrower?.primary_phone || summary?.primary_phone || "—";
+                            const cleanPhone = String(targetPhone).replace(/\D/g, "").slice(-10);
+                            const cibilScore = borrower?.cibil_score || summary?.cibil_score || null;
+
+                            return (
+                              <div className="space-y-4">
+                                {/* Top Hero Banner with Download Button */}
+                                <div className="rounded-xl border border-sky-500/30 bg-gradient-to-r from-sky-950/40 via-card to-card p-4 shadow-sm">
+                                  <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-400">
+                                        <Sparkles className="h-5 w-5" />
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h3 className="font-bold text-base text-foreground">{targetName}</h3>
+                                          <span className="rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 px-2 py-0.5 text-[10px] font-bold">
+                                            MOBILE SMART DOSSIER
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                                          PAN: <span className="font-semibold text-foreground">{maskedPan}</span> · Phone: <span className="font-semibold text-foreground">+91 {cleanPhone}</span>
+                                          {cibilScore && <> · CIBIL Score: <span className="font-bold text-emerald-400">{cibilScore}</span></>}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Download PDF Button */}
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        try {
+                                          if (pdfBase64) {
+                                            const byteCharacters = atob(pdfBase64);
+                                            const byteNumbers = new Array(byteCharacters.length);
+                                            for (let i = 0; i < byteCharacters.length; i++) {
+                                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                            }
+                                            const byteArray = new Uint8Array(byteNumbers);
+                                            const blob = new Blob([byteArray], { type: "application/pdf" });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.download = `mobile_smart_report_${cleanPhone || "report"}.pdf`;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(url);
+                                          } else {
+                                            const blob = await apiClient.downloadMobileSmartPdf({
+                                              forename: mobileSmartForename || "User",
+                                              surname: mobileSmartSurname || "Sample",
+                                              phone: cleanPhone,
+                                              pan: rawPan,
+                                            });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.download = `mobile_smart_report_${cleanPhone || "report"}.pdf`;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            URL.revokeObjectURL(url);
+                                          }
+                                        } catch (err: any) {
+                                          console.error("PDF download failed:", err);
+                                        }
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white px-3.5 py-2 text-xs font-bold shadow-md transition-all cursor-pointer"
+                                      title="Download Mobile Smart Intelligence PDF Report"
+                                    >
+                                      <Download className="h-4 w-4" /> Download PDF Report
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* 4 KPI Metric Cards */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+                                    <span className="text-[10px] font-bold text-emerald-400 block uppercase tracking-wider">Active Loans</span>
+                                    <span className="text-xl font-bold text-emerald-300 mt-1 block">{activeLoans.length}</span>
+                                    <span className="text-[10px] text-muted-foreground">In CIBIL Profile</span>
+                                  </div>
+
+                                  <div className="rounded-xl border border-border bg-card/60 p-3 text-center">
+                                    <span className="text-[10px] font-bold text-muted-foreground block uppercase tracking-wider">Closed Loans</span>
+                                    <span className="text-xl font-bold text-foreground mt-1 block">{closedLoans.length}</span>
+                                    <span className="text-[10px] text-muted-foreground">Settled / Closed</span>
+                                  </div>
+
+                                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-center">
+                                    <span className="text-[10px] font-bold text-blue-400 block uppercase tracking-wider">CIBIL Numbers</span>
+                                    <span className="text-xl font-bold text-blue-300 mt-1 block">{cibilContacts.length}</span>
+                                    <span className="text-[10px] text-muted-foreground">Linked Phones</span>
+                                  </div>
+
+                                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3 text-center">
+                                    <span className="text-[10px] font-bold text-purple-400 block uppercase tracking-wider">Alternates Found</span>
+                                    <span className="text-xl font-bold text-purple-300 mt-1 block">{summary?.total_alternates_discovered || 0}</span>
+                                    <span className="text-[10px] text-muted-foreground">Discovered Contacts</span>
+                                  </div>
+                                </div>
+
+                                {/* SECTION 1: CIBIL Phone Numbers & Alternates */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-border pb-2.5">
+                                    <h4 className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                                      <Smartphone className="h-4 w-4 text-sky-400" /> CIBIL Linked Numbers & Discovered Alternates ({cibilContacts.length})
+                                    </h4>
+                                  </div>
+
+                                  {cibilContacts.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground italic py-2">No phone numbers discovered in CIBIL credit records.</p>
+                                  ) : (
+                                    <div className="space-y-2.5">
+                                      {cibilContacts.map((contact: any, idx: number) => {
+                                        const alts = Array.isArray(contact.alternate_numbers) ? contact.alternate_numbers : [];
+                                        const isPrimary = Boolean(contact.is_primary || contact.phone === cleanPhone);
+
+                                        return (
+                                          <div
+                                            key={idx}
+                                            className={`rounded-lg border p-3 text-xs space-y-2 ${
+                                              isPrimary ? "border-sky-500/30 bg-sky-500/5" : "border-border bg-background/50"
+                                            }`}
+                                          >
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                              <div className="flex items-center gap-2">
+                                                <span className="rounded bg-background px-2.5 py-1 font-mono font-bold text-foreground border border-border shadow-xs">
+                                                  +91 {contact.phone}
+                                                </span>
+                                                <span className={`rounded px-2 py-0.5 font-bold text-[10px] ${
+                                                  isPrimary ? "bg-sky-500/15 text-sky-400 border border-sky-500/30" : "bg-secondary text-muted-foreground"
+                                                }`}>
+                                                  {isPrimary ? "PRIMARY TARGET" : "CIBIL LINKED"}
+                                                </span>
+                                                {contact.name && (
+                                                  <span className="text-muted-foreground">
+                                                    · Name: <span className="font-semibold text-foreground">{contact.name}</span>
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              <span className={`rounded px-2 py-0.5 font-semibold text-[10px] ${
+                                                alts.length > 0 ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-secondary text-muted-foreground"
+                                              }`}>
+                                                {alts.length > 0 ? `${alts.length} ALTERNATE(S) DISCOVERED` : "NO ALTERNATES"}
+                                              </span>
+                                            </div>
+
+                                            {alts.length > 0 ? (
+                                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                                <span className="text-[11px] text-muted-foreground font-medium">Alternates:</span>
+                                                {alts.map((alt: string, aIdx: number) => (
+                                                  <span
+                                                    key={aIdx}
+                                                    className="inline-flex items-center rounded-md bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 font-mono text-[11px] font-semibold text-sky-300"
+                                                  >
+                                                    +91 {alt}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <p className="text-[11px] text-muted-foreground/75 italic">
+                                                No alternate numbers discovered in telecom intelligence records.
+                                              </p>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* SECTION 2: Active Loans in CIBIL */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-border pb-2.5">
+                                    <h4 className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                                      <Landmark className="h-4 w-4 text-emerald-400" /> Active Loans in CIBIL ({activeLoans.length})
+                                    </h4>
+                                  </div>
+
+                                  {activeLoans.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground italic py-2">No active loan accounts reported in CIBIL credit profile.</p>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-left text-xs">
+                                        <thead>
+                                          <tr className="border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                            <th className="py-2 pr-3">Lender</th>
+                                            <th className="py-2 px-3">Loan Type</th>
+                                            <th className="py-2 px-3 text-right">Sanctioned</th>
+                                            <th className="py-2 px-3 text-right">Balance</th>
+                                            <th className="py-2 px-3 text-right">Overdue</th>
+                                            <th className="py-2 pl-3 text-center">Opened</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/60">
+                                          {activeLoans.map((loan: any, idx: number) => {
+                                            const lender = loan.member || loan.lender || "Lender";
+                                            const accType = loan.type || loan.account_type || "Loan";
+                                            const sanctioned = Number(loan.highCreditAmount || loan.sanctioned_amount || loan.highBalance || 0);
+                                            const balance = Number(loan.currentBalance || loan.balance || 0);
+                                            const overdue = Number(loan.amountOverdue || loan.overdue || 0);
+                                            const opened = loan.dateOpened || loan.opened_date || "—";
+
+                                            return (
+                                              <tr key={idx} className="hover:bg-muted/30">
+                                                <td className="py-2.5 pr-3 font-semibold text-foreground">{lender}</td>
+                                                <td className="py-2.5 px-3 text-muted-foreground">{accType}</td>
+                                                <td className="py-2.5 px-3 text-right font-mono">{sanctioned > 0 ? `₹${sanctioned.toLocaleString("en-IN")}` : "—"}</td>
+                                                <td className="py-2.5 px-3 text-right font-mono font-semibold text-sky-400">{balance > 0 ? `₹${balance.toLocaleString("en-IN")}` : "₹0"}</td>
+                                                <td className={`py-2.5 px-3 text-right font-mono font-semibold ${overdue > 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                                                  {overdue > 0 ? `₹${overdue.toLocaleString("en-IN")}` : "₹0"}
+                                                </td>
+                                                <td className="py-2.5 pl-3 text-center text-muted-foreground">{opened}</td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* SECTION 3: Closed Loans in CIBIL */}
+                                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                                  <div className="flex items-center justify-between border-b border-border pb-2.5">
+                                    <h4 className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                                      <Check className="h-4 w-4 text-muted-foreground" /> Closed Loans in CIBIL ({closedLoans.length})
+                                    </h4>
+                                  </div>
+
+                                  {closedLoans.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground italic py-2">No closed loan accounts reported in CIBIL credit profile.</p>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-left text-xs">
+                                        <thead>
+                                          <tr className="border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                            <th className="py-2 pr-3">Lender</th>
+                                            <th className="py-2 px-3">Loan Type</th>
+                                            <th className="py-2 px-3 text-right">Sanctioned</th>
+                                            <th className="py-2 pl-3 text-center">Closed Date</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/60">
+                                          {closedLoans.map((loan: any, idx: number) => {
+                                            const lender = loan.member || loan.lender || "Lender";
+                                            const accType = loan.type || loan.account_type || "Loan";
+                                            const sanctioned = Number(loan.highCreditAmount || loan.sanctioned_amount || loan.highBalance || 0);
+                                            const closedDate = loan.dateClosed || loan.closed_date || "Closed";
+
+                                            return (
+                                              <tr key={idx} className="hover:bg-muted/30">
+                                                <td className="py-2.5 pr-3 font-semibold text-foreground">{lender}</td>
+                                                <td className="py-2.5 px-3 text-muted-foreground">{accType}</td>
+                                                <td className="py-2.5 px-3 text-right font-mono">{sanctioned > 0 ? `₹${sanctioned.toLocaleString("en-IN")}` : "—"}</td>
+                                                <td className="py-2.5 pl-3 text-center text-emerald-400 font-semibold">{closedDate}</td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()
@@ -15457,6 +16035,8 @@ function TestApiPage() {
                               ? `Mobile: ${mobileUpiNumber || "N/A"}`
                               : selectedService === "domain_age"
                               ? `Domain: ${domainName || "N/A"}`
+                              : selectedService === "mobile_smart"
+                              ? `Name: ${[mobileSmartForename, mobileSmartSurname].filter(Boolean).join(" ") || "N/A"} · PAN: ${mobileSmartPan || "N/A"} · Mobile: ${mobileSmartPhone || "N/A"}`
                               : selectedService === "mobile_advance"
                               ? `Mobile: ${mobileAdvancePhone || "N/A"}`
                               : selectedService === "mobile_intelligence"
