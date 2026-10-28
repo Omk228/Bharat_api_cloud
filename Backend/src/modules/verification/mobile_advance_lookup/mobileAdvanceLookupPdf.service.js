@@ -19,9 +19,9 @@ export class MobileAdvanceLookupPdfService {
           bufferPages: true,
           info: {
             Title: `Mobile Advance Intelligence Report - ${reportData.phone || 'Report'}`,
-            Author: 'Bharat API Cloud',
+            Author: 'Enterprise Verification Platform',
             Subject: 'Mobile Intelligence & Multi-Tier Alternate Network Analysis',
-            Creator: 'Bharat API Cloud Enterprise Platform',
+            Creator: 'Enterprise Verification Platform',
           },
         });
 
@@ -74,9 +74,7 @@ export class MobileAdvanceLookupPdfService {
         const drawCompactRunningHeader = () => {
           doc.rect(margin, currentY, contentWidth, 22).fill('#0F172A');
           doc.fillColor('#38BDF8').fontSize(8).font('Helvetica-Bold')
-            .text('BHARAT API CLOUD', margin + 10, currentY + 7);
-          doc.fillColor('#E2E8F0').fontSize(7.5).font('Helvetica')
-            .text('ADVANCE MOBILE INTELLIGENCE REPORT', margin + 110, currentY + 7);
+            .text('ADVANCE MOBILE INTELLIGENCE REPORT', margin + 10, currentY + 7);
           doc.fillColor('#94A3B8').fontSize(7).font('Helvetica')
             .text(`TARGET: +91 ${rootPhone}  |  REF: ${clientRef}`, margin, currentY + 7, {
               align: 'right',
@@ -93,11 +91,11 @@ export class MobileAdvanceLookupPdfService {
         // Cyan Left Accent Strip
         doc.rect(margin, currentY, 4, 68).fill('#38BDF8');
 
-        // Brand & Subtitle
-        doc.fillColor('#38BDF8').fontSize(14).font('Helvetica-Bold')
-          .text('BHARAT API CLOUD', margin + 16, currentY + 12);
+        // Report Title & Subtitle
+        doc.fillColor('#38BDF8').fontSize(13.5).font('Helvetica-Bold')
+          .text('ADVANCE MOBILE INTELLIGENCE REPORT', margin + 16, currentY + 12);
         doc.fillColor('#F8FAFC').fontSize(8.5).font('Helvetica-Bold')
-          .text('ADVANCE MOBILE INTELLIGENCE & NETWORK DOSSIER', margin + 16, currentY + 30);
+          .text('MULTI-TIER SUBSCRIBER & ALTERNATE NETWORK DOSSIER', margin + 16, currentY + 30);
         doc.fillColor('#94A3B8').fontSize(7.5).font('Helvetica')
           .text(`Generated: ${dateStr} IST  |  Multi-Tier Traversal: Depth 1 -> 2 -> 3`, margin + 16, currentY + 46);
 
@@ -433,7 +431,7 @@ export class MobileAdvanceLookupPdfService {
           doc.rect(margin, footerY - 12, contentWidth, 0.6).fill('#CBD5E1');
 
           doc.fillColor('#94A3B8').fontSize(7).font('Helvetica')
-            .text('Bharat API Cloud  |  Confidential Enterprise Intelligence  |  Authorized Verification Only', margin, footerY);
+            .text('Confidential Enterprise Intelligence  |  Authorized Verification Only', margin, footerY);
 
           doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold')
             .text(`Page ${i + 1} of ${pageRange.count}`, margin, footerY, { align: 'right', width: contentWidth });
