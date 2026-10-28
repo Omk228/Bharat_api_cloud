@@ -1536,7 +1536,17 @@ export const apiClient = {
         token_id: effectiveTokenId,
       }),
     });
-    return res.json();
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {
+        http_response_code: res.status,
+        result_code: 102,
+        status: 'failed',
+        message: text || `HTTP ${res.status} error occurred`,
+      };
+    }
   },
 
   async downloadMobileSmartPdf(data: {

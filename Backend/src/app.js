@@ -65,6 +65,7 @@ app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 app.get('/favicon.ico', (req, res) => res.status(204).end());

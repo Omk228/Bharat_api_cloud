@@ -122,14 +122,18 @@ export class CredentialService {
       throw new ApiError(403, 'Your account is suspended by admin. Please contact support.');
     }
 
-    // Compare Token ID in constant time
+    // Compare Token ID in constant time with case-tolerant fallback
     const expectedToken = cred.token_id;
     const providedToken = token_id.trim();
 
     const expectedBuf = Buffer.from(expectedToken);
     const providedBuf = Buffer.from(providedToken);
 
-    if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
+    const isMatch =
+      (expectedBuf.length === providedBuf.length && crypto.timingSafeEqual(expectedBuf, providedBuf)) ||
+      (expectedBuf.length === providedBuf.length && expectedToken.toLowerCase() === providedToken.toLowerCase());
+
+    if (!isMatch) {
       throw new ApiError(401, 'Invalid Token ID authentication failure.');
     }
 
