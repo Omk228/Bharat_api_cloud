@@ -427,14 +427,26 @@ export class MobileAdvanceLookupPdfService {
         for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
           doc.switchToPage(i);
 
-          const footerY = pageHeight - margin + 6;
-          doc.rect(margin, footerY - 12, contentWidth, 0.6).fill('#CBD5E1');
+          // Temporarily remove bottom margin to prevent PDFKit from triggering auto-pagebreak
+          const oldBottomMargin = doc.page.margins.bottom;
+          doc.page.margins.bottom = 0;
+
+          const footerY = pageHeight - 24;
+          doc.rect(margin, footerY - 8, contentWidth, 0.6).fill('#CBD5E1');
 
           doc.fillColor('#94A3B8').fontSize(7).font('Helvetica')
-            .text('Confidential Enterprise Intelligence  |  Authorized Verification Only', margin, footerY);
+            .text('Confidential Enterprise Intelligence  |  Authorized Verification Only', margin, footerY, {
+              lineBreak: false,
+            });
 
           doc.fillColor('#64748B').fontSize(7).font('Helvetica-Bold')
-            .text(`Page ${i + 1} of ${pageRange.count}`, margin, footerY, { align: 'right', width: contentWidth });
+            .text(`Page ${i + 1} of ${pageRange.count}`, margin, footerY, {
+              align: 'right',
+              width: contentWidth,
+              lineBreak: false,
+            });
+
+          doc.page.margins.bottom = oldBottomMargin;
         }
 
         doc.end();
