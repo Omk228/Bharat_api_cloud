@@ -288,6 +288,7 @@ export class MobileSmartService {
 
     const extractedCibil = extractTransUnionFromApiResponse(reportDataToParse);
     const tradelinesFull = extractedCibil.tradelinesFull || [];
+    const cibilAddresses = Array.isArray(extractedCibil.addresses) ? extractedCibil.addresses : [];
 
     // Filter Active vs Closed Loans
     const activeLoans = tradelinesFull.filter((t) => t.status === 'ACTIVE');
@@ -453,6 +454,8 @@ export class MobileSmartService {
         secondary_alternates_count: totalSecondaryAlternates,
         total_alternates_discovered: totalAlternatesDiscovered,
       },
+      addresses: cibilAddresses,
+      cibil_addresses: cibilAddresses,
       data: {
         borrower: {
           name: extractedCibil.borrower?.name || `${cleanForename} ${cleanSurname}`.trim(),
@@ -461,7 +464,11 @@ export class MobileSmartService {
           gender: cleanGender,
           dob: cleanDob || extractedCibil.borrower?.dob || null,
           cibil_score: extractedCibil.cibilScore || null,
+          addresses: cibilAddresses,
+          address: cibilAddresses[0]?.address || null,
         },
+        addresses: cibilAddresses,
+        cibil_addresses: cibilAddresses,
         loans_summary: {
           total_accounts: tradelinesFull.length,
           active_loans_count: activeLoans.length,

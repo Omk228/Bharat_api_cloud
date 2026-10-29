@@ -878,18 +878,30 @@ export function extractTransUnionFromApiResponse(apiResponse) {
   const emails = rawEmails.map((e) => e.Email || e.email || String(e)).filter((em) => Boolean(em && em.includes('@')));
 
   // Addresses
-  const rawAddresses = ensureArr(b.BorrowerAddress);
+  const rawAddresses = ensureArr(
+    b.BorrowerAddress ||
+    b.BorrowerAddresses ||
+    b.Address ||
+    b.addresses ||
+    resp?.BorrowerAddress ||
+    resp?.addresses ||
+    resp?.data?.addresses ||
+    resp?.applicant?.addresses
+  );
   const addresses = rawAddresses.map((a) => {
-    const ca = a.CreditAddress || {};
-    const street = ca.StreetAddress || '';
-    const city = ca.City || '';
-    const pin = ca.PostalCode || '';
-    const reg = ca.Region || '';
-    const fullStr = [street, city, reg, pin].filter(Boolean).join(', ');
-    const category = a.Dwelling?.symbol || a.Dwelling || '02';
-    const resCode = a.Ownership?.symbol || '';
-    const dateRep = a.dateReported ? String(a.dateReported).split('T')[0].split('+')[0] : '';
-    return { address: fullStr, category, residenceCode: resCode, dateReported: dateRep };
+    if (typeof a === 'string') {
+      return { address: a.trim(), category: '02', residenceCode: '', dateReported: '' };
+    }
+    const ca = a.CreditAddress || a.creditAddress || a;
+    const street = ca.StreetAddress || ca.streetAddress || ca.street || ca.addressLine1 || ca.line1 || '';
+    const city = ca.City || ca.city || '';
+    const pin = ca.PostalCode || ca.postalCode || ca.pin || ca.pincode || '';
+    const reg = ca.Region || ca.region || ca.state || '';
+    const fullStr = [street, city, reg, pin].filter(Boolean).join(', ') || a.address || a.formattedAddress || '';
+    const category = a.Dwelling?.symbol || a.Dwelling || a.category || a.addressCategory || '02';
+    const resCode = a.Ownership?.symbol || a.residenceCode || '';
+    const dateRep = a.dateReported ? String(a.dateReported).split('T')[0].split('+')[0] : (a.date || '');
+    return { address: fullStr.trim(), category, residenceCode: resCode, dateReported: dateRep };
   }).filter((ad) => Boolean(ad.address));
 
   // Employment Records

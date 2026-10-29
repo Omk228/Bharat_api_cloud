@@ -45,6 +45,46 @@ export class MobileSmartPdfService {
         const closedLoans = loansSummary.closed_loans || [];
         const cibilContacts = reportData.data?.cibil_contacts || reportData.cibil_contacts || [];
 
+        const rawAddresses =
+          reportData.data?.cibil_addresses ||
+          reportData.cibil_addresses ||
+          reportData.data?.addresses ||
+          reportData.addresses ||
+          borrower.addresses ||
+          borrower.address ||
+          summary.address ||
+          [];
+
+        const addressList = Array.isArray(rawAddresses)
+          ? rawAddresses
+          : (rawAddresses ? [rawAddresses] : []);
+
+        const cibilAddresses = addressList
+          .map((a) => {
+            if (!a) return null;
+            if (typeof a === 'string') {
+              const cleanStr = a.trim();
+              return cleanStr && cleanStr !== '-' ? { address: cleanStr } : null;
+            }
+            if (typeof a === 'object') {
+              const fullStr =
+                a.address ||
+                a.formattedAddress ||
+                a.full_address ||
+                [a.street || a.StreetAddress, a.city || a.City, a.region || a.Region || a.state, a.pin || a.postalCode || a.PostalCode || a.pincode].filter(Boolean).join(', ');
+              const cleanStr = String(fullStr || '').trim();
+              if (!cleanStr || cleanStr === '-') return null;
+              return {
+                address: cleanStr,
+                category: a.category || a.Dwelling?.symbol || a.dwelling || a.addressCategory || '',
+                residenceCode: a.residenceCode || a.Ownership?.symbol || '',
+                dateReported: a.dateReported || a.date || a.reportDate || '',
+              };
+            }
+            return null;
+          })
+          .filter(Boolean);
+
         const targetName = borrower.name || summary.name || 'Verified Subject';
         const rawPan = borrower.pan || summary.pan || '';
         const maskedPan = rawPan.length === 10 ? `${rawPan.slice(0, 5)}XXXX${rawPan.slice(-1)}` : (rawPan || 'N/A');
@@ -157,6 +197,75 @@ export class MobileSmartPdfService {
         });
 
         currentY += 52;
+
+        // ==========================================
+        // CIBIL REPORTED ADDRESS(ES) SECTION
+        // ==========================================
+        ensureSpace(50);
+        doc.roundedRect(margin, currentY, contentWidth, 20, 3).fill('#0F172A');
+        doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold')
+          .text(`CIBIL REPORTED ADDRESS(ES) (${cibilAddresses.length} Record${cibilAddresses.length === 1 ? '' : 's'})`, margin + 10, currentY + 6);
+        currentY += 26;
+
+        if (cibilAddresses.length === 0) {
+          ensureSpace(30);
+          doc.roundedRect(margin, currentY, contentWidth, 24, 3).fill('#F8FAFC');
+          doc.fillColor('#64748B').fontSize(7.8).font('Helvetica-Oblique')
+            .text('No address records reported in CIBIL credit profile.', margin + 12, currentY + 7);
+          currentY += 30;
+        } else {
+          const formatCategory = (cat) => {
+            const c = String(cat || '').trim();
+            if (c === '01') return 'PERMANENT';
+            if (c === '02') return 'RESIDENCE';
+            if (c === '03') return 'OFFICE';
+            if (c === '04') return 'OTHER';
+            return c ? c.toUpperCase() : 'REPORTED';
+          };
+
+          cibilAddresses.forEach((addr, idx) => {
+            const fullAddr = String(addr.address || '').trim();
+            const categoryLabel = formatCategory(addr.category);
+            const dateRep = addr.dateReported ? String(addr.dateReported).split('T')[0] : '';
+            const resCode = addr.residenceCode ? `Res: ${addr.residenceCode}` : '';
+
+            // Compute dynamic card height based on address text length
+            doc.fontSize(7.8).font('Helvetica-Bold');
+            const addrTextHeight = doc.heightOfString(fullAddr, { width: contentWidth - 28 });
+            const cardHeight = Math.max(34, 18 + addrTextHeight + 6);
+
+            ensureSpace(cardHeight + 6);
+
+            // Card container
+            doc.roundedRect(margin, currentY, contentWidth, cardHeight, 3).fill('#F8FAFC');
+            doc.roundedRect(margin, currentY, contentWidth, cardHeight, 3).lineWidth(0.7).stroke('#E2E8F0');
+            doc.rect(margin, currentY, 3.5, cardHeight).fill('#0284C7');
+
+            // Top subheader line: Badge + Type + Date Reported
+            const topY = currentY + 5;
+            const badgeW = 68;
+            doc.roundedRect(margin + 10, topY, badgeW, 12, 2).fill('#E0F2FE');
+            doc.roundedRect(margin + 10, topY, badgeW, 12, 2).lineWidth(0.5).stroke('#BAE6FD');
+            doc.fillColor('#0369A1').fontSize(6.5).font('Helvetica-Bold')
+              .text(`ADDRESS #${idx + 1}`, margin + 10, topY + 2.5, { width: badgeW, align: 'center' });
+
+            doc.fillColor('#475569').fontSize(7).font('Helvetica-Bold')
+              .text(`TYPE: ${categoryLabel}${resCode ? ` (${resCode})` : ''}`, margin + 84, topY + 2.5);
+
+            if (dateRep) {
+              doc.fillColor('#64748B').fontSize(6.8).font('Helvetica')
+                .text(`Reported: ${dateRep}`, margin + contentWidth - 120, topY + 2.5, { width: 110, align: 'right' });
+            }
+
+            // Address content
+            doc.fillColor('#0F172A').fontSize(7.8).font('Helvetica-Bold')
+              .text(fullAddr, margin + 12, topY + 14, { width: contentWidth - 24 });
+
+            currentY += cardHeight + 5;
+          });
+        }
+
+        currentY += 8;
 
         // ==========================================
         // 3. SECTION 1: CIBIL NUMBERS & MULTI-HOP ALTERNATES
